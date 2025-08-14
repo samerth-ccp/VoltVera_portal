@@ -4,20 +4,49 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 
 export default function Landing() {
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Demo login mutation
+  const loginMutation = useMutation({
+    mutationFn: async (credentials: { email: string; password: string }) => {
+      const response = await apiRequest('POST', '/api/demo-login', credentials);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      toast({
+        title: "Success",
+        description: "Logged in successfully",
+      });
+      // Refresh to trigger routing
+      window.location.reload();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Login failed",
+        description: error.message || "Invalid credentials",
+        variant: "destructive",
+      });
+    }
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // Redirect to Replit Auth
-    setTimeout(() => {
-      window.location.href = "/api/login";
-    }, 1000);
+    loginMutation.mutate({ email, password });
+  };
+
+  const handleReplitLogin = () => {
+    window.location.href = "/api/login";
   };
 
   return (
@@ -28,7 +57,12 @@ export default function Landing() {
           <div className="text-white text-3xl font-light mb-3">
             Welcome to <span className="font-semibold">Voltverashop</span>
           </div>
-          <div className="text-white/90 text-sm mb-8">Enter your email and password to continue.</div>
+          <div className="text-white/90 text-sm mb-4">Enter your email and password to continue.</div>
+          <div className="bg-white/10 rounded-lg p-3 mb-6">
+            <div className="text-white/80 text-xs font-medium mb-1">Demo Admin Credentials:</div>
+            <div className="text-white text-sm">Email: admin@voltverashop.com</div>
+            <div className="text-white text-sm">Password: admin123</div>
+          </div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
@@ -36,7 +70,9 @@ export default function Landing() {
               <Input 
                 type="email" 
                 className="w-full p-4 border-none rounded-lg text-sm bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
-                placeholder="example.email@gmail.com"
+                placeholder="admin@voltverashop.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -47,7 +83,9 @@ export default function Landing() {
                 <Input 
                   type={showPassword ? "text" : "password"}
                   className="w-full p-4 border-none rounded-lg text-sm bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
-                  placeholder="Enter at least 8+ characters"
+                  placeholder="admin123"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
                 <Button
@@ -75,9 +113,9 @@ export default function Landing() {
             <Button 
               type="submit" 
               className="w-full p-4 bg-white text-volt-dark rounded-lg text-base font-semibold hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 mb-6"
-              disabled={isLoading}
+              disabled={loginMutation.isPending}
             >
-              {isLoading ? "Logging in..." : "Log in"}
+              {loginMutation.isPending ? "Logging in..." : "Log in"}
             </Button>
             
             <div className="text-center text-white/80 text-sm mb-5">Or sign in with</div>
@@ -87,18 +125,21 @@ export default function Landing() {
                 type="button" 
                 variant="secondary"
                 className="flex-1 p-3 bg-white text-gray-700 rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
+                onClick={handleReplitLogin}
               >
-                G
+                Replit
               </Button>
               <Button 
                 type="button" 
                 className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
+                disabled
               >
                 f
               </Button>
               <Button 
                 type="button" 
                 className="flex-1 p-3 bg-black text-white rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
+                disabled
               >
                 🍎
               </Button>

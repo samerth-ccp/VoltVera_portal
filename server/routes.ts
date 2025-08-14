@@ -9,10 +9,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
+  // Simple demo login for admin
+  app.post('/api/demo-login', async (req, res) => {
+    const { email, password } = req.body;
+    
+    // Demo credentials: admin@voltverashop.com / admin123
+    if (email === 'admin@voltverashop.com' && password === 'admin123') {
+      const user = await storage.getUser('admin-demo');
+      if (user) {
+        // Create a simple session
+        (req.session as any).demoUser = user;
+        res.json({ success: true, user });
+      } else {
+        res.status(404).json({ message: "Admin user not found" });
+      }
+    } else {
+      res.status(401).json({ message: "Invalid credentials" });
+    }
+  });
+
+  // Demo auth middleware
+  const isDemoAuthenticated = async (req: any, res: any, next: any) => {
+    if ((req.session as any)?.demoUser) {
+      req.user = { claims: { sub: (req.session as any).demoUser.id } };
+      return next();
+    }
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+
+  // Auth routes (support both Replit and demo auth)
+  app.get('/api/auth/user', async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      let userId;
+      
+      // Check for demo session first
+      if ((req.session as any)?.demoUser) {
+        userId = (req.session as any).demoUser.id;
+      } else if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -22,6 +60,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
+  });
+
+  app.post('/api/logout', (req, res) => {
+    if ((req.session as any)?.demoUser) {
+      delete (req.session as any).demoUser;
+    }
+    if (req.logout) {
+      req.logout(() => {});
+    }
+    res.json({ success: true });
   });
 
   // Admin-only middleware
