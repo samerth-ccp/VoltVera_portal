@@ -48,18 +48,6 @@ export default function AdminDashboard() {
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
     queryKey: ["/api/users", search],
     enabled: isAuthenticated && user?.role === 'admin',
-    onError: (error: Error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Session expired",
-          description: "Please log in again",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 1000);
-      }
-    }
   });
 
   // Fetch user stats
@@ -70,7 +58,7 @@ export default function AdminDashboard() {
 
   // Create user mutation
   const createUserMutation = useMutation({
-    mutationFn: async (userData: CreateUser) => {
+    mutationFn: async (userData: any) => {
       const response = await apiRequest('POST', '/api/users', userData);
       return response.json();
     },
@@ -143,10 +131,12 @@ export default function AdminDashboard() {
     const form = e.target as HTMLFormElement;
     const formData = new FormData(form);
     
-    const userData: CreateUser = {
-      fullName: formData.get('fullName') as string,
+    const fullName = formData.get('fullName') as string;
+    const userData = {
       email: formData.get('email') as string,
       role: formData.get('role') as 'admin' | 'user',
+      firstName: fullName.split(' ')[0],
+      lastName: fullName.split(' ').slice(1).join(' ') || '',
     };
 
     createUserMutation.mutate(userData);

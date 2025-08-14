@@ -34,14 +34,20 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async upsertUser(userData: UpsertUser): Promise<User> {
+  async upsertUser(userData: UpsertUser & { role?: 'admin' | 'user' }): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({
+        ...userData,
+        role: userData.role || 'user',
+      })
       .onConflictDoUpdate({
         target: users.id,
         set: {
-          ...userData,
+          email: userData.email,
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          profileImageUrl: userData.profileImageUrl,
           updatedAt: new Date(),
           lastActiveAt: new Date(),
         },
@@ -61,7 +67,7 @@ export class DatabaseStorage implements IStorage {
           ilike(users.lastName, `%${search}%`),
           ilike(users.email, `%${search}%`)
         )
-      );
+      ) as typeof query;
     }
     
     return await query;
@@ -92,7 +98,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getUserStats() {

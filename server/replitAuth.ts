@@ -57,12 +57,30 @@ function updateUserSession(
 async function upsertUser(
   claims: any,
 ) {
-  await storage.upsertUser({
+  const userData = {
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+  };
+
+  // Check if user should be admin based on email or if they're the first user
+  const existingUser = await storage.getUser(userData.id);
+  const allUsers = await storage.getAllUsers();
+  
+  let role: 'admin' | 'user' = 'user';
+  
+  // Make first user an admin, or specific admin emails
+  if (allUsers.length === 0 || 
+      userData.email?.toLowerCase().includes('admin@') ||
+      userData.email?.toLowerCase() === process.env.ADMIN_EMAIL?.toLowerCase()) {
+    role = 'admin';
+  }
+
+  await storage.upsertUser({
+    ...userData,
+    ...(existingUser ? {} : { role }) // Only set role for new users
   });
 }
 

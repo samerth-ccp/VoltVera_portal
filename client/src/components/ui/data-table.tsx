@@ -37,7 +37,7 @@ function getStatusBadgeVariant(status: string) {
   }
 }
 
-function formatLastActive(lastActiveAt: string | null) {
+function formatLastActive(lastActiveAt: Date | null) {
   if (!lastActiveAt) return 'Never';
   
   const date = new Date(lastActiveAt);
