@@ -19,6 +19,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         // Create a simple session
         (req.session as any).demoUser = user;
+        await new Promise((resolve, reject) => {
+          req.session.save((err: any) => {
+            if (err) reject(err);
+            else resolve(true);
+          });
+        });
+        console.log('Demo login successful, session created:', req.session.id);
         res.json({ success: true, user });
       } else {
         res.status(404).json({ message: "Admin user not found" });
@@ -28,12 +35,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Demo auth middleware
-  const isDemoAuthenticated = async (req: any, res: any, next: any) => {
+  // Combined auth middleware (supports both demo and Replit auth)
+  const isAuthenticatedOrDemo = async (req: any, res: any, next: any) => {
+    console.log('Auth check - Session ID:', req.session?.id, 'Demo user:', !!req.session?.demoUser);
+    
+    // Check demo session first
     if ((req.session as any)?.demoUser) {
       req.user = { claims: { sub: (req.session as any).demoUser.id } };
+      console.log('Demo auth successful for user:', req.user.claims.sub);
       return next();
     }
+    
+    // Check Replit auth
+    if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+      console.log('Replit auth successful for user:', req.user.claims.sub);
+      return next();
+    }
+    
+    console.log('Auth failed - no valid session found');
     return res.status(401).json({ message: "Unauthorized" });
   };
 
@@ -87,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // User management routes (admin only)
-  app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/users", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const search = req.query.search as string;
       const users = await storage.getAllUsers(search);
@@ -98,7 +117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/stats", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/users/stats", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const stats = await storage.getUserStats();
       res.json(stats);
@@ -108,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/users", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const userData = createUserSchema.parse(req.body);
       const user = await storage.createUser(userData);
@@ -122,7 +141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/users/:id", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = updateUserSchema.parse(req.body);
@@ -140,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/users/:id", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const success = await storage.deleteUser(id);
