@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { User, CreateUser } from "@shared/schema";
@@ -29,6 +29,7 @@ export default function AdminDashboard() {
   const [search, setSearch] = useState('');
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -183,14 +184,34 @@ export default function AdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile menu overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="fixed inset-y-0 left-0 w-64 volt-gradient text-white">
-        <div className="flex items-center justify-center h-20 border-b border-white/20">
-          <VoltverashopLogo size="small" />
-          <div className="ml-3">
-            <div className="text-lg font-bold">Voltverashop</div>
-            <div className="text-xs opacity-75">Admin Portal</div>
+      <div className={`fixed inset-y-0 left-0 w-64 volt-gradient text-white z-30 transform transition-transform lg:translate-x-0 ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex items-center justify-between h-20 border-b border-white/20 px-4">
+          <div className="flex items-center">
+            <VoltverashopLogo size="small" />
+            <div className="ml-3">
+              <div className="text-lg font-bold">Voltverashop</div>
+              <div className="text-xs opacity-75">Admin Portal</div>
+            </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="lg:hidden text-white hover:bg-white/10"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
         
         <nav className="mt-8">
@@ -215,13 +236,23 @@ export default function AdminDashboard() {
       </div>
       
       {/* Main Content */}
-      <div className="ml-64">
+      <div className="lg:ml-64">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between px-8 py-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-800">User Management</h1>
-              <p className="text-gray-600 text-sm">Manage portal users and their access</p>
+          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="lg:hidden mr-4 text-gray-600 hover:bg-gray-100"
+                onClick={() => setIsSidebarOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h1>
+                <p className="text-gray-600 text-sm hidden sm:block">Manage portal users and their access</p>
+              </div>
             </div>
             <div className="flex items-center space-x-4">
               <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
@@ -287,9 +318,9 @@ export default function AdminDashboard() {
         </header>
         
         {/* Dashboard Content */}
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           {/* Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>

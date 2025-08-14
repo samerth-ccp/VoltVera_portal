@@ -50,11 +50,11 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center volt-gradient">
-      <Card className="flex bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full mx-4 border-0">
+    <div className="min-h-screen flex items-center justify-center volt-gradient p-4">
+      <Card className="flex flex-col lg:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full border-0">
         {/* Login Form Section */}
-        <div className="volt-gradient p-12 flex-1 flex flex-col justify-center">
-          <div className="text-white text-3xl font-light mb-3">
+        <div className="volt-gradient p-6 sm:p-8 lg:p-12 flex-1 flex flex-col justify-center">
+          <div className="text-white text-2xl sm:text-3xl font-light mb-3">
             Welcome to <span className="font-semibold">Voltverashop</span>
           </div>
           <div className="text-white/90 text-sm mb-4">Enter your email and password to continue.</div>
@@ -123,14 +123,14 @@ export default function Landing() {
         </div>
         
         {/* Branding Section */}
-        <div className="volt-gradient-light flex-1 flex flex-col items-center justify-center p-12 text-center">
-          <div className="mb-8">
+        <div className="volt-gradient-light flex-1 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12 text-center min-h-[200px] lg:min-h-0">
+          <div className="mb-4 lg:mb-8">
             <VoltverashopLogo />
           </div>
           
-          <div className="text-4xl font-bold text-gray-800 mb-3">Voltverashop</div>
-          <div className="text-sm font-semibold text-gray-600 tracking-wide mb-1">ENABLE SUSTAINABILITY WITH</div>
-          <div className="text-sm font-semibold text-gray-600 tracking-wide">EVERY VOLT</div>
+          <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-3">Voltverashop</div>
+          <div className="text-xs sm:text-sm font-semibold text-gray-600 tracking-wide mb-1">ENABLE SUSTAINABILITY WITH</div>
+          <div className="text-xs sm:text-sm font-semibold text-gray-600 tracking-wide">EVERY VOLT</div>
         </div>
       </Card>
     </div>

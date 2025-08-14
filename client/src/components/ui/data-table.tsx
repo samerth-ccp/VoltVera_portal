@@ -70,25 +70,27 @@ export default function DataTable({ users, onEdit, onDelete, onSearch }: DataTab
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-800">All Users</h3>
-        <div className="flex items-center space-x-4">
-          <Input 
-            placeholder="Search users..." 
-            value={search}
-            onChange={(e) => handleSearchChange(e.target.value)}
-            className="w-64"
-          />
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="user">User</SelectItem>
-            </SelectContent>
-          </Select>
+      <div className="px-4 sm:px-6 py-4 border-b border-gray-100">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+          <h3 className="text-lg font-semibold text-gray-800">All Users</h3>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+            <Input 
+              placeholder="Search users..." 
+              value={search}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full sm:w-64"
+            />
+            <Select value={roleFilter} onValueChange={setRoleFilter}>
+              <SelectTrigger className="w-full sm:w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Roles</SelectItem>
+                <SelectItem value="admin">Admin</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
       
@@ -97,9 +99,9 @@ export default function DataTable({ users, onEdit, onDelete, onSearch }: DataTab
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider">User</TableHead>
-              <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider">Role</TableHead>
+              <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">Role</TableHead>
               <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider">Status</TableHead>
-              <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider">Last Active</TableHead>
+              <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Last Active</TableHead>
               <TableHead className="text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -115,47 +117,52 @@ export default function DataTable({ users, onEdit, onDelete, onSearch }: DataTab
               <TableRow key={user.id} className="hover:bg-gray-50">
                 <TableCell>
                   <div className="flex items-center">
-                    <div className={`w-10 h-10 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-white font-medium`}>
+                    <div className={`w-8 sm:w-10 h-8 sm:h-10 ${getAvatarColor(index)} rounded-full flex items-center justify-center text-white font-medium text-xs sm:text-sm`}>
                       {getInitials(user.firstName, user.lastName)}
                     </div>
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">
+                    <div className="ml-3 sm:ml-4 min-w-0 flex-1">
+                      <div className="text-sm font-medium text-gray-900 truncate">
                         {user.firstName} {user.lastName}
                       </div>
-                      <div className="text-sm text-gray-500">{user.email}</div>
+                      <div className="text-xs sm:text-sm text-gray-500 truncate">{user.email}</div>
+                      <div className="sm:hidden mt-1">
+                        <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize text-xs">
+                          {user.role}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>
+                <TableCell className="hidden sm:table-cell">
                   <Badge variant={getRoleBadgeVariant(user.role)} className="capitalize">
                     {user.role}
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge variant={getStatusBadgeVariant(user.status)} className="capitalize">
+                  <Badge variant={getStatusBadgeVariant(user.status)} className="capitalize text-xs sm:text-sm">
                     {user.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-sm text-gray-500">
+                <TableCell className="text-sm text-gray-500 hidden lg:table-cell">
                   {formatLastActive(user.lastActiveAt)}
                 </TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
+                  <div className="flex space-x-1 sm:space-x-2">
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onEdit(user)}
-                      className="text-volt-dark hover:text-volt-light hover:bg-volt-light/10"
+                      className="text-volt-dark hover:text-volt-light hover:bg-volt-light/10 p-1 sm:p-2"
                     >
-                      <Pencil className="h-4 w-4" />
+                      <Pencil className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onDelete(user.id)}
-                      className="text-red-600 hover:text-red-500 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-500 hover:bg-red-50 p-1 sm:p-2"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 </TableCell>

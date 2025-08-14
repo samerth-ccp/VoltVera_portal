@@ -55,25 +55,25 @@ export default function UserDashboard() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className="volt-gradient text-white">
-        <div className="flex items-center justify-between px-8 py-6">
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center space-x-4">
             <VoltverashopLogo size="small" />
             <div>
-              <h1 className="text-2xl font-bold">Voltverashop Portal</h1>
-              <p className="text-white/80 text-sm">
+              <h1 className="text-xl sm:text-2xl font-bold">Voltverashop Portal</h1>
+              <p className="text-white/80 text-sm hidden sm:block">
                 Welcome back, {user?.firstName || 'User'}
               </p>
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 hidden sm:block">
               <Bell className="h-4 w-4" />
             </Button>
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {getInitials(user?.firstName, user?.lastName)}
               </div>
-              <span className="text-white font-medium">
+              <span className="text-white font-medium hidden sm:block">
                 {user?.firstName} {user?.lastName}
               </span>
             </div>
@@ -93,7 +93,7 @@ export default function UserDashboard() {
       </header>
       
       {/* Main Content */}
-      <div className="p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {/* Welcome Section */}
         <Card className="mb-8">
           <CardContent className="p-8">
