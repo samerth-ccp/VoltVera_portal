@@ -35,15 +35,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined> {
-    console.log('Login attempt:', { email, password });
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    console.log('Found user:', user ? { id: user.id, email: user.email, storedPassword: user.password } : 'No user found');
-    
     if (user && user.password === password) {
-      console.log('Password match successful');
       return user;
     }
-    console.log('Password match failed');
     return undefined;
   }
 

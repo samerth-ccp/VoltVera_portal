@@ -81,7 +81,10 @@ export default function UserDashboard() {
               variant="ghost" 
               size="sm" 
               className="text-white/80 hover:text-white hover:bg-white/10"
-              onClick={() => window.location.href = '/api/logout'}
+              onClick={() => {
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                  .then(() => window.location.href = '/');
+              }}
             >
               🚪
             </Button>

@@ -28,7 +28,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         // Store user in session
         (req.session as any).userId = user.id;
-        console.log('Login successful, session created:', req.session.id, 'userId:', user.id);
         res.json({ success: true, user });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
@@ -39,29 +38,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logout
-  app.post('/api/logout', (req, res) => {
-    (req.session as any).userId = null;
-    res.json({ success: true });
-  });
+  // Logout (support both GET and POST)
+  const handleLogout = (req: any, res: any) => {
+    if (req.session) {
+      req.session.destroy((err: any) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+          return res.status(500).json({ message: "Logout failed" });
+        }
+        res.clearCookie('connect.sid'); // Clear the session cookie
+        res.json({ success: true });
+      });
+    } else {
+      res.json({ success: true });
+    }
+  };
+
+  app.post('/api/logout', handleLogout);
+  app.get('/api/logout', handleLogout);
 
   // Simple auth middleware
   const isAuthenticated = async (req: any, res: any, next: any) => {
     const userId = (req.session as any)?.userId;
-    console.log('Auth check - Session ID:', req.session?.id, 'User ID:', userId);
     
     if (!userId) {
-      console.log('No userId in session');
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     const user = await storage.getUser(userId);
     if (!user) {
-      console.log('User not found in database:', userId);
       return res.status(401).json({ message: "User not found" });
     }
     
-    console.log('Auth successful for user:', user.email);
     req.user = user;
     next();
   };
