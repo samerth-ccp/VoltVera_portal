@@ -13,8 +13,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     saveUninitialized: false,
     cookie: { 
       secure: false, // set to true in production with HTTPS
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+      httpOnly: false, // Allow frontend access to session
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: 'lax'
     }
   }));
 
@@ -27,6 +28,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (user) {
         // Store user in session
         (req.session as any).userId = user.id;
+        console.log('Login successful, session created:', req.session.id, 'userId:', user.id);
         res.json({ success: true, user });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
@@ -46,15 +48,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple auth middleware
   const isAuthenticated = async (req: any, res: any, next: any) => {
     const userId = (req.session as any)?.userId;
+    console.log('Auth check - Session ID:', req.session?.id, 'User ID:', userId);
+    
     if (!userId) {
+      console.log('No userId in session');
       return res.status(401).json({ message: "Unauthorized" });
     }
     
     const user = await storage.getUser(userId);
     if (!user) {
+      console.log('User not found in database:', userId);
       return res.status(401).json({ message: "User not found" });
     }
     
+    console.log('Auth successful for user:', user.email);
     req.user = user;
     next();
   };
