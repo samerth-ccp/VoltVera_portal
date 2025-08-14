@@ -10,11 +10,11 @@ import { eq, ilike, or, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
-  // User operations - mandatory for Replit Auth
+  // User operations
   getUser(id: string): Promise<User | undefined>;
-  upsertUser(user: UpsertUser): Promise<User>;
+  getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined>;
   
-  // Additional user management operations
+  // User management operations
   getAllUsers(search?: string): Promise<User[]>;
   createUser(user: CreateUser): Promise<User>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
@@ -28,32 +28,18 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
-  // User operations - mandatory for Replit Auth
+  // User operations
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     return user;
   }
 
-  async upsertUser(userData: UpsertUser & { role?: 'admin' | 'user' }): Promise<User> {
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...userData,
-        role: userData.role || 'user',
-      })
-      .onConflictDoUpdate({
-        target: users.id,
-        set: {
-          email: userData.email,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          profileImageUrl: userData.profileImageUrl,
-          updatedAt: new Date(),
-          lastActiveAt: new Date(),
-        },
-      })
-      .returning();
-    return user;
+  async getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    if (user && user.password === password) {
+      return user;
+    }
+    return undefined;
   }
 
   // Additional user management operations

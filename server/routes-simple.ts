@@ -3,20 +3,8 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { createUserSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
-import session from "express-session";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Simple session setup for basic authentication
-  app.use(session({
-    secret: 'voltverashop-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { 
-      secure: false, // set to true in production with HTTPS
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
-  }));
 
   // Simple login - check email and password
   app.post('/api/login', async (req, res) => {

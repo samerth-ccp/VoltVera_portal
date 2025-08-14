@@ -37,43 +37,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logout
+  // Combined auth middleware (supports both demo and Replit auth)
+  const isAuthenticatedOrDemo = async (req: any, res: any, next: any) => {
+    console.log('Auth check - Session ID:', req.session?.id, 'Demo user:', !!req.session?.demoUser);
+    
+    // Check demo session first
+    if ((req.session as any)?.demoUser) {
+      req.user = { claims: { sub: (req.session as any).demoUser.id } };
+      console.log('Demo auth successful for user:', req.user.claims.sub);
+      return next();
+    }
+    
+    // Check Replit auth
+    if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+      console.log('Replit auth successful for user:', req.user.claims.sub);
+      return next();
+    }
+    
+    console.log('Auth failed - no valid session found');
+    return res.status(401).json({ message: "Unauthorized" });
+  };
+
+  // Auth routes (support both Replit and demo auth)
+  app.get('/api/auth/user', async (req: any, res) => {
+    try {
+      let userId;
+      
+      // Check for demo session first
+      if ((req.session as any)?.demoUser) {
+        userId = (req.session as any).demoUser.id;
+      } else if (req.isAuthenticated && req.isAuthenticated() && req.user?.claims?.sub) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
   app.post('/api/logout', (req, res) => {
-    (req.session as any).userId = null;
+    if ((req.session as any)?.demoUser) {
+      delete (req.session as any).demoUser;
+    }
+    if (req.logout) {
+      req.logout(() => {});
+    }
     res.json({ success: true });
   });
 
-  // Simple auth middleware
-  const isAuthenticated = async (req: any, res: any, next: any) => {
-    const userId = (req.session as any)?.userId;
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-    
-    req.user = user;
-    next();
-  };
-
-  // Admin middleware
+  // Admin-only middleware
   const isAdmin = async (req: any, res: any, next: any) => {
-    if (req.user?.role !== 'admin') {
-      return res.status(403).json({ message: "Admin access required" });
+    try {
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      if (!user || user.role !== 'admin') {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+      next();
+    } catch (error) {
+      return res.status(500).json({ message: "Failed to check admin status" });
     }
-    next();
   };
-
-  // Get current user
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    res.json(req.user);
-  });
 
   // User management routes (admin only)
-  app.get("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/users", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const search = req.query.search as string;
       const users = await storage.getAllUsers(search);
@@ -84,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/stats", isAuthenticated, isAdmin, async (req, res) => {
+  app.get("/api/users/stats", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const stats = await storage.getUserStats();
       res.json(stats);
@@ -94,7 +129,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
+  app.post("/api/users", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const userData = createUserSchema.parse(req.body);
       const user = await storage.createUser(userData);
@@ -108,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.patch("/api/users/:id", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const updates = updateUserSchema.parse(req.body);
@@ -126,7 +161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/users/:id", isAuthenticated, isAdmin, async (req, res) => {
+  app.delete("/api/users/:id", isAuthenticatedOrDemo, isAdmin, async (req, res) => {
     try {
       const { id } = req.params;
       const success = await storage.deleteUser(id);

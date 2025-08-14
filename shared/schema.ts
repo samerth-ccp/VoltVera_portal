@@ -28,10 +28,11 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'user']);
 // User status enum
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'pending']);
 
-// User storage table - mandatory for Replit Auth with role extensions
+// User storage table with simple password authentication
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
+  password: varchar("password").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -54,6 +55,7 @@ export const upsertUserSchema = createInsertSchema(users).pick({
 // Schema for creating users manually (admin function)
 export const createUserSchema = createInsertSchema(users).pick({
   email: true,
+  password: true,
   firstName: true,
   lastName: true,
   role: true,
@@ -61,6 +63,7 @@ export const createUserSchema = createInsertSchema(users).pick({
   fullName: z.string().min(1, "Full name is required"),
 }).transform(data => ({
   email: data.email,
+  password: data.password,
   firstName: data.fullName.split(' ')[0],
   lastName: data.fullName.split(' ').slice(1).join(' ') || '',
   role: data.role,
@@ -69,6 +72,7 @@ export const createUserSchema = createInsertSchema(users).pick({
 // Schema for updating users
 export const updateUserSchema = createInsertSchema(users).pick({
   email: true,
+  password: true,
   firstName: true,
   lastName: true,
   role: true,

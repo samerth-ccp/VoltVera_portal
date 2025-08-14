@@ -133,10 +133,10 @@ export default function AdminDashboard() {
     
     const fullName = formData.get('fullName') as string;
     const userData = {
+      fullName: fullName,
       email: formData.get('email') as string,
+      password: formData.get('password') as string,
       role: formData.get('role') as 'admin' | 'user',
-      firstName: fullName.split(' ')[0],
-      lastName: fullName.split(' ').slice(1).join(' ') || '',
     };
 
     createUserMutation.mutate(userData);
@@ -240,6 +240,10 @@ export default function AdminDashboard() {
                     <div>
                       <Label htmlFor="email">Email Address</Label>
                       <Input name="email" type="email" placeholder="Enter email address" required />
+                    </div>
+                    <div>
+                      <Label htmlFor="password">Password</Label>
+                      <Input name="password" type="password" placeholder="Enter password" required />
                     </div>
                     <div>
                       <Label htmlFor="role">Role</Label>

@@ -16,10 +16,10 @@ export default function Landing() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Demo login mutation
+  // Login mutation
   const loginMutation = useMutation({
     mutationFn: async (credentials: { email: string; password: string }) => {
-      const response = await apiRequest('POST', '/api/demo-login', credentials);
+      const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
     onSuccess: () => {
@@ -59,7 +59,7 @@ export default function Landing() {
           </div>
           <div className="text-white/90 text-sm mb-4">Enter your email and password to continue.</div>
           <div className="bg-white/10 rounded-lg p-3 mb-6">
-            <div className="text-white/80 text-xs font-medium mb-1">Demo Admin Credentials:</div>
+            <div className="text-white/80 text-xs font-medium mb-1">Admin Credentials:</div>
             <div className="text-white text-sm">Email: admin@voltverashop.com</div>
             <div className="text-white text-sm">Password: admin123</div>
           </div>
@@ -118,32 +118,7 @@ export default function Landing() {
               {loginMutation.isPending ? "Logging in..." : "Log in"}
             </Button>
             
-            <div className="text-center text-white/80 text-sm mb-5">Or sign in with</div>
-            
-            <div className="flex gap-3">
-              <Button 
-                type="button" 
-                variant="secondary"
-                className="flex-1 p-3 bg-white text-gray-700 rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
-                onClick={handleReplitLogin}
-              >
-                Replit
-              </Button>
-              <Button 
-                type="button" 
-                className="flex-1 p-3 bg-blue-600 text-white rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
-                disabled
-              >
-                f
-              </Button>
-              <Button 
-                type="button" 
-                className="flex-1 p-3 bg-black text-white rounded-lg font-medium hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300"
-                disabled
-              >
-                🍎
-              </Button>
-            </div>
+
           </form>
         </div>
         
