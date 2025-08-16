@@ -2,7 +2,7 @@ import React from 'react';
 import logoImage from '@assets/cropped-Green-and-White-Eco-Friendly-Packaging-Logo-129-x-129-px-70-x-60-px-132-x-60-px-129-x-129-px-500-x-500-px (1)_1755373949404.png';
 
 interface VoltverashopLogoProps {
-  size?: 'small' | 'medium' | 'large' | 'xlarge';
+  size?: 'small' | 'medium' | 'large' | 'xlarge' | 'hero';
   className?: string;
 }
 
@@ -11,7 +11,8 @@ export default function VoltverashopLogo({ size = 'large', className = '' }: Vol
     small: 'w-8 h-8',
     medium: 'w-12 h-12',
     large: 'w-16 h-16',
-    xlarge: 'w-24 h-24'
+    xlarge: 'w-24 h-24',
+    hero: 'w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48'
   };
 
   return (

@@ -124,8 +124,8 @@ export default function Landing() {
         
         {/* Branding Section */}
         <div className="volt-gradient-light flex-1 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12 text-center min-h-[200px] lg:min-h-0">
-          <div className="mb-4 lg:mb-8">
-            <VoltverashopLogo size="xlarge" />
+          <div className="mb-6 lg:mb-8">
+            <VoltverashopLogo size="hero" />
           </div>
           
           <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-3">Voltverashop</div>
