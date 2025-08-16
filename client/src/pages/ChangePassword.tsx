@@ -28,11 +28,21 @@ export default function ChangePassword() {
     onSuccess: () => {
       toast({
         title: "Success",
-        description: "Password changed successfully",
+        description: "Password changed successfully. Logging you out for security...",
       });
+      
+      // Clear form data
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      
+      // Log out user after a brief delay to show the success message
+      setTimeout(() => {
+        fetch('/api/logout', { method: 'POST', credentials: 'include' })
+          .then(() => {
+            window.location.href = '/';
+          });
+      }, 2000);
     },
     onError: (error: Error) => {
       toast({
