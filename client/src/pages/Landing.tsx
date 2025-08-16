@@ -51,20 +51,20 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen flex items-center justify-center volt-gradient p-4">
-      <Card className="flex flex-col lg:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-4xl w-full border-0">
+      <Card className="flex flex-col lg:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-6xl w-full border-0">
         {/* Login Form Section */}
-        <div className="volt-gradient p-6 sm:p-8 lg:p-12 flex-1 flex flex-col justify-center">
+        <div className="volt-gradient p-8 sm:p-12 lg:p-16 flex-1 flex flex-col justify-center min-h-[600px] lg:min-h-[700px]">
           <div className="text-white text-2xl sm:text-3xl font-light mb-3">
             Welcome to <span className="font-semibold">Voltverashop</span>
           </div>
           <div className="text-white/90 text-sm mb-6">Enter your email and password to continue.</div>
           
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label className="block text-white font-medium mb-2 text-sm">Email</Label>
               <Input 
                 type="email" 
-                className="w-full p-4 border-none rounded-lg text-sm bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
+                className="w-full p-5 border-none rounded-lg text-base bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
                 placeholder="admin@voltverashop.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -77,7 +77,7 @@ export default function Landing() {
               <div className="relative">
                 <Input 
                   type={showPassword ? "text" : "password"}
-                  className="w-full p-4 border-none rounded-lg text-sm bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
+                  className="w-full p-5 border-none rounded-lg text-base bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
                   placeholder="admin123"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -107,7 +107,7 @@ export default function Landing() {
             
             <Button 
               type="submit" 
-              className="w-full p-4 bg-white text-volt-dark rounded-lg text-base font-semibold hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 mb-6"
+              className="w-full p-5 bg-white text-volt-dark rounded-lg text-lg font-semibold hover:bg-gray-50 hover:-translate-y-0.5 hover:shadow-xl transition-all duration-300 mb-6"
               disabled={loginMutation.isPending}
             >
               {loginMutation.isPending ? "Logging in..." : "Log in"}
@@ -118,7 +118,7 @@ export default function Landing() {
         </div>
         
         {/* Branding Section */}
-        <div className="volt-gradient-light flex-1 flex flex-col items-center justify-center p-6 sm:p-8 lg:p-12 text-center min-h-[200px] lg:min-h-0">
+        <div className="volt-gradient-light flex-1 flex flex-col items-center justify-center p-8 sm:p-12 lg:p-16 text-center min-h-[600px] lg:min-h-[700px]">
           <VoltverashopLogo size="hero" />
         </div>
       </Card>
