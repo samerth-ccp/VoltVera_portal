@@ -128,9 +128,7 @@ export default function Landing() {
             <VoltverashopLogo size="hero" />
           </div>
           
-          <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 mb-3">Voltverashop</div>
-          <div className="text-xs sm:text-sm font-semibold text-gray-600 tracking-wide mb-1">ENABLE SUSTAINABILITY WITH</div>
-          <div className="text-xs sm:text-sm font-semibold text-gray-600 tracking-wide">EVERY VOLT</div>
+          <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800">Voltverashop</div>
         </div>
       </Card>
     </div>
