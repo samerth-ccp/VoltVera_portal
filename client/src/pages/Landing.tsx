@@ -50,8 +50,8 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center volt-gradient p-4">
-      <Card className="flex flex-col lg:flex-row bg-white rounded-2xl shadow-2xl overflow-hidden max-w-6xl w-full border-0">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-black p-4">
+      <Card className="flex flex-col lg:flex-row bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] ring-2 ring-white/20 overflow-hidden max-w-6xl w-full border-0 transform hover:scale-[1.01] transition-transform duration-300">
         {/* Login Form Section */}
         <div className="volt-gradient p-8 sm:p-12 lg:p-16 flex-1 flex flex-col justify-center min-h-[600px] lg:min-h-[700px]">
           <div className="text-white text-2xl sm:text-3xl font-light mb-3">
