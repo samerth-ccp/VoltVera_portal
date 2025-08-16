@@ -12,7 +12,7 @@ export default function VoltverashopLogo({ size = 'large', className = '' }: Vol
     medium: 'w-12 h-12',
     large: 'w-16 h-16',
     xlarge: 'w-24 h-24',
-    hero: 'w-40 h-40 sm:w-52 sm:h-52 lg:w-64 lg:h-64'
+    hero: 'w-48 h-48 sm:w-64 sm:h-64 lg:w-80 lg:h-80'
   };
 
   return (
