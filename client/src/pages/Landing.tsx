@@ -57,12 +57,7 @@ export default function Landing() {
           <div className="text-white text-2xl sm:text-3xl font-light mb-3">
             Welcome to <span className="font-semibold">Voltverashop</span>
           </div>
-          <div className="text-white/90 text-sm mb-4">Enter your email and password to continue.</div>
-          <div className="bg-white/10 rounded-lg p-3 mb-6">
-            <div className="text-white/80 text-xs font-medium mb-1">Admin Credentials:</div>
-            <div className="text-white text-sm">Email: admin@voltverashop.com</div>
-            <div className="text-white text-sm">Password: admin123</div>
-          </div>
+          <div className="text-white/90 text-sm mb-6">Enter your email and password to continue.</div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
