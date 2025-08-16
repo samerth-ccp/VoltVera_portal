@@ -50,8 +50,12 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center volt-gradient p-4">
-      <Card className="flex flex-col lg:flex-row bg-white rounded-3xl shadow-2xl overflow-hidden max-w-6xl w-full border-0">
+    <div className="min-h-screen flex items-center justify-center volt-gradient p-4 relative overflow-hidden">
+      {/* White accent elements */}
+      <div className="absolute top-0 left-0 w-72 h-72 bg-white/10 rounded-full blur-3xl"></div>
+      <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl"></div>
+      <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-white/8 rounded-full blur-2xl"></div>
+      <Card className="flex flex-col lg:flex-row bg-white/95 backdrop-blur-sm rounded-3xl shadow-2xl overflow-hidden max-w-6xl w-full border-0 relative z-10">
         {/* Login Form Section */}
         <div className="volt-gradient p-8 sm:p-12 lg:p-16 flex-1 flex flex-col justify-center min-h-[600px] lg:min-h-[700px]">
           <div className="text-white text-2xl sm:text-3xl font-light mb-3">
