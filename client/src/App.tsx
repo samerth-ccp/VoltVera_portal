@@ -8,17 +8,26 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserDashboard from "@/pages/UserDashboard";
+import ChangePassword from "@/pages/ChangePassword";
+import ForgotPassword from "@/pages/ForgotPassword";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
   return (
     <Switch>
+      {/* Public routes */}
+      <Route path="/forgot-password" component={ForgotPassword} />
+      
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (
         <Route path="/" component={Landing} />
       ) : (
         <>
+          {/* Protected routes for authenticated users */}
+          <Route path="/change-password" component={ChangePassword} />
+          <Route path="/dashboard" component={UserDashboard} />
+          
           {/* Role-based routing for authenticated users */}
           {user?.role === 'admin' ? (
             <Route path="/" component={AdminDashboard} />

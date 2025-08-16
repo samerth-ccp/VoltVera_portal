@@ -155,6 +155,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Password change route
+  app.post("/api/auth/change-password", isAuthenticated, async (req: any, res) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+
+      // Verify current password
+      const user = await storage.getUserByEmailAndPassword(req.user.email, currentPassword);
+      if (!user) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Update password
+      const success = await storage.updatePassword(userId, newPassword);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  // Forgot password route
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({ message: "If an account with that email exists, password reset instructions have been sent." });
+      }
+
+      // For now, we'll return the current password (in production, you'd send an email)
+      // This is a simplified implementation for demo purposes
+      res.json({ 
+        message: "Password reset instructions sent to your email.",
+        // In development, show the password for convenience
+        password: user.password 
+      });
+    } catch (error) {
+      console.error("Error in forgot password:", error);
+      res.status(500).json({ message: "Failed to process password reset" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

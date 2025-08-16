@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
+import { Link } from "wouter";
 
 export default function Landing() {
   const [showPassword, setShowPassword] = useState(false);
@@ -104,9 +105,11 @@ export default function Landing() {
                 <input type="checkbox" className="mr-2 accent-white" defaultChecked /> 
                 Remember me
               </label>
-              <a href="#" className="text-white/90 text-sm hover:text-white transition-colors">
-                Forgot password?
-              </a>
+              <Link href="/forgot-password">
+                <button className="text-white/90 text-sm hover:text-white transition-colors">
+                  Forgot password?
+                </button>
+              </Link>
             </div>
             
             <Button 

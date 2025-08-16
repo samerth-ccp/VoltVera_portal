@@ -25,6 +25,10 @@ export interface IStorage {
     adminUsers: number;
     pendingUsers: number;
   }>;
+  
+  // Password management
+  getUserByEmail(email: string): Promise<User | undefined>;
+  updatePassword(id: string, newPassword: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -96,6 +100,22 @@ export class DatabaseStorage implements IStorage {
       adminUsers: allUsers.filter(u => u.role === 'admin').length,
       pendingUsers: allUsers.filter(u => u.status === 'pending').length,
     };
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
+  async updatePassword(id: string, newPassword: string): Promise<boolean> {
+    const result = await db
+      .update(users)
+      .set({ 
+        password: newPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, id));
+    return (result.rowCount ?? 0) > 0;
   }
 }
 

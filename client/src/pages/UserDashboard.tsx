@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, Leaf, BarChart3, Smartphone, Target, Bell } from "lucide-react";
+import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock } from "lucide-react";
+import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
@@ -69,6 +70,11 @@ export default function UserDashboard() {
             <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 hidden sm:block">
               <Bell className="h-4 w-4" />
             </Button>
+            <Link href="/change-password">
+              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
+                <Lock className="h-4 w-4" />
+              </Button>
+            </Link>
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {getInitials(user?.firstName, user?.lastName)}
