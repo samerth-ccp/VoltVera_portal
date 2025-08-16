@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,16 +14,37 @@ export default function Landing() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Load saved email and remember me preference on component mount
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('voltverashop_email');
+    const savedRememberMe = localStorage.getItem('voltverashop_remember_me') === 'true';
+    
+    if (savedEmail) {
+      setEmail(savedEmail);
+    }
+    setRememberMe(savedRememberMe);
+  }, []);
+
   // Login mutation
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { email: string; password: string }) => {
+    mutationFn: async (credentials: { email: string; password: string; rememberMe: boolean }) => {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
     onSuccess: () => {
+      // Save email and remember me preference if rememberMe is checked
+      if (rememberMe) {
+        localStorage.setItem('voltverashop_email', email);
+        localStorage.setItem('voltverashop_remember_me', 'true');
+      } else {
+        localStorage.removeItem('voltverashop_email');
+        localStorage.setItem('voltverashop_remember_me', 'false');
+      }
+      
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       toast({
         title: "Success",
@@ -43,7 +64,7 @@ export default function Landing() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate({ email, password });
+    loginMutation.mutate({ email, password, rememberMe });
   };
 
   const handleReplitLogin = () => {
@@ -102,7 +123,12 @@ export default function Landing() {
             
             <div className="flex justify-between items-center">
               <label className="flex items-center text-white text-sm cursor-pointer">
-                <input type="checkbox" className="mr-2 accent-white" defaultChecked /> 
+                <input 
+                  type="checkbox" 
+                  className="mr-2 accent-white" 
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                /> 
                 Remember me
               </label>
               <Link href="/forgot-password">

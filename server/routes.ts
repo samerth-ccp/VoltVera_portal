@@ -21,13 +21,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Simple login - check email and password
   app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
     
     try {
       const user = await storage.getUserByEmailAndPassword(email, password);
       if (user) {
         // Store user in session
         (req.session as any).userId = user.id;
+        
+        // Set session expiration based on remember me
+        if (rememberMe) {
+          // Remember me: 30 days
+          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+        } else {
+          // Regular session: 24 hours
+          req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
+        }
+        
         res.json({ success: true, user });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
