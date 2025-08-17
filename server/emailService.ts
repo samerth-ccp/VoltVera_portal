@@ -37,7 +37,8 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 }
 
 export async function sendSignupEmail(email: string, token: string): Promise<boolean> {
-  const baseUrl = process.env.FRONTEND_URL || (process.env.REPL_SLUG && process.env.REPL_OWNER ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'http://localhost:5000');
+  // Use production domain for deployed app
+  const baseUrl = 'https://voltverashop.replit.app';
   const signupUrl = `${baseUrl}/verify-email?token=${token}`;
   
   return sendEmail({
@@ -84,7 +85,8 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-  const baseUrl = process.env.FRONTEND_URL || (process.env.REPL_SLUG && process.env.REPL_OWNER ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : 'http://localhost:5000');
+  // Use production domain for deployed app  
+  const baseUrl = 'https://voltverashop.replit.app';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
   
   return sendEmail({
