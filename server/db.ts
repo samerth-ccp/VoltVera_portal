@@ -1,18 +1,13 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
 import * as schema from "@shared/schema";
 
-// Only set WebSocket constructor in development
-if (process.env.NODE_ENV !== 'production') {
-  neonConfig.webSocketConstructor = ws;
-}
-
-// For production deployment, disable WebSocket features that can cause hanging
-if (process.env.NODE_ENV === 'production') {
-  neonConfig.useSecureWebSocket = false;
-  neonConfig.pipelineConnect = false;
-}
+// Completely disable WebSocket for deployment stability
+// This prevents "Socket closed with event 4500" deployment errors
+neonConfig.webSocketConstructor = undefined;
+neonConfig.useSecureWebSocket = false;
+neonConfig.pipelineConnect = false;
+neonConfig.pipelineTLS = false;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(

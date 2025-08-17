@@ -7,6 +7,11 @@ import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health check endpoint for deployment
+  app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+  });
+
   // Session store configuration
   const PgSession = ConnectPgSimple(session);
   const isProduction = process.env.NODE_ENV === 'production';
@@ -15,6 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     ? new PgSession({
         conString: process.env.DATABASE_URL,
         tableName: 'sessions',
+        createTableIfMissing: true,
       })
     : undefined; // Use default memory store for development
 
