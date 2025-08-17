@@ -5,7 +5,7 @@ import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSche
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
-import { sendSignupEmail, sendPasswordResetEmail } from "./emailService";
+import { sendSignupEmail, sendPasswordResetEmail, sendUserInvitationEmail } from "./emailService";
 import { nanoid } from "nanoid";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -155,10 +155,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      const user = await storage.createUser(userData);
+      // Create user with temporary password (will be replaced when user accepts invitation) 
+      const tempPassword = nanoid(16);
+      const userWithPassword = { ...userData, password: tempPassword };
+      const user = await storage.createUser(userWithPassword);
       
-      // Generate verification token for admin-created users
-      const { nanoid } = await import('nanoid');
+      // Generate invitation token for admin-created users
       const token = nanoid(32);
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
@@ -166,22 +168,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.createEmailToken({
         email: user.email,
         token,
-        type: 'signup',
+        type: 'invitation',
         expiresAt
       });
       
-      // Send verification email
-      const emailSent = await sendSignupEmail(user.email, token);
+      // Send user invitation email instead of signup email
+      const emailSent = await sendUserInvitationEmail(user.email, user.firstName || 'User', token);
       
       if (emailSent) {
-        console.log(`Verification email sent to ${user.email}`);
+        console.log(`User invitation email sent to ${user.email}`);
         res.status(201).json({ 
           ...user, 
-          message: "User created and verification email sent successfully" 
+          message: "User invitation sent successfully" 
         });
       } else {
-        console.log(`Development mode: Verification token for ${user.email}: ${token}`);
-        console.log(`Verification URL: http://localhost:5000/verify-email?token=${token}`);
+        console.log(`Development mode: Invitation token for ${user.email}: ${token}`);
+        console.log(`Invitation URL: https://voltveratech.com/complete-invitation?token=${token}`);
         res.status(201).json({ 
           ...user, 
           message: "User created. Email service needs configuration - check server logs for verification link.",

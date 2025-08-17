@@ -84,6 +84,58 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
   });
 }
 
+export async function sendUserInvitationEmail(email: string, firstName: string, token: string): Promise<boolean> {
+  // Use actual production domain
+  const baseUrl = 'https://voltveratech.com';
+  const invitationUrl = `${baseUrl}/complete-invitation?token=${token}`;
+  
+  return sendEmail({
+    to: email,
+    from: 'noreply@voltveratech.com', // Using verified domain
+    subject: 'Welcome to Voltverashop - Complete Your Account Setup',
+    html: `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">You've Been Invited to Voltverashop</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #1f2937; margin-top: 0;">Hi ${firstName},</h2>
+          <p style="color: #6b7280; line-height: 1.6;">
+            An administrator has created an account for you on Voltverashop. To complete your account setup and create your password, please click the button below.
+          </p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${invitationUrl}" style="
+              background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+              color: white;
+              padding: 12px 30px;
+              text-decoration: none;
+              border-radius: 6px;
+              font-weight: 600;
+              display: inline-block;
+            ">Complete Account Setup</a>
+          </div>
+          
+          <p style="color: #9ca3af; font-size: 14px;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${invitationUrl}" style="color: #16a34a;">${invitationUrl}</a>
+          </p>
+          
+          <p style="color: #9ca3af; font-size: 12px; margin-top: 30px;">
+            This invitation link will expire in 24 hours for security purposes.
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #9ca3af; font-size: 12px;">
+          <p>© 2025 Voltverashop. All rights reserved.</p>
+        </div>
+      </div>
+    `,
+    text: `Hi ${firstName}, You've been invited to join Voltverashop! Complete your account setup by visiting: ${invitationUrl}`
+  });
+}
+
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
   // Use actual production domain
   const baseUrl = 'https://voltveratech.com';

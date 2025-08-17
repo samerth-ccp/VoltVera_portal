@@ -63,10 +63,9 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   profileImageUrl: true,
 });
 
-// Schema for creating users manually (admin function)
-export const createUserSchema = createInsertSchema(users).pick({
+// Schema for creating user invitations (admin function) - no password field
+export const createUserInvitationSchema = createInsertSchema(users).pick({
   email: true,
-  password: true,
   firstName: true,
   lastName: true,
   role: true,
@@ -74,11 +73,19 @@ export const createUserSchema = createInsertSchema(users).pick({
   fullName: z.string().min(1, "Full name is required"),
 }).transform(data => ({
   email: data.email,
-  password: data.password,
   firstName: data.fullName.split(' ')[0],
   lastName: data.fullName.split(' ').slice(1).join(' ') || '',
   role: data.role,
 }));
+
+// Keep the original createUserSchema for backward compatibility  
+export const createUserSchema = createUserInvitationSchema;
+
+// Schema for completing user invitation (user sets password)
+export const completeInvitationSchema = z.object({
+  token: z.string().min(1, "Invitation token is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+});
 
 // Schema for user signup (email verification required)
 export const signupUserSchema = createInsertSchema(users).pick({

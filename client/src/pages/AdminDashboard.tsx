@@ -271,7 +271,7 @@ export default function AdminDashboard() {
                 </DialogTrigger>
                 <DialogContent className="max-w-md">
                   <DialogHeader>
-                    <DialogTitle>Add New User</DialogTitle>
+                    <DialogTitle>Invite New User</DialogTitle>
                   </DialogHeader>
                   <form onSubmit={handleCreateUser} className="space-y-4">
                     <div>
@@ -282,10 +282,7 @@ export default function AdminDashboard() {
                       <Label htmlFor="email">Email Address</Label>
                       <Input name="email" type="email" placeholder="Enter email address" required />
                     </div>
-                    <div>
-                      <Label htmlFor="password">Password</Label>
-                      <Input name="password" type="password" placeholder="Enter password" required />
-                    </div>
+
                     <div>
                       <Label htmlFor="role">Role</Label>
                       <Select name="role" defaultValue="user" required>
@@ -307,7 +304,7 @@ export default function AdminDashboard() {
                         className="volt-gradient text-white"
                         disabled={createUserMutation.isPending}
                       >
-                        {createUserMutation.isPending ? "Adding..." : "Add User"}
+                        {createUserMutation.isPending ? "Sending Invitation..." : "Send Invitation"}
                       </Button>
                     </div>
                   </form>
