@@ -26,6 +26,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUserByEmailAndPassword(email, password);
       if (user) {
+        // Update last active timestamp
+        await storage.updateUser(user.id, { lastActiveAt: new Date() });
+        
         // Store user in session
         (req.session as any).userId = user.id;
         
@@ -122,6 +125,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
       const userData = createUserSchema.parse(req.body);
+      
+      // Check if email already exists
+      if (userData.email) {
+        const existingUser = await storage.getUserByEmail(userData.email);
+        if (existingUser) {
+          return res.status(409).json({ message: "A user with this email already exists" });
+        }
+      }
+      
       const user = await storage.createUser(userData);
       res.status(201).json(user);
     } catch (error) {

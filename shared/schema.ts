@@ -77,6 +77,7 @@ export const updateUserSchema = createInsertSchema(users).pick({
   lastName: true,
   role: true,
   status: true,
+  lastActiveAt: true,
 }).partial();
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
