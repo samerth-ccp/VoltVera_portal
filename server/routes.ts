@@ -260,6 +260,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Validate invitation token route
+  app.post("/api/auth/validate-invitation", async (req, res) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token is required" });
+      }
+
+      const emailToken = await storage.getEmailToken(token);
+      if (!emailToken || emailToken.type !== 'invitation') {
+        return res.status(400).json({ message: "Invalid or expired invitation" });
+      }
+
+      if (new Date() > emailToken.expiresAt) {
+        return res.status(400).json({ message: "Invitation has expired" });
+      }
+
+      const user = await storage.getUserByEmail(emailToken.email);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        valid: true, 
+        user: { 
+          email: user.email, 
+          firstName: user.firstName, 
+          lastName: user.lastName 
+        } 
+      });
+    } catch (error) {
+      console.error("Error validating invitation:", error);
+      res.status(500).json({ message: "Failed to validate invitation" });
+    }
+  });
+
+  // Complete invitation route
+  app.post("/api/auth/complete-invitation", async (req, res) => {
+    try {
+      const { token, password } = req.body;
+      
+      if (!token || !password) {
+        return res.status(400).json({ message: "Token and password are required" });
+      }
+
+      if (password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+
+      const emailToken = await storage.getEmailToken(token);
+      if (!emailToken || emailToken.type !== 'invitation') {
+        return res.status(400).json({ message: "Invalid or expired invitation" });
+      }
+
+      if (new Date() > emailToken.expiresAt) {
+        return res.status(400).json({ message: "Invitation has expired" });
+      }
+
+      const user = await storage.getUserByEmail(emailToken.email);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+
+      // Update user password and activate account
+      const success = await storage.updatePassword(user.id, password);
+      if (!success) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+
+      await storage.updateUser(user.id, { 
+        status: 'active', 
+        emailVerified: new Date() 
+      });
+
+      // Remove the used token
+      await storage.deleteEmailToken(token);
+
+      res.json({ message: "Account setup completed successfully" });
+    } catch (error) {
+      console.error("Error completing invitation:", error);
+      res.status(500).json({ message: "Failed to complete invitation" });
+    }
+  });
+
   // User signup with email verification
   app.post("/api/auth/signup", async (req, res) => {
     try {

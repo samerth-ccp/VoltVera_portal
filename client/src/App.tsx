@@ -13,6 +13,7 @@ import ForgotPassword from "@/pages/ForgotPassword";
 import Signup from "@/pages/Signup";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ResetPassword from "@/pages/ResetPassword";
+import CompleteInvitation from "@/pages/CompleteInvitation";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/signup" component={Signup} />
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
+      <Route path="/complete-invitation" component={CompleteInvitation} />
       
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (
