@@ -18,20 +18,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const PgSession = ConnectPgSimple(session);
   const isProduction = process.env.NODE_ENV === 'production';
   
-  const sessionStore = isProduction 
-    ? new PgSession({
-        conString: process.env.DATABASE_URL,
-        tableName: 'sessions',
-        createTableIfMissing: true,
-      })
-    : undefined; // Use default memory store for development
+  // Always use session store for consistency
+  const sessionStore = new PgSession({
+    conString: process.env.DATABASE_URL,
+    tableName: 'sessions',
+    createTableIfMissing: true,
+  });
+
+  // Add error handling for session store
+  sessionStore.on('error', (err) => {
+    console.error('Session store error:', err);
+  });
 
   // Session setup for authentication
   app.use(session({
     store: sessionStore,
-    secret: process.env.SESSION_SECRET || 'voltverashop-secret-key',
+    secret: process.env.SESSION_SECRET || 'voltverashop-secret-key-2025',
     resave: false,
-    saveUninitialized: false,
+    saveUninitialized: true, // Changed to true to ensure session creation
+    name: 'voltverashop.session', // Explicit session name
     cookie: { 
       secure: isProduction, // secure cookies in production
       httpOnly: true, // Secure cookies for security
@@ -62,7 +67,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
         }
         
-        res.json({ success: true, user });
+        // Force session save before responding
+        req.session.save((err) => {
+          if (err) {
+            console.error('Session save error:', err);
+            return res.status(500).json({ message: "Session save failed" });
+          }
+          console.log('Session saved successfully for user:', user.id);
+          res.json({ success: true, user });
+        });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
       }
