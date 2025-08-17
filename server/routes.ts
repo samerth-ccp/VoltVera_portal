@@ -34,9 +34,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     saveUninitialized: false,
     cookie: { 
       secure: isProduction, // secure cookies in production
-      httpOnly: false, // Allow frontend access to session
+      httpOnly: true, // Secure cookies for security
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax'
+      sameSite: 'lax' // Compatible with same-origin requests
     }
   }));
 
