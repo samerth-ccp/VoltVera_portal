@@ -255,7 +255,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Send verification email
       const emailSent = await sendSignupEmail(userData.email, token);
       if (!emailSent) {
-        return res.status(500).json({ message: "Failed to send verification email" });
+        // For development, still allow signup but show different message
+        console.log(`Development mode: Verification token for ${userData.email}: ${token}`);
+        console.log(`Verification URL: http://localhost:5000/verify-email?token=${token}`);
+        return res.status(201).json({ 
+          message: "Account created! Email service needs configuration. Use verification URL from server logs.",
+          userId: user.id,
+          devToken: process.env.NODE_ENV === 'development' ? token : undefined
+        });
       }
       
       res.status(201).json({ 

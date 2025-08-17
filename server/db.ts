@@ -1,13 +1,6 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from "@shared/schema";
-
-// Completely disable WebSocket for deployment stability
-// This prevents "Socket closed with event 4500" deployment errors
-neonConfig.webSocketConstructor = undefined;
-neonConfig.useSecureWebSocket = false;
-neonConfig.pipelineConnect = false;
-neonConfig.pipelineTLS = false;
 
 if (!process.env.DATABASE_URL) {
   throw new Error(
@@ -15,5 +8,6 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
+// Use HTTP-only database connection to avoid WebSocket issues
+const sql = neon(process.env.DATABASE_URL);
+export const db = drizzle(sql, { schema });
