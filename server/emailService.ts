@@ -42,7 +42,7 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
   
   return sendEmail({
     to: email,
-    from: 'admin@voltverashop.com', // Using admin email as verified sender
+    from: 'noreply@voltveratech.com', // Using verified domain
     subject: 'Welcome to Voltverashop - Verify Your Email',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -89,7 +89,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   
   return sendEmail({
     to: email,
-    from: 'admin@voltverashop.com', // Using admin email as verified sender
+    from: 'noreply@voltveratech.com', // Using verified domain
     subject: 'Voltverashop - Reset Your Password',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
