@@ -8,9 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export default function Landing() {
+  const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
