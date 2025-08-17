@@ -37,8 +37,8 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
 }
 
 export async function sendSignupEmail(email: string, token: string): Promise<boolean> {
-  // Use production domain for deployed app
-  const baseUrl = 'https://voltverashop.replit.app';
+  // Use actual production domain
+  const baseUrl = 'https://voltveratech.com';
   const signupUrl = `${baseUrl}/verify-email?token=${token}`;
   
   return sendEmail({
@@ -85,8 +85,8 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
 }
 
 export async function sendPasswordResetEmail(email: string, token: string): Promise<boolean> {
-  // Use production domain for deployed app  
-  const baseUrl = 'https://voltverashop.replit.app';
+  // Use actual production domain
+  const baseUrl = 'https://voltveratech.com';
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
   
   return sendEmail({
