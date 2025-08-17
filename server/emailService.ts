@@ -40,7 +40,7 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
   
   return sendEmail({
     to: email,
-    from: 'support@yourdomain.com', // TODO: Replace with your verified SendGrid sender email
+    from: 'noreply@voltverashop.com', // Using authenticated domain
     subject: 'Welcome to Voltverashop - Verify Your Email',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -87,7 +87,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   
   return sendEmail({
     to: email,
-    from: 'support@yourdomain.com', // TODO: Replace with your verified SendGrid sender email
+    from: 'noreply@voltverashop.com', // Using authenticated domain
     subject: 'Voltverashop - Reset Your Password',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
