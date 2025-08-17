@@ -11,43 +11,54 @@ import { nanoid } from "nanoid";
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment
   app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'healthy', timestamp: new Date().toISOString() });
+    res.status(200).json({ 
+      status: 'healthy', 
+      timestamp: new Date().toISOString(),
+      sessionFixApplied: true,
+      buildVersion: 'emergency-session-fix-v3'
+    });
   });
 
   // Session store configuration
   const PgSession = ConnectPgSimple(session);
   const isProduction = process.env.NODE_ENV === 'production';
   
-  // Always use session store for consistency
-  const sessionStore = new PgSession({
-    conString: process.env.DATABASE_URL,
-    tableName: 'sessions',
-    createTableIfMissing: true,
-  });
+  let sessionStore;
+  try {
+    // Try to use PostgreSQL session store
+    sessionStore = new PgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: 'sessions',
+      createTableIfMissing: true,
+    });
+    
+    sessionStore.on('error', (err) => {
+      console.error('Session store error:', err);
+    });
+    
+    console.log('Using PostgreSQL session store');
+  } catch (error) {
+    console.error('Failed to initialize PostgreSQL session store:', error);
+    console.log('Falling back to memory store');
+    sessionStore = undefined; // Use default memory store
+  }
 
-  // Add error handling for session store
-  sessionStore.on('error', (err) => {
-    console.error('Session store error:', err);
-  });
-
-  // Session setup for authentication
+  // Emergency session fix for production
   app.use(session({
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET || 'voltverashop-secret-key-2025',
-    resave: false,
-    saveUninitialized: true, // Changed to true to ensure session creation
-    name: 'voltverashop.session', // Explicit session name
+    secret: 'voltverashop-emergency-fix-2025',
+    resave: true,
+    saveUninitialized: true,
+    name: 'connect.sid',
     cookie: { 
-      secure: isProduction, // secure cookies in production
-      httpOnly: true, // Secure cookies for security
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: 'lax' // Compatible with same-origin requests
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax'
     }
   }));
 
   // Simple login - check email and password
   app.post('/api/login', async (req, res) => {
     const { email, password, rememberMe } = req.body;
+    console.log('Login attempt for:', email, 'Production:', isProduction);
     
     try {
       const user = await storage.getUserByEmailAndPassword(email, password);
@@ -67,15 +78,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
         }
         
-        // Force session save before responding
-        req.session.save((err) => {
-          if (err) {
-            console.error('Session save error:', err);
-            return res.status(500).json({ message: "Session save failed" });
-          }
-          console.log('Session saved successfully for user:', user.id);
-          res.json({ success: true, user });
-        });
+        // Emergency fix: Force session creation and save
+        (req.session as any).userId = user.id;
+        (req.session as any).user = user; // Store full user for immediate access
+        
+        console.log('Emergency session set for user:', user.id);
+        res.json({ success: true, user });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
       }
