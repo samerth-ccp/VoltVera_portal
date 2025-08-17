@@ -48,20 +48,13 @@ export default function Landing() {
       
       // Invalidate auth queries to trigger re-authentication check
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      toast({
-        title: "Login successful",
-        description: `Welcome ${data.user?.firstName || 'back'}!`,
-      });
 
-      // Navigate based on user role after auth state updates
-      setTimeout(() => {
-        if (data.user?.role === 'admin') {
-          setLocation('/');
-        } else {
-          setLocation('/dashboard');
-        }
-      }, 200);
+      // Navigate immediately without toast to avoid persistence issues
+      if (data.user?.role === 'admin') {
+        setLocation('/');
+      } else {
+        setLocation('/dashboard');
+      }
     },
     onError: (error: Error) => {
       toast({

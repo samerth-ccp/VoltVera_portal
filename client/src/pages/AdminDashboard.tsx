@@ -69,8 +69,8 @@ export default function AdminDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/users/stats"] });
       setIsAddUserOpen(false);
       toast({
-        title: "Success",
-        description: "User created successfully",
+        title: "Signup email sent",
+        description: "Invitation email has been sent to the user",
       });
     },
     onError: (error: Error) => {
