@@ -4,15 +4,28 @@ import { storage } from "./storage";
 import { createUserSchema, updateUserSchema } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
+import ConnectPgSimple from "connect-pg-simple";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Simple session setup for basic authentication
+  // Session store configuration
+  const PgSession = ConnectPgSimple(session);
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  const sessionStore = isProduction 
+    ? new PgSession({
+        conString: process.env.DATABASE_URL,
+        tableName: 'sessions',
+      })
+    : undefined; // Use default memory store for development
+
+  // Session setup for authentication
   app.use(session({
-    secret: 'voltverashop-secret-key',
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'voltverashop-secret-key',
     resave: false,
     saveUninitialized: false,
     cookie: { 
-      secure: false, // set to true in production with HTTPS
+      secure: isProduction, // secure cookies in production
       httpOnly: false, // Allow frontend access to session
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       sameSite: 'lax'
