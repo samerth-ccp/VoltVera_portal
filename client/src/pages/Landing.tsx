@@ -35,7 +35,7 @@ export default function Landing() {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       // Save email and remember me preference if rememberMe is checked
       if (rememberMe) {
         localStorage.setItem('voltverashop_email', email);
@@ -45,13 +45,22 @@ export default function Landing() {
         localStorage.setItem('voltverashop_remember_me', 'false');
       }
       
+      // Invalidate auth queries to trigger re-authentication check
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      
       toast({
-        title: "Success",
-        description: "Logged in successfully",
+        title: "Login successful",
+        description: `Welcome ${data.user?.firstName || 'back'}!`,
       });
-      // Refresh to trigger routing
-      window.location.reload();
+
+      // Navigate based on user role after auth state updates
+      setTimeout(() => {
+        if (data.user?.role === 'admin') {
+          setLocation('/');
+        } else {
+          setLocation('/dashboard');
+        }
+      }, 200);
     },
     onError: (error: Error) => {
       toast({
