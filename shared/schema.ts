@@ -124,6 +124,7 @@ export const updateUserSchema = createInsertSchema(users).pick({
   lastName: true,
   role: true,
   status: true,
+  emailVerified: true,
   lastActiveAt: true,
 }).partial();
 

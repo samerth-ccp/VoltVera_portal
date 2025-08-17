@@ -350,8 +350,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userData = signupUserSchema.parse(req.body);
       
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(userData.email);
+      // Check if email already exists  
+      const existingUser = await storage.getUserByEmail(userData.email!);
       if (existingUser) {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
@@ -364,17 +364,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
       await storage.createEmailToken({
-        email: userData.email,
+        email: userData.email!,
         token,
         type: 'signup',
         expiresAt
       });
       
       // Send verification email
-      const emailSent = await sendSignupEmail(userData.email, token);
+      const emailSent = await sendSignupEmail(userData.email!, token);
       if (!emailSent) {
         // For development, still allow signup but show different message
-        console.log(`Development mode: Verification token for ${userData.email}: ${token}`);
+        console.log(`Development mode: Verification token for ${userData.email!}: ${token}`);
         console.log(`Verification URL: http://localhost:5000/verify-email?token=${token}`);
         return res.status(201).json({ 
           message: "Account created! Email service needs configuration. Use verification URL from server logs.",
@@ -411,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Verify the user's email
-      const success = await storage.verifyUserEmail(result.user.email);
+      const success = await storage.verifyUserEmail(result.user.email!);
       if (!success) {
         return res.status(500).json({ message: "Failed to verify email" });
       }
@@ -446,14 +446,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
       
       await storage.createEmailToken({
-        email: user.email,
+        email: user.email!,
         token,
         type: 'password_reset',
         expiresAt
       });
       
       // Send password reset email
-      const emailSent = await sendPasswordResetEmail(user.email, token);
+      const emailSent = await sendPasswordResetEmail(user.email!, token);
       if (!emailSent) {
         return res.status(500).json({ message: "Failed to send password reset email" });
       }
