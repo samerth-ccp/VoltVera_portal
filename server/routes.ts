@@ -179,14 +179,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
       
       await storage.createEmailToken({
-        email: user.email,
+        email: user.email!,
         token,
         type: 'invitation',
         expiresAt
       });
       
       // Send user invitation email instead of signup email
-      const emailSent = await sendUserInvitationEmail(user.email, user.firstName || 'User', token);
+      const emailSent = await sendUserInvitationEmail(user.email!, user.firstName || 'User', token);
       
       if (emailSent) {
         console.log(`User invitation email sent to ${user.email}`);
