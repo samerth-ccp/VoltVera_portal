@@ -15,7 +15,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: 'healthy', 
       timestamp: new Date().toISOString(),
       sessionFixApplied: true,
-      buildVersion: 'emergency-session-fix-v3'
+      buildVersion: 'emergency-session-fix-v4',
+      sessionId: req.sessionID || 'NO_SESSION',
+      hasSession: !!req.session,
+      envVars: {
+        hasDbUrl: !!process.env.DATABASE_URL,
+        hasSessionSecret: !!(process.env.SESSION_SECRET || process.env.SECRET_KEY),
+        nodeEnv: process.env.NODE_ENV
+      }
     });
   });
 
@@ -43,22 +50,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     sessionStore = undefined; // Use default memory store
   }
 
-  // Emergency session fix for production
+  // Session configuration with environment-specific settings
+  const sessionSecret = process.env.SESSION_SECRET || process.env.SECRET_KEY || 'voltverashop-fallback-secret-2025';
+  console.log('Session secret configured:', sessionSecret ? 'Yes' : 'No');
+  console.log('Database URL configured:', process.env.DATABASE_URL ? 'Yes' : 'No');
+  console.log('Production mode:', isProduction);
+  
   app.use(session({
-    secret: 'voltverashop-emergency-fix-2025',
+    secret: sessionSecret,
     resave: true,
     saveUninitialized: true,
-    name: 'connect.sid',
+    name: 'voltverashop.sid',
     cookie: { 
+      secure: false, // Allow both HTTP and HTTPS
+      httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
-    }
+    },
+    store: undefined // Use memory store to avoid DB connection issues
   }));
 
   // Simple login - check email and password
   app.post('/api/login', async (req, res) => {
     const { email, password, rememberMe } = req.body;
-    console.log('Login attempt for:', email, 'Production:', isProduction);
+    console.log('=== LOGIN DEBUG ===');
+    console.log('Email:', email);
+    console.log('Production:', isProduction);
+    console.log('Session ID before login:', req.sessionID);
+    console.log('Database URL exists:', !!process.env.DATABASE_URL);
     
     try {
       const user = await storage.getUserByEmailAndPassword(email, password);
@@ -78,11 +97,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
         }
         
-        // Emergency fix: Force session creation and save
+        // Store user in session with debugging
         (req.session as any).userId = user.id;
-        (req.session as any).user = user; // Store full user for immediate access
+        (req.session as any).user = user;
         
-        console.log('Emergency session set for user:', user.id);
+        console.log('Session after login:', req.sessionID);
+        console.log('User stored in session:', (req.session as any).userId);
+        console.log('Cookie settings:', req.session.cookie);
+        
         res.json({ success: true, user });
       } else {
         res.status(401).json({ message: "Invalid email or password" });
@@ -101,7 +123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error('Session destroy error:', err);
           return res.status(500).json({ message: "Logout failed" });
         }
-        res.clearCookie('connect.sid'); // Clear the session cookie
+        res.clearCookie('voltverashop.sid'); // Clear the session cookie
         res.json({ success: true });
       });
     } else {
@@ -112,9 +134,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/logout', handleLogout);
   app.get('/api/logout', handleLogout);
 
-  // Simple auth middleware
+  // Simple auth middleware with debugging
   const isAuthenticated = async (req: any, res: any, next: any) => {
     const userId = (req.session as any)?.userId;
+    console.log('Auth check - Session ID:', req.sessionID);
+    console.log('Auth check - User ID in session:', userId);
+    console.log('Auth check - Full session:', req.session);
     
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
