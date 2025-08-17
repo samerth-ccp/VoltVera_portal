@@ -29,6 +29,8 @@ export async function sendEmail(params: EmailParams): Promise<boolean> {
     console.error('SendGrid email error:', error);
     if (error && typeof error === 'object' && 'response' in error) {
       console.error('SendGrid error details:', JSON.stringify((error as any).response.body, null, 2));
+      console.error('SendGrid response status:', (error as any).code);
+      console.error('SendGrid response headers:', JSON.stringify((error as any).response.headers, null, 2));
     }
     return false;
   }
@@ -40,7 +42,7 @@ export async function sendSignupEmail(email: string, token: string): Promise<boo
   
   return sendEmail({
     to: email,
-    from: 'noreply@voltverashop.com', // Using authenticated domain
+    from: 'admin@voltverashop.com', // Using admin email as verified sender
     subject: 'Welcome to Voltverashop - Verify Your Email',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -87,7 +89,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   
   return sendEmail({
     to: email,
-    from: 'noreply@voltverashop.com', // Using authenticated domain
+    from: 'admin@voltverashop.com', // Using admin email as verified sender
     subject: 'Voltverashop - Reset Your Password',
     html: `
       <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
