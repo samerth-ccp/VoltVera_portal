@@ -78,10 +78,7 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: CreateUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        status: 'pending',
-      })
+      .values(userData)
       .returning();
     return user;
   }
@@ -194,7 +191,7 @@ export class DatabaseStorage implements IStorage {
     
     if (!tokenData) return undefined;
     
-    // Check if token is expired
+    // Check if token is expired  
     if (tokenData.expiresAt < new Date()) {
       await this.deleteEmailToken(token);
       return undefined;

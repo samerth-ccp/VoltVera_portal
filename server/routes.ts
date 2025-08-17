@@ -515,7 +515,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/reset-password", async (req, res) => {
     try {
       const { token, newPassword } = passwordResetSchema.parse(req.body);
-      
       const result = await storage.getUserByToken(token);
       if (!result || result.tokenType !== 'password_reset') {
         return res.status(400).json({ message: "Invalid or expired reset token" });
