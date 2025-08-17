@@ -1,9 +1,13 @@
 import {
   users,
+  emailTokens,
   type User,
   type UpsertUser,
   type CreateUser,
   type UpdateUser,
+  type SignupUser,
+  type EmailToken,
+  type CreateToken,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc } from "drizzle-orm";
@@ -29,6 +33,14 @@ export interface IStorage {
   // Password management
   getUserByEmail(email: string): Promise<User | undefined>;
   updatePassword(id: string, newPassword: string): Promise<boolean>;
+  
+  // Email verification and signup
+  createSignupUser(user: SignupUser): Promise<User>;
+  createEmailToken(token: CreateToken): Promise<EmailToken>;
+  getEmailToken(token: string): Promise<EmailToken | undefined>;
+  deleteEmailToken(token: string): Promise<boolean>;
+  verifyUserEmail(email: string): Promise<boolean>;
+  getUserByToken(token: string): Promise<{ user: User; tokenType: string } | undefined>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -116,6 +128,82 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(users.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  // Email verification and signup methods
+  async createSignupUser(userData: SignupUser): Promise<User> {
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...userData,
+        status: 'pending', // Pending until email verification
+      })
+      .returning();
+    return user;
+  }
+
+  async createEmailToken(tokenData: CreateToken): Promise<EmailToken> {
+    const [token] = await db
+      .insert(emailTokens)
+      .values(tokenData)
+      .returning();
+    return token;
+  }
+
+  async getEmailToken(token: string): Promise<EmailToken | undefined> {
+    const [tokenData] = await db
+      .select()
+      .from(emailTokens)
+      .where(eq(emailTokens.token, token));
+    return tokenData;
+  }
+
+  async deleteEmailToken(token: string): Promise<boolean> {
+    try {
+      await db
+        .delete(emailTokens)
+        .where(eq(emailTokens.token, token));
+      return true;
+    } catch (error) {
+      console.error('Error deleting email token:', error);
+      return false;
+    }
+  }
+
+  async verifyUserEmail(email: string): Promise<boolean> {
+    try {
+      await db
+        .update(users)
+        .set({ 
+          status: 'active', 
+          emailVerified: new Date() 
+        })
+        .where(eq(users.email, email));
+      return true;
+    } catch (error) {
+      console.error('Error verifying user email:', error);
+      return false;
+    }
+  }
+
+  async getUserByToken(token: string): Promise<{ user: User; tokenType: string } | undefined> {
+    const [tokenData] = await db
+      .select()
+      .from(emailTokens)
+      .where(eq(emailTokens.token, token));
+    
+    if (!tokenData) return undefined;
+    
+    // Check if token is expired
+    if (tokenData.expiresAt < new Date()) {
+      await this.deleteEmailToken(token);
+      return undefined;
+    }
+    
+    const user = await this.getUserByEmail(tokenData.email);
+    if (!user) return undefined;
+    
+    return { user, tokenType: tokenData.type };
   }
 }
 

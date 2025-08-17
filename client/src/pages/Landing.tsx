@@ -146,6 +146,14 @@ export default function Landing() {
               {loginMutation.isPending ? "Logging in..." : "Log in"}
             </Button>
             
+            <div className="text-center">
+              <span className="text-white/80 text-sm">Don't have an account? </span>
+              <Link href="/signup">
+                <span className="text-white text-sm font-semibold hover:text-white/90 transition-colors cursor-pointer">
+                  Sign up
+                </span>
+              </Link>
+            </div>
 
           </form>
         </div>

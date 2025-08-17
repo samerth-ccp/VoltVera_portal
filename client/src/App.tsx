@@ -10,6 +10,9 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import UserDashboard from "@/pages/UserDashboard";
 import ChangePassword from "@/pages/ChangePassword";
 import ForgotPassword from "@/pages/ForgotPassword";
+import Signup from "@/pages/Signup";
+import VerifyEmail from "@/pages/VerifyEmail";
+import ResetPassword from "@/pages/ResetPassword";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -18,6 +21,9 @@ function Router() {
     <Switch>
       {/* Public routes */}
       <Route path="/forgot-password" component={ForgotPassword} />
+      <Route path="/signup" component={Signup} />
+      <Route path="/verify-email" component={VerifyEmail} />
+      <Route path="/reset-password" component={ResetPassword} />
       
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (
