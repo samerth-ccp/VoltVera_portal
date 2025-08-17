@@ -156,7 +156,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const user = await storage.createUser(userData);
-      res.status(201).json(user);
+      
+      // Generate verification token for admin-created users
+      const { nanoid } = await import('nanoid');
+      const token = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24); // 24 hours expiration
+      
+      await storage.createEmailToken({
+        email: user.email,
+        token,
+        type: 'signup',
+        expiresAt
+      });
+      
+      // Send verification email
+      const emailSent = await sendSignupEmail(user.email, token);
+      
+      if (emailSent) {
+        console.log(`Verification email sent to ${user.email}`);
+        res.status(201).json({ 
+          ...user, 
+          message: "User created and verification email sent successfully" 
+        });
+      } else {
+        console.log(`Development mode: Verification token for ${user.email}: ${token}`);
+        console.log(`Verification URL: http://localhost:5000/verify-email?token=${token}`);
+        res.status(201).json({ 
+          ...user, 
+          message: "User created. Email service needs configuration - check server logs for verification link.",
+          devToken: process.env.NODE_ENV === 'development' ? token : undefined
+        });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
