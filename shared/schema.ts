@@ -78,8 +78,14 @@ export const createUserInvitationSchema = createInsertSchema(users).pick({
   role: data.role,
 }));
 
-// Keep the original createUserSchema for backward compatibility  
-export const createUserSchema = createUserInvitationSchema;
+// Schema for creating users with password (admin function)
+export const createUserSchema = createInsertSchema(users).pick({
+  email: true,
+  password: true,
+  firstName: true,
+  lastName: true,
+  role: true,
+});
 
 // Schema for completing user invitation (user sets password)
 export const completeInvitationSchema = z.object({

@@ -11,6 +11,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc } from "drizzle-orm";
+import bcrypt from "bcrypt";
 
 // Interface for storage operations
 export interface IStorage {
@@ -52,7 +53,7 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    if (user && user.password === password) {
+    if (user && await bcrypt.compare(password, user.password)) {
       return user;
     }
     return undefined;
@@ -76,9 +77,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: CreateUser): Promise<User> {
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({
+        ...userData,
+        password: hashedPassword
+      })
       .returning();
     return user;
   }
@@ -117,10 +123,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<boolean> {
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
     const result = await db
       .update(users)
       .set({ 
-        password: newPassword,
+        password: hashedPassword,
         updatedAt: new Date()
       })
       .where(eq(users.id, id));
@@ -129,10 +137,13 @@ export class DatabaseStorage implements IStorage {
 
   // Email verification and signup methods
   async createSignupUser(userData: SignupUser): Promise<User> {
+    // Hash password before storing
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
+        password: hashedPassword,
         status: 'pending', // Pending until email verification
       })
       .returning();
