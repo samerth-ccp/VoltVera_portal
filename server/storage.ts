@@ -4,6 +4,7 @@ import {
   type User,
   type UpsertUser,
   type CreateUser,
+  type RecruitUser,
   type UpdateUser,
   type SignupUser,
   type EmailToken,
@@ -22,6 +23,7 @@ export interface IStorage {
   // User management operations
   getAllUsers(search?: string): Promise<User[]>;
   createUser(user: CreateUser): Promise<User>;
+  recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getUserStats(): Promise<{
@@ -42,6 +44,15 @@ export interface IStorage {
   deleteEmailToken(token: string): Promise<boolean>;
   verifyUserEmail(email: string): Promise<boolean>;
   getUserByToken(token: string): Promise<{ user: User; tokenType: string } | undefined>;
+  
+  // Team management operations
+  getTeamMembers(userId: string): Promise<User[]>;
+  getDownline(userId: string, levels?: number): Promise<User[]>;
+  getTeamStats(userId: string): Promise<{
+    directRecruits: number;
+    totalDownline: number;
+    activeMembers: number;
+  }>;
 }
 
 export class DatabaseStorage implements IStorage {

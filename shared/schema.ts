@@ -40,6 +40,7 @@ export const users = pgTable("users", {
   status: userStatusEnum("status").default('pending').notNull(), // Default to pending for email verification
   emailVerified: timestamp("email_verified"),
   lastActiveAt: timestamp("last_active_at"),
+  referredBy: varchar("referred_by"), // ID of the user who recruited this user
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -85,7 +86,22 @@ export const createUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   role: true,
+  referredBy: true,
 });
+
+// Schema for user team recruitment (user function)
+export const recruitUserSchema = createInsertSchema(users).pick({
+  email: true,
+  firstName: true,
+  lastName: true,
+}).extend({
+  fullName: z.string().min(1, "Full name is required"),
+}).transform(data => ({
+  email: data.email,
+  firstName: data.fullName.split(' ')[0],
+  lastName: data.fullName.split(' ').slice(1).join(' ') || '',
+  role: 'user' as const,
+}));
 
 // Schema for completing user invitation (user sets password)
 export const completeInvitationSchema = z.object({
@@ -136,6 +152,7 @@ export const updateUserSchema = createInsertSchema(users).pick({
 
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
+export type RecruitUser = z.infer<typeof recruitUserSchema>;
 export type SignupUser = z.infer<typeof signupUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type CreateToken = z.infer<typeof createTokenSchema>;
