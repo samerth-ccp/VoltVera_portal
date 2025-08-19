@@ -57,6 +57,11 @@ export interface IStorage {
     activeMembers: number;
   }>;
   
+  // Binary MLM Tree operations
+  getBinaryTreeData(userId: string): Promise<any>;
+  getDirectRecruits(userId: string): Promise<User[]>;
+  placeUserInBinaryTree(userId: string, sponsorId: string): Promise<void>;
+  
   // Pending recruits operations (new workflow)
   createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit>;
   getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]>;
@@ -119,7 +124,7 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...recruitData,
         password: hashedPassword,
-        referredBy: recruiterId,
+        sponsorId: recruiterId,
         status: 'pending'
       })
       .returning();
@@ -255,7 +260,7 @@ export class DatabaseStorage implements IStorage {
   async getTeamMembers(userId: string): Promise<User[]> {
     return await db.select()
       .from(users)
-      .where(eq(users.referredBy, userId))
+      .where(eq(users.sponsorId, userId))
       .orderBy(desc(users.createdAt));
   }
 
@@ -269,7 +274,7 @@ export class DatabaseStorage implements IStorage {
       
       const directMembers = await db.select()
         .from(users)
-        .where(eq(users.referredBy, currentUserId));
+        .where(eq(users.sponsorId, currentUserId));
       
       for (const member of directMembers) {
         if (!allMembers.find(m => m.id === member.id)) {
@@ -343,7 +348,7 @@ export class DatabaseStorage implements IStorage {
       firstName,
       lastName,
       mobile: pendingRecruit.mobile,
-      referredBy: pendingRecruit.recruiterId,
+      sponsorId: pendingRecruit.recruiterId,
       packageAmount: adminData.packageAmount,
       position: adminData.position,
       registrationDate: pendingRecruit.createdAt,
@@ -354,6 +359,9 @@ export class DatabaseStorage implements IStorage {
       password: await bcrypt.hash('defaultpass123', 10), // Generate default password
     }).returning();
 
+    // Place user in binary tree structure
+    await this.placeUserInBinaryTree(newUser.id, pendingRecruit.recruiterId);
+
     // Remove from pending recruits
     await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
 
@@ -363,6 +371,52 @@ export class DatabaseStorage implements IStorage {
   async rejectPendingRecruit(id: string): Promise<boolean> {
     const result = await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
     return result.rowCount > 0;
+  }
+
+  // Binary MLM Tree operations
+  async getBinaryTreeData(userId: string): Promise<any> {
+    // Import and use binary tree service
+    const { binaryTreeService } = await import('./binaryTreeService');
+    return await binaryTreeService.getBinaryTree(userId, 3);
+  }
+
+  async getDirectRecruits(userId: string): Promise<User[]> {
+    // Import and use binary tree service
+    const { binaryTreeService } = await import('./binaryTreeService');
+    const binaryUsers = await binaryTreeService.getDirectRecruits(userId);
+    
+    // Convert BinaryTreeUser to User format
+    return binaryUsers.map(bu => ({
+      id: bu.id,
+      email: bu.email || '',
+      password: '', // Not exposed
+      firstName: bu.firstName,
+      lastName: bu.lastName,
+      profileImageUrl: null,
+      role: 'user' as const,
+      status: bu.idStatus === 'Active' ? 'active' as const : 'inactive' as const,
+      emailVerified: null,
+      lastActiveAt: null,
+      sponsorId: bu.sponsorId,
+      parentId: bu.parentId,
+      leftChildId: bu.leftChildId,
+      rightChildId: bu.rightChildId,
+      position: bu.position,
+      level: bu.level,
+      packageAmount: bu.packageAmount,
+      registrationDate: bu.registrationDate,
+      activationDate: bu.activationDate,
+      idStatus: bu.idStatus,
+      mobile: null,
+      createdAt: bu.registrationDate,
+      updatedAt: bu.registrationDate,
+    }));
+  }
+
+  async placeUserInBinaryTree(userId: string, sponsorId: string): Promise<void> {
+    const { binaryTreeService } = await import('./binaryTreeService');
+    const position = await binaryTreeService.findNextAvailablePosition(sponsorId);
+    await binaryTreeService.placeUserInTree(userId, position.parentId, position.position, sponsorId);
   }
 }
 

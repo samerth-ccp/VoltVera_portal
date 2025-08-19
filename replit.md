@@ -28,10 +28,13 @@ Preferred communication style: Simple, everyday language.
 - **Database**: PostgreSQL with Neon serverless integration
 - **Schema Management**: Drizzle Kit for migrations and schema management
 - **Data Models**: 
-  - Users table with role-based permissions (admin/user) and status tracking
+  - Users table with Binary MLM structure (sponsorId, parentId, leftChildId, rightChildId, position, level)
+  - PendingRecruits table for admin approval workflow
+  - EmailTokens table for email verification and password reset
   - Sessions table for secure session storage
   - Enums for user roles and statuses
 - **Connection**: Connection pooling with @neondatabase/serverless
+- **Binary Tree Structure**: Full referential integrity with foreign key constraints for tree relationships
 
 ## Authentication & Authorization
 - **OAuth Provider**: Replit's OpenID Connect implementation
@@ -41,6 +44,11 @@ Preferred communication style: Simple, everyday language.
 
 ## Key Features
 - **User Management**: Full CRUD operations for user accounts (admin only)
+- **Binary MLM System**: Complete binary matrix structure with left/right positions ✅ WORKING
+- **Team Management**: Enhanced recruit tracking with Package Amount, Registration Date, Activation Date, ID Status, Position ✅ WORKING
+- **Pending Recruits Workflow**: Users submit recruitment requests, admins process and approve ✅ WORKING
+- **Binary Tree Visualization**: Interactive visual representation of the binary MLM structure ✅ WORKING
+- **Spillover System**: Automatic placement of new recruits using balanced spilling algorithm ✅ WORKING
 - **Email-Based Authentication**: User signup with email verification and password reset via SendGrid ✅ WORKING
 - **Role-Based Dashboards**: Separate interfaces for admin and regular users
 - **Email Verification**: Secure signup process requiring email confirmation ✅ WORKING

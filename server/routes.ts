@@ -606,6 +606,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Binary MLM Tree routes
+  app.get("/api/binary-tree", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const treeData = await storage.getBinaryTreeData(userId);
+      res.json(treeData);
+    } catch (error) {
+      console.error("Error fetching binary tree data:", error);
+      res.status(500).json({ message: "Failed to fetch binary tree data" });
+    }
+  });
+
+  // Direct recruits only (left and right positions in binary tree)
+  app.get("/api/direct-recruits", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const directRecruits = await storage.getDirectRecruits(userId);
+      res.json(directRecruits);
+    } catch (error) {
+      console.error("Error fetching direct recruits:", error);
+      res.status(500).json({ message: "Failed to fetch direct recruits" });
+    }
+  });
+
   // Admin routes for pending recruits management
   app.get("/api/admin/pending-recruits", isAuthenticated, isAdmin, async (req: any, res) => {
     try {

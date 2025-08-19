@@ -28,7 +28,7 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'user']);
 // User status enum
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'pending']);
 
-// User storage table with simple password authentication
+// User storage table with Binary MLM structure
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").unique(),
@@ -40,13 +40,20 @@ export const users = pgTable("users", {
   status: userStatusEnum("status").default('pending').notNull(), // Default to pending for email verification
   emailVerified: timestamp("email_verified"),
   lastActiveAt: timestamp("last_active_at"),
-  referredBy: varchar("referred_by"), // ID of the user who recruited this user
-  // Additional team management fields
+  
+  // Binary MLM Structure
+  sponsorId: varchar("sponsor_id"), // Person who recruited them (referrer)
+  parentId: varchar("parent_id"),   // Direct parent in binary tree (may differ due to spillover)
+  leftChildId: varchar("left_child_id"),
+  rightChildId: varchar("right_child_id"),
+  position: varchar("position"), // 'left' or 'right' position under parent
+  level: varchar("level").default('0'), // Depth in the binary tree
+  
+  // Team Management Fields
   packageAmount: varchar("package_amount").default('0.00'),
   registrationDate: timestamp("registration_date").defaultNow(),
   activationDate: timestamp("activation_date"),
   idStatus: varchar("id_status").default('Inactive'),
-  position: varchar("position").default('Left'),
   mobile: varchar("mobile"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -121,7 +128,7 @@ export const createUserSchema = createInsertSchema(users).pick({
   firstName: true,
   lastName: true,
   role: true,
-  referredBy: true,
+  sponsorId: true,
 });
 
 // Keep only the first recruitUserSchema definition above

@@ -16,6 +16,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
+import BinaryTreeView from "@/components/BinaryTreeView";
 
 const recruitFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -410,16 +411,7 @@ export default function MyTeam() {
 
           {/* Binary Tree Tab */}
           <TabsContent value="tree">
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Hierarchy Tree</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Tree visualization coming soon...
-                </div>
-              </CardContent>
-            </Card>
+            <BinaryTreeView />
           </TabsContent>
 
           {/* Team Business Stages Tab */}
