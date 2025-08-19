@@ -551,25 +551,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
       
-      // Create recruit with pending status
-      const recruit = await storage.recruitUser(recruitData, recruiterId);
+      // Create pending recruit (new workflow)
+      const pendingRecruit = await storage.createPendingRecruit(recruitData, recruiterId);
       
       res.status(201).json({ 
-        message: "Recruit submitted successfully. Admin will process and send credentials.",
-        recruit: {
-          id: recruit.id,
-          email: recruit.email,
-          firstName: recruit.firstName,
-          lastName: recruit.lastName,
-          status: recruit.status
+        message: "Recruitment request submitted successfully! Admin will process your request and send credentials.",
+        pendingRecruit: {
+          id: pendingRecruit.id,
+          email: pendingRecruit.email,
+          fullName: pendingRecruit.fullName,
+          status: pendingRecruit.status
         }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
-      console.error("Error creating recruit:", error);
-      res.status(500).json({ message: "Failed to submit recruit" });
+      console.error("Error creating pending recruit:", error);
+      res.status(500).json({ message: "Failed to submit recruitment request" });
     }
   });
 
@@ -604,6 +603,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching team stats:", error);
       res.status(500).json({ message: "Failed to fetch team stats" });
+    }
+  });
+
+  // Admin routes for pending recruits management
+  app.get("/api/admin/pending-recruits", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const pendingRecruits = await storage.getPendingRecruits();
+      res.json(pendingRecruits);
+    } catch (error) {
+      console.error("Error getting pending recruits:", error);
+      res.status(500).json({ message: "Failed to get pending recruits" });
+    }
+  });
+
+  app.post("/api/admin/pending-recruits/:id/approve", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { packageAmount, position } = req.body;
+
+      if (!packageAmount || !position) {
+        return res.status(400).json({ message: "Package amount and position are required" });
+      }
+
+      const newUser = await storage.approvePendingRecruit(id, { packageAmount, position });
+      res.json({ 
+        message: "Recruit approved and user created successfully",
+        user: newUser 
+      });
+    } catch (error) {
+      console.error("Error approving recruit:", error);
+      res.status(500).json({ message: "Failed to approve recruit" });
+    }
+  });
+
+  app.delete("/api/admin/pending-recruits/:id", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.rejectPendingRecruit(id);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Pending recruit not found" });
+      }
+
+      res.json({ message: "Recruit rejected successfully" });
+    } catch (error) {
+      console.error("Error rejecting recruit:", error);
+      res.status(500).json({ message: "Failed to reject recruit" });
+    }
+  });
+
+  // Get user's own pending recruits
+  app.get("/api/team/pending-recruits", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const pendingRecruits = await storage.getPendingRecruits(userId);
+      res.json(pendingRecruits);
+    } catch (error) {
+      console.error("Error getting user pending recruits:", error);
+      res.status(500).json({ message: "Failed to get pending recruits" });
     }
   });
 

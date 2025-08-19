@@ -15,6 +15,7 @@ import { User, RecruitUser } from "@shared/schema";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { formatDistanceToNow } from "date-fns";
 
 const recruitFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -52,6 +53,12 @@ export default function MyTeam() {
     activeMembers: number;
   }>({
     queryKey: ["/api/team/stats"],
+    enabled: !!user,
+  });
+
+  // Fetch pending recruits
+  const { data: pendingRecruits = [] } = useQuery<any[]>({
+    queryKey: ["/api/team/pending-recruits"],
     enabled: !!user,
   });
 
@@ -242,6 +249,53 @@ export default function MyTeam() {
 
           {/* Direct Recruits Tab */}
           <TabsContent value="direct" className="space-y-6">
+            {/* Pending Recruits Section */}
+            {pendingRecruits.length > 0 && (
+              <Card className="border-yellow-200 bg-yellow-50 dark:bg-yellow-950/20 dark:border-yellow-800">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-yellow-800 dark:text-yellow-200">
+                    <UserCheck className="h-5 w-5" />
+                    Pending Recruits ({pendingRecruits.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {pendingRecruits.map((recruit) => (
+                      <div key={recruit.id} className="flex items-center justify-between p-3 border rounded-lg bg-white dark:bg-gray-800 border-yellow-200 dark:border-yellow-700">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
+                            <UserCheck className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
+                          </div>
+                          <div>
+                            <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                              {recruit.fullName}
+                            </h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{recruit.email}</p>
+                            {recruit.mobile && (
+                              <p className="text-xs text-gray-400 dark:text-gray-500">{recruit.mobile}</p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <Badge variant="outline" className="border-yellow-300 text-yellow-700 dark:border-yellow-600 dark:text-yellow-300">
+                            {recruit.status}
+                          </Badge>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            Submitted {recruit.createdAt ? formatDistanceToNow(new Date(recruit.createdAt), { addSuffix: true }) : 'recently'}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      Admin will process these recruits and send login credentials once approved.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
@@ -265,30 +319,75 @@ export default function MyTeam() {
                     {search ? "No recruits found matching your search." : "No direct recruits yet. Start building your team!"}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredMembers.map((member) => (
-                      <Card key={member.id} className="border-l-4 border-l-green-500">
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                {member.firstName?.[0]}{member.lastName?.[0]}
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300 dark:border-gray-700">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-800">
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Name</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-left">Email</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">Package Amount</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">Registration Date</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">Activation Date</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">ID Status</th>
+                          <th className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">Position</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredMembers.map((member) => (
+                          <tr key={member.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                                  {member.firstName?.[0]}{member.lastName?.[0]}
+                                </div>
+                                <div className="font-medium text-gray-900 dark:text-gray-100">
+                                  {member.firstName} {member.lastName}
+                                </div>
                               </div>
-                              <div>
-                                <h3 className="font-semibold">{member.firstName} {member.lastName}</h3>
-                                <p className="text-sm text-gray-600">{member.email}</p>
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2">
+                              <div className="text-sm text-gray-600 dark:text-gray-400">
+                                {member.email}
                               </div>
-                            </div>
-                            <Badge className={`${getStatusColor(member.status)} text-white`}>
-                              {getStatusLabel(member.status)}
-                            </Badge>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            Joined: {member.createdAt ? new Date(member.createdAt).toLocaleDateString() : 'N/A'}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
+                              <span className="font-semibold text-green-600 dark:text-green-400">
+                                ${member.packageAmount || '0.00'}
+                              </span>
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
+                              <div className="text-sm">
+                                {member.registrationDate 
+                                  ? new Date(member.registrationDate).toLocaleDateString()
+                                  : member.createdAt ? new Date(member.createdAt).toLocaleDateString() : '-'
+                                }
+                              </div>
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
+                              <div className="text-sm">
+                                {member.activationDate 
+                                  ? new Date(member.activationDate).toLocaleDateString()
+                                  : '-'
+                                }
+                              </div>
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
+                              <Badge 
+                                variant={member.idStatus === 'Active' ? 'default' : 'secondary'}
+                                className={`${member.idStatus === 'Active' ? 'bg-green-600' : ''}`}
+                              >
+                                {member.idStatus || 'Inactive'}
+                              </Badge>
+                            </td>
+                            <td className="border border-gray-300 dark:border-gray-700 px-4 py-2 text-center">
+                              <span className="text-sm">
+                                {member.position || 'Left'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </CardContent>

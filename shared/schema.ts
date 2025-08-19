@@ -41,6 +41,13 @@ export const users = pgTable("users", {
   emailVerified: timestamp("email_verified"),
   lastActiveAt: timestamp("last_active_at"),
   referredBy: varchar("referred_by"), // ID of the user who recruited this user
+  // Additional team management fields
+  packageAmount: varchar("package_amount").default('0.00'),
+  registrationDate: timestamp("registration_date").defaultNow(),
+  activationDate: timestamp("activation_date"),
+  idStatus: varchar("id_status").default('Inactive'),
+  position: varchar("position").default('Left'),
+  mobile: varchar("mobile"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -55,6 +62,20 @@ export const emailTokens = pgTable("email_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Pending recruits table for admin processing workflow
+export const pendingRecruits = pgTable("pending_recruits", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: varchar("email").notNull(),
+  fullName: varchar("full_name").notNull(),
+  mobile: varchar("mobile"),
+  recruiterId: varchar("recruiter_id").notNull(),
+  packageAmount: varchar("package_amount").default('0.00'),
+  position: varchar("position").default('Left'),
+  status: varchar("status").default('pending'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema for upserting users (used by Replit Auth)
 export const upsertUserSchema = createInsertSchema(users).pick({
   id: true,
@@ -64,12 +85,26 @@ export const upsertUserSchema = createInsertSchema(users).pick({
   profileImageUrl: true,
 });
 
+// Schema for team recruitment (user submits basic info to pending_recruits)
+export const recruitUserSchema = createInsertSchema(pendingRecruits).pick({
+  email: true,
+  fullName: true,
+  mobile: true,
+}).extend({
+  fullName: z.string().min(1, "Full name is required"),
+  email: z.string().email("Valid email is required"),
+  mobile: z.string().optional(),
+});
+
 // Schema for creating user invitations (admin function) - no password field
 export const createUserInvitationSchema = createInsertSchema(users).pick({
   email: true,
   firstName: true,
   lastName: true,
   role: true,
+  packageAmount: true,
+  position: true,
+  mobile: true,
 }).extend({
   fullName: z.string().min(1, "Full name is required"),
 }).transform(data => ({
@@ -89,19 +124,7 @@ export const createUserSchema = createInsertSchema(users).pick({
   referredBy: true,
 });
 
-// Schema for user team recruitment (user function)
-export const recruitUserSchema = createInsertSchema(users).pick({
-  email: true,
-  firstName: true,
-  lastName: true,
-}).extend({
-  fullName: z.string().min(1, "Full name is required"),
-}).transform(data => ({
-  email: data.email,
-  firstName: data.fullName.split(' ')[0],
-  lastName: data.fullName.split(' ').slice(1).join(' ') || '',
-  role: 'user' as const,
-}));
+// Keep only the first recruitUserSchema definition above
 
 // Schema for completing user invitation (user sets password)
 export const completeInvitationSchema = z.object({
@@ -158,6 +181,7 @@ export type UpdateUser = z.infer<typeof updateUserSchema>;
 export type CreateToken = z.infer<typeof createTokenSchema>;
 export type PasswordReset = z.infer<typeof passwordResetSchema>;
 export type User = typeof users.$inferSelect;
+export type PendingRecruit = typeof pendingRecruits.$inferSelect;
 export type EmailToken = typeof emailTokens.$inferSelect;
 export type UserRole = typeof users.$inferSelect.role;
 export type UserStatus = typeof users.$inferSelect.status;

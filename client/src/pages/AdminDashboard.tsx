@@ -15,6 +15,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { User, CreateUser } from "@shared/schema";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
+import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 
 interface UserStats {
   totalUsers: number;
@@ -364,6 +365,11 @@ export default function AdminDashboard() {
                 <div className="text-3xl font-bold text-gray-800">{stats?.pendingUsers || 0}</div>
               </CardContent>
             </Card>
+          </div>
+          
+          {/* Pending Recruits Management */}
+          <div className="mb-6 lg:mb-8">
+            <AdminPendingRecruits />
           </div>
           
           {/* User Table */}

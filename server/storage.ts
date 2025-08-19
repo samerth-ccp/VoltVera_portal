@@ -1,6 +1,7 @@
 import {
   users,
   emailTokens,
+  pendingRecruits,
   type User,
   type UpsertUser,
   type CreateUser,
@@ -9,6 +10,7 @@ import {
   type SignupUser,
   type EmailToken,
   type CreateToken,
+  type PendingRecruit,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc } from "drizzle-orm";
@@ -54,6 +56,12 @@ export interface IStorage {
     totalDownline: number;
     activeMembers: number;
   }>;
+  
+  // Pending recruits operations (new workflow)
+  createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit>;
+  getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]>;
+  approvePendingRecruit(id: string, adminData: { packageAmount: string; position: string }): Promise<User>;
+  rejectPendingRecruit(id: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -288,6 +296,73 @@ export class DatabaseStorage implements IStorage {
       totalDownline: allDownline.length,
       activeMembers: allDownline.filter(u => u.status === 'active').length,
     };
+  }
+
+  // Pending recruits operations (new workflow)
+  async createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit> {
+    const [pendingRecruit] = await db.insert(pendingRecruits).values({
+      email: data.email,
+      fullName: data.fullName,
+      mobile: data.mobile,
+      recruiterId,
+      status: 'pending',
+    }).returning();
+    return pendingRecruit;
+  }
+
+  async getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]> {
+    let query = db.select().from(pendingRecruits).orderBy(desc(pendingRecruits.createdAt));
+    
+    if (recruiterId) {
+      query = query.where(eq(pendingRecruits.recruiterId, recruiterId)) as typeof query;
+    }
+    
+    return await query;
+  }
+
+  async approvePendingRecruit(id: string, adminData: { packageAmount: string; position: string }): Promise<User> {
+    // Get the pending recruit
+    const [pendingRecruit] = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, id));
+    if (!pendingRecruit) {
+      throw new Error('Pending recruit not found');
+    }
+
+    // Check if user already exists
+    const existingUser = await this.getUserByEmail(pendingRecruit.email);
+    if (existingUser) {
+      throw new Error('User already exists with this email');
+    }
+
+    // Create the user with approved data
+    const names = pendingRecruit.fullName.split(' ');
+    const firstName = names[0];
+    const lastName = names.slice(1).join(' ') || '';
+
+    const [newUser] = await db.insert(users).values({
+      email: pendingRecruit.email,
+      firstName,
+      lastName,
+      mobile: pendingRecruit.mobile,
+      referredBy: pendingRecruit.recruiterId,
+      packageAmount: adminData.packageAmount,
+      position: adminData.position,
+      registrationDate: pendingRecruit.createdAt,
+      activationDate: new Date(),
+      idStatus: 'Active',
+      role: 'user',
+      status: 'active',
+      password: await bcrypt.hash('defaultpass123', 10), // Generate default password
+    }).returning();
+
+    // Remove from pending recruits
+    await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
+
+    return newUser;
+  }
+
+  async rejectPendingRecruit(id: string): Promise<boolean> {
+    const result = await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
+    return result.rowCount > 0;
   }
 }
 
