@@ -109,79 +109,73 @@ export default function MyTeam() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-teal-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-3">
-            <div className="p-3 bg-gradient-to-r from-green-500 to-teal-600 rounded-lg text-white">
-              <Users className="h-6 w-6" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">My Team</h1>
-              <p className="text-gray-600 dark:text-gray-300">Manage your network and recruits</p>
-            </div>
-          </div>
-          
-          <Dialog open={isRecruitOpen} onOpenChange={setIsRecruitOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Recruit
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Add New Recruit</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={form.handleSubmit(handleRecruit)} className="space-y-4">
-                <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input
-                    id="fullName"
-                    {...form.register("fullName")}
-                    placeholder="Enter recruit's full name"
-                  />
-                  {form.formState.errors.fullName && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {form.formState.errors.fullName.message}
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    {...form.register("email")}
-                    placeholder="Enter recruit's email"
-                  />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-red-500 mt-1">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsRecruitOpen(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={recruitMutation.isPending}
-                    className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700"
-                  >
-                    {recruitMutation.isPending ? "Submitting..." : "Submit Recruit"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+    <div className="p-4 sm:p-6 lg:p-8">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800 mb-2">My Team</h1>
+          <p className="text-gray-600">Manage your recruitment network</p>
         </div>
+        
+        <Dialog open={isRecruitOpen} onOpenChange={setIsRecruitOpen}>
+          <DialogTrigger asChild>
+            <Button className="volt-gradient text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Recruit
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Recruit</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={form.handleSubmit(handleRecruit)} className="space-y-4">
+              <div>
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  {...form.register("fullName")}
+                  placeholder="Enter recruit's full name"
+                />
+                {form.formState.errors.fullName && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {form.formState.errors.fullName.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  {...form.register("email")}
+                  placeholder="Enter recruit's email"
+                />
+                {form.formState.errors.email && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {form.formState.errors.email.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsRecruitOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={recruitMutation.isPending}
+                  className="volt-gradient text-white"
+                >
+                  {recruitMutation.isPending ? "Submitting..." : "Submit Recruit"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -343,7 +337,6 @@ export default function MyTeam() {
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
     </div>
   );
 }
