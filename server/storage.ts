@@ -100,6 +100,23 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User> {
+    // Hash a temporary password (will be replaced when user accepts invitation)
+    const tempPassword = nanoid(16);
+    const hashedPassword = await bcrypt.hash(tempPassword, 10);
+    
+    const [user] = await db
+      .insert(users)
+      .values({
+        ...recruitData,
+        password: hashedPassword,
+        referredBy: recruiterId,
+        status: 'pending'
+      })
+      .returning();
+    return user;
+  }
+
   async updateUser(id: string, updates: UpdateUser): Promise<User | undefined> {
     const [user] = await db
       .update(users)
