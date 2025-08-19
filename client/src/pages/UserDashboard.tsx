@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock } from "lucide-react";
+import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users } from "lucide-react";
 import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 

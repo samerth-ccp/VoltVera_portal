@@ -13,6 +13,7 @@ import {
 import { db } from "./db";
 import { eq, ilike, or, desc } from "drizzle-orm";
 import bcrypt from "bcrypt";
+import { nanoid } from "nanoid";
 
 // Interface for storage operations
 export interface IStorage {
@@ -240,6 +241,53 @@ export class DatabaseStorage implements IStorage {
     if (!user) return undefined;
     
     return { user, tokenType: tokenData.type };
+  }
+
+  // Team management methods
+  async getTeamMembers(userId: string): Promise<User[]> {
+    return await db.select()
+      .from(users)
+      .where(eq(users.referredBy, userId))
+      .orderBy(desc(users.createdAt));
+  }
+
+  async getDownline(userId: string, levels: number = 5): Promise<User[]> {
+    const allMembers: User[] = [];
+    const visited = new Set<string>();
+    
+    const getLevel = async (currentUserId: string, currentLevel: number): Promise<void> => {
+      if (currentLevel > levels || visited.has(currentUserId)) return;
+      visited.add(currentUserId);
+      
+      const directMembers = await db.select()
+        .from(users)
+        .where(eq(users.referredBy, currentUserId));
+      
+      for (const member of directMembers) {
+        if (!allMembers.find(m => m.id === member.id)) {
+          allMembers.push(member);
+          await getLevel(member.id, currentLevel + 1);
+        }
+      }
+    };
+    
+    await getLevel(userId, 1);
+    return allMembers.sort((a, b) => new Date(b.createdAt!).getTime() - new Date(a.createdAt!).getTime());
+  }
+
+  async getTeamStats(userId: string): Promise<{
+    directRecruits: number;
+    totalDownline: number;
+    activeMembers: number;
+  }> {
+    const directMembers = await this.getTeamMembers(userId);
+    const allDownline = await this.getDownline(userId);
+    
+    return {
+      directRecruits: directMembers.length,
+      totalDownline: allDownline.length,
+      activeMembers: allDownline.filter(u => u.status === 'active').length,
+    };
   }
 }
 

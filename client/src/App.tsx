@@ -14,6 +14,7 @@ import Signup from "@/pages/Signup";
 import VerifyEmail from "@/pages/VerifyEmail";
 import ResetPassword from "@/pages/ResetPassword";
 import CompleteInvitation from "@/pages/CompleteInvitation";
+import MyTeam from "@/pages/MyTeam";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -35,6 +36,7 @@ function Router() {
           {/* Protected routes for authenticated users */}
           <Route path="/change-password" component={ChangePassword} />
           <Route path="/dashboard" component={UserDashboard} />
+          <Route path="/my-team" component={MyTeam} />
           
           {/* Role-based routing for authenticated users */}
           {user?.role === 'admin' ? (

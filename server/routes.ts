@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema } from "@shared/schema";
+import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -536,6 +536,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.error("Error resetting password:", error);
       res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  // Team management routes
+  app.post("/api/team/recruit", isAuthenticated, async (req: any, res) => {
+    try {
+      const recruitData = recruitUserSchema.parse(req.body);
+      const recruiterId = req.user.id;
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(recruitData.email!);
+      if (existingUser) {
+        return res.status(409).json({ message: "A user with this email already exists" });
+      }
+      
+      // Create recruit with pending status
+      const recruit = await storage.recruitUser(recruitData, recruiterId);
+      
+      res.status(201).json({ 
+        message: "Recruit submitted successfully. Admin will process and send credentials.",
+        recruit: {
+          id: recruit.id,
+          email: recruit.email,
+          firstName: recruit.firstName,
+          lastName: recruit.lastName,
+          status: recruit.status
+        }
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error("Error creating recruit:", error);
+      res.status(500).json({ message: "Failed to submit recruit" });
+    }
+  });
+
+  app.get("/api/team/members", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const members = await storage.getTeamMembers(userId);
+      res.json(members);
+    } catch (error) {
+      console.error("Error fetching team members:", error);
+      res.status(500).json({ message: "Failed to fetch team members" });
+    }
+  });
+
+  app.get("/api/team/downline", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const levels = req.query.levels ? parseInt(req.query.levels as string) : 5;
+      const downline = await storage.getDownline(userId, levels);
+      res.json(downline);
+    } catch (error) {
+      console.error("Error fetching downline:", error);
+      res.status(500).json({ message: "Failed to fetch downline" });
+    }
+  });
+
+  app.get("/api/team/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const stats = await storage.getTeamStats(userId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching team stats:", error);
+      res.status(500).json({ message: "Failed to fetch team stats" });
     }
   });
 
