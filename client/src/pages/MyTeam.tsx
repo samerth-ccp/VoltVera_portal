@@ -17,6 +17,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
 import BinaryTreeView from "@/components/BinaryTreeView";
+import { UplineDecisions } from "@/components/UplineDecisions";
 
 const recruitFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -228,8 +229,12 @@ export default function MyTeam() {
         </div>
 
         {/* Main Content Tabs */}
-        <Tabs defaultValue="direct" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+        <Tabs defaultValue="decisions" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="decisions" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Position Decisions
+            </TabsTrigger>
             <TabsTrigger value="direct" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
               Direct
@@ -247,6 +252,11 @@ export default function MyTeam() {
               Team Business Stages
             </TabsTrigger>
           </TabsList>
+
+          {/* Position Decisions Tab */}
+          <TabsContent value="decisions" className="space-y-6">
+            <UplineDecisions />
+          </TabsContent>
 
           {/* Direct Recruits Tab */}
           <TabsContent value="direct" className="space-y-6">

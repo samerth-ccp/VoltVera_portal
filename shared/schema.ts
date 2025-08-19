@@ -69,16 +69,19 @@ export const emailTokens = pgTable("email_tokens", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-// Pending recruits table for admin processing workflow
+// Pending recruits table for upline position decision workflow
 export const pendingRecruits = pgTable("pending_recruits", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").notNull(),
   fullName: varchar("full_name").notNull(),
   mobile: varchar("mobile"),
   recruiterId: varchar("recruiter_id").notNull(),
+  uplineId: varchar("upline_id"), // Parent of the recruiter who decides position
   packageAmount: varchar("package_amount").default('0.00'),
-  position: varchar("position").default('Left'),
-  status: varchar("status").default('pending'),
+  position: varchar("position"), // Will be set by upline decision
+  uplineDecision: varchar("upline_decision").default('pending'), // 'pending', 'approved', 'rejected'
+  uplineDecisionAt: timestamp("upline_decision_at"),
+  status: varchar("status").default('awaiting_upline'), // 'awaiting_upline', 'awaiting_admin', 'approved', 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -13,7 +13,7 @@ import {
   type PendingRecruit,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or, desc } from "drizzle-orm";
+import { eq, ilike, or, desc, and } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 
@@ -303,14 +303,22 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Pending recruits operations (new workflow)
+  // Pending recruits operations (upline decision workflow)
   async createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit> {
+    // Find the upline (parent) of the recruiter
+    const recruiter = await this.getUser(recruiterId);
+    if (!recruiter) {
+      throw new Error('Recruiter not found');
+    }
+
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      status: 'pending',
+      uplineId: recruiter.parentId, // Parent of recruiter decides position
+      status: 'awaiting_upline',
+      uplineDecision: 'pending',
     }).returning();
     return pendingRecruit;
   }
@@ -325,11 +333,58 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
-  async approvePendingRecruit(id: string, adminData: { packageAmount: string; position: string }): Promise<User> {
+  // Get pending recruits awaiting upline decision
+  async getPendingRecruitsForUpline(uplineId: string): Promise<PendingRecruit[]> {
+    return await db.select()
+      .from(pendingRecruits)
+      .where(and(
+        eq(pendingRecruits.uplineId, uplineId),
+        eq(pendingRecruits.status, 'awaiting_upline')
+      ))
+      .orderBy(desc(pendingRecruits.createdAt));
+  }
+
+  // Upline decides position for pending recruit
+  async uplineDecidePosition(pendingRecruitId: string, uplineId: string, decision: 'approved' | 'rejected', position?: 'left' | 'right'): Promise<void> {
+    if (decision === 'approved' && !position) {
+      throw new Error('Position must be specified when approving');
+    }
+
+    const updateData: any = {
+      uplineDecision: decision,
+      uplineDecisionAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    if (decision === 'approved') {
+      updateData.position = position;
+      updateData.status = 'awaiting_admin'; // Move to admin approval stage
+    } else {
+      updateData.status = 'rejected';
+    }
+
+    await db.update(pendingRecruits)
+      .set(updateData)
+      .where(and(
+        eq(pendingRecruits.id, pendingRecruitId),
+        eq(pendingRecruits.uplineId, uplineId)
+      ));
+  }
+
+  async approvePendingRecruit(id: string, adminData: { packageAmount: string }): Promise<User> {
     // Get the pending recruit
     const [pendingRecruit] = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, id));
     if (!pendingRecruit) {
       throw new Error('Pending recruit not found');
+    }
+
+    // Check if upline has approved the position
+    if (pendingRecruit.status !== 'awaiting_admin' || pendingRecruit.uplineDecision !== 'approved') {
+      throw new Error('Recruit must be approved by upline first');
+    }
+
+    if (!pendingRecruit.position) {
+      throw new Error('Position must be set by upline before admin approval');
     }
 
     // Check if user already exists
@@ -350,7 +405,7 @@ export class DatabaseStorage implements IStorage {
       mobile: pendingRecruit.mobile,
       sponsorId: pendingRecruit.recruiterId,
       packageAmount: adminData.packageAmount,
-      position: adminData.position,
+      position: pendingRecruit.position, // Use position decided by upline
       registrationDate: pendingRecruit.createdAt,
       activationDate: new Date(),
       idStatus: 'Active',
@@ -359,8 +414,8 @@ export class DatabaseStorage implements IStorage {
       password: await bcrypt.hash('defaultpass123', 10), // Generate default password
     }).returning();
 
-    // Place user in binary tree structure
-    await this.placeUserInBinaryTree(newUser.id, pendingRecruit.recruiterId);
+    // Place user in binary tree at the position decided by upline
+    await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.recruiterId, pendingRecruit.position as 'left' | 'right');
 
     // Remove from pending recruits
     await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
@@ -417,6 +472,47 @@ export class DatabaseStorage implements IStorage {
     const { binaryTreeService } = await import('./binaryTreeService');
     const position = await binaryTreeService.findNextAvailablePosition(sponsorId);
     await binaryTreeService.placeUserInTree(userId, position.parentId, position.position, sponsorId);
+  }
+
+  // Place user at specific position decided by upline
+  async placeUserInBinaryTreeAtSpecificPosition(userId: string, sponsorId: string, desiredPosition: 'left' | 'right'): Promise<void> {
+    const { binaryTreeService } = await import('./binaryTreeService');
+    
+    // Find the sponsor/recruiter
+    const sponsor = await this.getUser(sponsorId);
+    if (!sponsor) {
+      throw new Error('Sponsor not found');
+    }
+
+    // Get the parent (upline) who made the decision
+    const parentId = sponsor.parentId;
+    if (!parentId) {
+      throw new Error('Sponsor has no parent - cannot place recruit');
+    }
+
+    // Check if the desired position under parent is available
+    const parent = await this.getUser(parentId);
+    if (!parent) {
+      throw new Error('Parent not found');
+    }
+
+    const parentUser = await db.select().from(users).where(eq(users.id, parentId)).limit(1);
+    if (!parentUser.length) {
+      throw new Error('Parent not found in database');
+    }
+
+    const parentData = parentUser[0];
+
+    // Check if desired position is available
+    if (desiredPosition === 'left' && parentData.leftChildId) {
+      throw new Error('Left position under parent is already occupied');
+    }
+    if (desiredPosition === 'right' && parentData.rightChildId) {
+      throw new Error('Right position under parent is already occupied');
+    }
+
+    // Place the user at the specific position
+    await binaryTreeService.placeUserInTree(userId, parentId, desiredPosition, sponsorId);
   }
 }
 

@@ -644,13 +644,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/pending-recruits/:id/approve", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { packageAmount, position } = req.body;
+      const { packageAmount } = req.body;
 
-      if (!packageAmount || !position) {
-        return res.status(400).json({ message: "Package amount and position are required" });
+      if (!packageAmount) {
+        return res.status(400).json({ message: "Package amount is required" });
       }
 
-      const newUser = await storage.approvePendingRecruit(id, { packageAmount, position });
+      const newUser = await storage.approvePendingRecruit(id, { packageAmount });
       res.json({ 
         message: "Recruit approved and user created successfully",
         user: newUser 
@@ -674,6 +674,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting recruit:", error);
       res.status(500).json({ message: "Failed to reject recruit" });
+    }
+  });
+
+  // Get pending recruits awaiting upline decision  
+  app.get("/api/upline/pending-recruits", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const pendingRecruits = await storage.getPendingRecruitsForUpline(userId);
+      res.json(pendingRecruits);
+    } catch (error) {
+      console.error("Error getting pending recruits for upline:", error);
+      res.status(500).json({ message: "Failed to get pending recruits" });
+    }
+  });
+
+  // Upline decides position for pending recruit
+  app.post("/api/upline/pending-recruits/:id/decide", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { decision, position } = req.body;
+      const uplineId = req.user.id;
+
+      if (!decision || !['approved', 'rejected'].includes(decision)) {
+        return res.status(400).json({ message: "Valid decision (approved/rejected) is required" });
+      }
+
+      if (decision === 'approved' && (!position || !['left', 'right'].includes(position))) {
+        return res.status(400).json({ message: "Position (left/right) is required when approving" });
+      }
+
+      await storage.uplineDecidePosition(id, uplineId, decision, position);
+      
+      const message = decision === 'approved' 
+        ? `Recruit approved for ${position} position. Moved to admin approval.`
+        : "Recruit rejected.";
+
+      res.json({ message });
+    } catch (error) {
+      console.error("Error processing upline decision:", error);
+      res.status(500).json({ message: "Failed to process decision" });
     }
   });
 
