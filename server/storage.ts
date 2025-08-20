@@ -311,12 +311,22 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Recruiter not found');
     }
 
+    // Find the appropriate upline with available positions
+    let uplineId = recruiterId; // Start with the recruiter themselves
+    
+    // Check if recruiter has available positions
+    const recruiterAvailability = await this.getAvailablePositions(recruiterId);
+    if (!recruiterAvailability.left && !recruiterAvailability.right) {
+      // If recruiter is full, use their parent as upline
+      uplineId = recruiter.parentId || recruiterId;
+    }
+
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId: recruiter.parentId, // Parent of recruiter decides position
+      uplineId, // Use upline with available positions
       status: 'awaiting_upline',
       uplineDecision: 'pending',
     }).returning();
