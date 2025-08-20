@@ -286,17 +286,17 @@ export function UplineDecisions() {
                 <div className="bg-white rounded-lg p-4 mb-4">
                   <h4 className="font-medium mb-3 text-center">Choose Position in Your Network</h4>
                   
-                  {/* Position Availability Warning */}
+                  {/* Strategic Placement Information */}
                   {recruit.availablePositions && (!recruit.availablePositions.left || !recruit.availablePositions.right) && (
-                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-amber-700 text-sm">
-                        <AlertTriangle className="h-4 w-4" />
-                        Position Availability Notice
+                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-blue-700 text-sm">
+                        <Target className="h-4 w-4" />
+                        Strategic Placement Authority
                       </div>
-                      <div className="text-xs text-amber-600 mt-1">
-                        {!recruit.availablePositions.left && "LEFT position is already occupied. "}
-                        {!recruit.availablePositions.right && "RIGHT position is already occupied. "}
-                        Choose from available positions only.
+                      <div className="text-xs text-blue-600 mt-1">
+                        {!recruit.availablePositions.left && "LEFT position occupied - will spillover to next available slot. "}
+                        {!recruit.availablePositions.right && "RIGHT position occupied - will spillover to next available slot. "}
+                        <strong>As upline, you have full authority to choose strategic placement direction.</strong>
                       </div>
                     </div>
                   )}
@@ -307,13 +307,13 @@ export function UplineDecisions() {
                         <Button 
                           variant="outline" 
                           className={`h-24 flex flex-col items-center gap-2 relative ${
-                            recruit.availablePositions?.left === false 
-                              ? 'opacity-50 cursor-not-allowed bg-gray-100' 
-                              : recruit.strategicRecommendation?.recommendedPosition === 'left'
-                                ? 'border-2 border-blue-500 bg-blue-50 hover:bg-blue-100'
+                            recruit.strategicRecommendation?.recommendedPosition === 'left'
+                              ? 'border-2 border-blue-500 bg-blue-50 hover:bg-blue-100'
+                              : recruit.availablePositions?.left === false 
+                                ? 'border-2 border-orange-300 bg-orange-50 hover:bg-orange-100' 
                                 : 'hover:bg-blue-50 hover:border-blue-300'
                           }`}
-                          disabled={processingId === recruit.id || recruit.availablePositions?.left === false}
+                          disabled={processingId === recruit.id}
                           onClick={() => setSelectedPosition('left')}
                         >
                           {recruit.strategicRecommendation?.recommendedPosition === 'left' && (
@@ -325,7 +325,7 @@ export function UplineDecisions() {
                           <span className="font-medium">LEFT Position</span>
                           <span className="text-xs text-center">
                             {recruit.legBalance && `${recruit.legBalance.leftLeg.count} members`}
-                            {recruit.availablePositions?.left === false && " (Occupied)"}
+                            {recruit.availablePositions?.left === false && " (Will Spillover)"}
                           </span>
                           {recruit.strategicRecommendation?.recommendedPosition === 'left' && (
                             <Badge variant="default" className="bg-green-500 text-[10px] px-1 py-0">
@@ -338,14 +338,17 @@ export function UplineDecisions() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Approve for LEFT Position</AlertDialogTitle>
                           <AlertDialogDescription>
-                            You are approving <strong>{recruit.fullName}</strong> to be placed in the <strong>LEFT position</strong> of your network tree.
+                            You are approving <strong>{recruit.fullName}</strong> to be placed in the <strong>LEFT direction</strong> of your network tree.
                             <br /><br />
                             <strong>Strategic Impact:</strong><br />
                             • {recruit.strategicRecommendation?.impactAnalysis.leftChoice}<br />
                             • This will {recruit.legBalance?.weakerLeg === 'left' ? 'strengthen your weaker leg' : 'grow your stronger leg'}<br />
                             • Current balance ratio: {recruit.legBalance && (recruit.legBalance.balanceRatio * 100).toFixed(0)}%
                             <br /><br />
-                            This decision will move the recruit to admin approval stage.
+                            {recruit.availablePositions?.left === false ? 
+                              "Note: Direct LEFT position is occupied. The system will automatically find the next available slot in the LEFT leg for optimal spillover placement." : 
+                              "The recruit will be placed directly in your LEFT position."
+                            }
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
@@ -365,13 +368,13 @@ export function UplineDecisions() {
                         <Button 
                           variant="outline" 
                           className={`h-24 flex flex-col items-center gap-2 relative ${
-                            recruit.availablePositions?.right === false 
-                              ? 'opacity-50 cursor-not-allowed bg-gray-100' 
-                              : recruit.strategicRecommendation?.recommendedPosition === 'right'
-                                ? 'border-2 border-green-500 bg-green-50 hover:bg-green-100'
+                            recruit.strategicRecommendation?.recommendedPosition === 'right'
+                              ? 'border-2 border-green-500 bg-green-50 hover:bg-green-100'
+                              : recruit.availablePositions?.right === false 
+                                ? 'border-2 border-orange-300 bg-orange-50 hover:bg-orange-100' 
                                 : 'hover:bg-green-50 hover:border-green-300'
                           }`}
-                          disabled={processingId === recruit.id || recruit.availablePositions?.right === false}
+                          disabled={processingId === recruit.id}
                           onClick={() => setSelectedPosition('right')}
                         >
                           {recruit.strategicRecommendation?.recommendedPosition === 'right' && (
@@ -383,7 +386,7 @@ export function UplineDecisions() {
                           <span className="font-medium">RIGHT Position</span>
                           <span className="text-xs text-center">
                             {recruit.legBalance && `${recruit.legBalance.rightLeg.count} members`}
-                            {recruit.availablePositions?.right === false && " (Occupied)"}
+                            {recruit.availablePositions?.right === false && " (Will Spillover)"}
                           </span>
                           {recruit.strategicRecommendation?.recommendedPosition === 'right' && (
                             <Badge variant="default" className="bg-green-500 text-[10px] px-1 py-0">
@@ -396,14 +399,17 @@ export function UplineDecisions() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Approve for RIGHT Position</AlertDialogTitle>
                           <AlertDialogDescription>
-                            You are approving <strong>{recruit.fullName}</strong> to be placed in the <strong>RIGHT position</strong> of your network tree.
+                            You are approving <strong>{recruit.fullName}</strong> to be placed in the <strong>RIGHT direction</strong> of your network tree.
                             <br /><br />
                             <strong>Strategic Impact:</strong><br />
                             • {recruit.strategicRecommendation?.impactAnalysis.rightChoice}<br />
                             • This will {recruit.legBalance?.weakerLeg === 'right' ? 'strengthen your weaker leg' : 'grow your stronger leg'}<br />
                             • Current balance ratio: {recruit.legBalance && (recruit.legBalance.balanceRatio * 100).toFixed(0)}%
                             <br /><br />
-                            This decision will move the recruit to admin approval stage.
+                            {recruit.availablePositions?.right === false ? 
+                              "Note: Direct RIGHT position is occupied. The system will automatically find the next available slot in the RIGHT leg for optimal spillover placement." : 
+                              "The recruit will be placed directly in your RIGHT position."
+                            }
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>
