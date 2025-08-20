@@ -369,15 +369,13 @@ export class DatabaseStorage implements IStorage {
         const leftLegStats = upline?.leftChildId ? await this.getLegStats(upline.leftChildId) : { count: 0, volume: 0 };
         const rightLegStats = upline?.rightChildId ? await this.getLegStats(upline.rightChildId) : { count: 0, volume: 0 };
         
-        // For position recommendations, use direct children only
-        const leftDirectStats = upline?.leftChildId ? { count: 1, volume: parseFloat((await this.getUser(upline.leftChildId))?.packageAmount || '0') } : { count: 0, volume: 0 };
-        const rightDirectStats = upline?.rightChildId ? { count: 1, volume: parseFloat((await this.getUser(upline.rightChildId))?.packageAmount || '0') } : { count: 0, volume: 0 };
-        
         // Get available positions
         const availablePositions = await this.getAvailablePositions(uplineId);
         
-        // Calculate strategic recommendations based on direct children
-        const weakerLeg = leftDirectStats.count <= rightDirectStats.count ? 'left' : 'right';
+        // Calculate strategic recommendations based on total leg stats (weaker = fewer members)
+        const weakerLeg = leftLegStats.count < rightLegStats.count ? 'left' : 
+                         rightLegStats.count < leftLegStats.count ? 'right' :
+                         leftLegStats.volume <= rightLegStats.volume ? 'left' : 'right';
         const strongerLeg = weakerLeg === 'left' ? 'right' : 'left';
         
         return {
@@ -396,16 +394,22 @@ export class DatabaseStorage implements IStorage {
             rightLeg: rightLegStats,
             weakerLeg,
             strongerLeg,
-            balanceRatio: leftDirectStats.count === 0 && rightDirectStats.count === 0 ? 1 : 
-              Math.min(leftDirectStats.count, rightDirectStats.count) / Math.max(leftDirectStats.count, rightDirectStats.count, 1)
+            balanceRatio: leftLegStats.count === 0 && rightLegStats.count === 0 ? 1 : 
+              Math.min(leftLegStats.count, rightLegStats.count) / Math.max(leftLegStats.count, rightLegStats.count, 1)
           },
           availablePositions,
           strategicRecommendation: {
-            recommendedPosition: weakerLeg,
-            reason: `Build the weaker ${weakerLeg} leg to balance your binary structure`,
+            recommendedPosition: availablePositions.left && availablePositions.right ? weakerLeg :
+                               availablePositions.left ? 'left' :
+                               availablePositions.right ? 'right' : null,
+            reason: availablePositions.left && availablePositions.right ? 
+                   `Build the weaker ${weakerLeg} leg (${weakerLeg === 'left' ? leftLegStats.count : rightLegStats.count} members) to balance your binary structure` :
+                   availablePositions.left ? `Only LEFT position is available` :
+                   availablePositions.right ? `Only RIGHT position is available` :
+                   `No positions available - both slots are occupied`,
             impactAnalysis: {
-              leftChoice: `Left leg would have ${leftDirectStats.count + 1} direct child`,
-              rightChoice: `Right leg would have ${rightDirectStats.count + 1} direct child`
+              leftChoice: `Left leg would have ${leftLegStats.count + 1} members`,
+              rightChoice: `Right leg would have ${rightLegStats.count + 1} members`
             }
           }
         };
