@@ -244,19 +244,30 @@ export function UplineDecisions() {
                         AI Recommendation
                       </div>
                       <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <Badge 
-                            variant={recruit.strategicRecommendation.recommendedPosition === 'left' ? 'default' : 'secondary'}
-                            className={recruit.strategicRecommendation.recommendedPosition === 'left' ? 'bg-blue-600' : 'bg-green-600'}
-                          >
-                            {recruit.strategicRecommendation.recommendedPosition.toUpperCase()} LEG
-                          </Badge>
-                          {recruit.legBalance.weakerLeg === recruit.strategicRecommendation.recommendedPosition ? (
-                            <TrendingUp className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 text-orange-500" />
-                          )}
-                        </div>
+                        {recruit.strategicRecommendation.recommendedPosition ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Badge 
+                                variant={recruit.strategicRecommendation.recommendedPosition === 'left' ? 'default' : 'secondary'}
+                                className={recruit.strategicRecommendation.recommendedPosition === 'left' ? 'bg-blue-600' : 'bg-green-600'}
+                              >
+                                {recruit.strategicRecommendation.recommendedPosition.toUpperCase()} LEG
+                              </Badge>
+                              {recruit.legBalance.weakerLeg === recruit.strategicRecommendation.recommendedPosition ? (
+                                <TrendingUp className="h-3 w-3 text-green-500" />
+                              ) : (
+                                <TrendingDown className="h-3 w-3 text-orange-500" />
+                              )}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge variant="destructive">
+                              NO POSITIONS
+                            </Badge>
+                            <AlertTriangle className="h-3 w-3 text-red-500" />
+                          </div>
+                        )}
                         <div className="text-xs text-gray-600">
                           {recruit.strategicRecommendation.reason}
                         </div>
