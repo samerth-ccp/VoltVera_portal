@@ -524,6 +524,9 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     // Place user in binary tree at the position decided by upline
+    if (!pendingRecruit.uplineId) {
+      throw new Error('Upline ID is required for position placement');
+    }
     await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, pendingRecruit.position as 'left' | 'right', pendingRecruit.recruiterId);
 
     // Remove from pending recruits
