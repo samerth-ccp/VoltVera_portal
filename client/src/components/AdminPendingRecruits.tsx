@@ -21,6 +21,8 @@ interface PendingRecruit {
   packageAmount: string;
   position: string;
   status: string;
+  uplineDecision: string;
+  uplineDecisionAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,11 +42,13 @@ export function AdminPendingRecruits() {
 
   // Approve recruit mutation
   const approveMutation = useMutation({
-    mutationFn: async ({ id, packageAmount, position }: { id: string; packageAmount: string; position: string }) => {
-      const response = await apiRequest('POST', `/api/admin/pending-recruits/${id}/approve`, {
-        packageAmount,
-        position
-      });
+    mutationFn: async ({ id, packageAmount, position }: { id: string; packageAmount: string; position?: string }) => {
+      const payload: any = { packageAmount };
+      // Only include position if it's not already decided by upline
+      if (position && selectedRecruit?.uplineDecision !== 'approved') {
+        payload.position = position;
+      }
+      const response = await apiRequest('POST', `/api/admin/pending-recruits/${id}/approve`, payload);
       return response.json();
     },
     onSuccess: () => {
@@ -91,7 +95,8 @@ export function AdminPendingRecruits() {
   const handleApprove = (recruit: PendingRecruit) => {
     setSelectedRecruit(recruit);
     setPackageAmount("0.00");
-    setPosition("Left");
+    // Set position to existing position if already decided by upline
+    setPosition(recruit.uplineDecision === 'approved' ? recruit.position : "Left");
     setIsApproveOpen(true);
   };
 
@@ -159,6 +164,11 @@ export function AdminPendingRecruits() {
                     <Badge variant="outline" className="border-blue-300 text-blue-700 dark:border-blue-600 dark:text-blue-300">
                       {recruit.status}
                     </Badge>
+                    {recruit.uplineDecision === 'approved' && (
+                      <Badge variant="outline" className="border-green-300 text-green-700 dark:border-green-600 dark:text-green-300">
+                        {recruit.position} Position (Upline Decided)
+                      </Badge>
+                    )}
                     <span>
                       Submitted {formatDistanceToNow(new Date(recruit.createdAt), { addSuffix: true })}
                     </span>
@@ -200,6 +210,13 @@ export function AdminPendingRecruits() {
                 <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <h3 className="font-semibold">{selectedRecruit.fullName}</h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400">{selectedRecruit.email}</p>
+                  {selectedRecruit.uplineDecision === 'approved' && (
+                    <div className="mt-2">
+                      <Badge variant="outline" className="border-green-300 text-green-700 dark:border-green-600 dark:text-green-300">
+                        Position: {selectedRecruit.position} (Strategically chosen by upline)
+                      </Badge>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -214,18 +231,21 @@ export function AdminPendingRecruits() {
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="position">Position</Label>
-                <Select value={position} onValueChange={setPosition}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Left">Left</SelectItem>
-                    <SelectItem value="Right">Right</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Only show position selector if upline hasn't decided */}
+              {selectedRecruit?.uplineDecision !== 'approved' && (
+                <div className="space-y-2">
+                  <Label htmlFor="position">Position</Label>
+                  <Select value={position} onValueChange={setPosition}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Left">Left</SelectItem>
+                      <SelectItem value="Right">Right</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsApproveOpen(false)}>
