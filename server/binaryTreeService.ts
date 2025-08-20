@@ -84,6 +84,71 @@ export class BinaryTreeService {
   }
 
   /**
+   * Place user with strategic spillover in a specific leg direction
+   */
+  async placeUserInDirectionalSpillover(userId: string, uplineId: string, direction: 'left' | 'right', sponsorId: string): Promise<void> {
+    // Start from the specified leg direction and find the next available spot
+    const uplineUser = await db.select().from(users).where(eq(users.id, uplineId)).limit(1);
+    
+    if (!uplineUser.length) {
+      throw new Error("Upline user not found");
+    }
+    
+    const upline = uplineUser[0];
+    const startingChildId = direction === 'left' ? upline.leftChildId : upline.rightChildId;
+    
+    if (!startingChildId) {
+      // Direct position is available after all
+      await this.placeUserInTree(userId, uplineId, direction, sponsorId);
+      return;
+    }
+    
+    // Find next available position in the chosen direction/leg
+    const spilloverPosition = await this.findSpilloverInDirection(startingChildId, direction);
+    await this.placeUserInTree(userId, spilloverPosition.parentId, spilloverPosition.position, sponsorId);
+  }
+
+  /**
+   * Find spillover position within a specific direction/leg
+   */
+  private async findSpilloverInDirection(startNodeId: string, preferredSide: 'left' | 'right'): Promise<{ parentId: string; position: 'left' | 'right' }> {
+    const queue = [startNodeId];
+    
+    while (queue.length > 0) {
+      const currentUserId = queue.shift()!;
+      
+      const currentUser = await db.select().from(users).where(eq(users.id, currentUserId)).limit(1);
+      
+      if (!currentUser.length) continue;
+      
+      const user = currentUser[0];
+      
+      // Prefer the same side first, then try the opposite side
+      if (preferredSide === 'left' && !user.leftChildId) {
+        return { parentId: currentUserId, position: 'left' };
+      }
+      if (preferredSide === 'right' && !user.rightChildId) {
+        return { parentId: currentUserId, position: 'right' };
+      }
+      
+      // Try opposite side if preferred is not available
+      if (preferredSide === 'left' && !user.rightChildId) {
+        return { parentId: currentUserId, position: 'right' };
+      }
+      if (preferredSide === 'right' && !user.leftChildId) {
+        return { parentId: currentUserId, position: 'left' };
+      }
+      
+      // Add children to queue for next level check
+      if (user.leftChildId) queue.push(user.leftChildId);
+      if (user.rightChildId) queue.push(user.rightChildId);
+    }
+    
+    // Fallback: place under the starting node as first available
+    return { parentId: startNodeId, position: 'left' };
+  }
+
+  /**
    * Place a user in the binary tree at the specified position
    */
   async placeUserInTree(userId: string, parentId: string, position: 'left' | 'right', sponsorId: string): Promise<void> {

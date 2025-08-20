@@ -590,7 +590,7 @@ export class DatabaseStorage implements IStorage {
     await binaryTreeService.placeUserInTree(userId, position.parentId, position.position, sponsorId);
   }
 
-  // Place user at specific position decided by upline
+  // Place user at specific position decided by upline (with intelligent spillover)
   async placeUserInBinaryTreeAtSpecificPosition(userId: string, uplineId: string, desiredPosition: 'left' | 'right', sponsorId: string): Promise<void> {
     const { binaryTreeService } = await import('./binaryTreeService');
     
@@ -607,16 +607,16 @@ export class DatabaseStorage implements IStorage {
 
     const uplineData = uplineUser[0];
 
-    // Check if desired position under upline is available
-    if (desiredPosition === 'left' && uplineData.leftChildId) {
-      throw new Error('Left position under upline is already occupied');
+    // Check if desired position under upline is directly available
+    const directPositionAvailable = desiredPosition === 'left' ? !uplineData.leftChildId : !uplineData.rightChildId;
+    
+    if (directPositionAvailable) {
+      // Direct placement under upline
+      await binaryTreeService.placeUserInTree(userId, uplineId, desiredPosition, sponsorId);
+    } else {
+      // Strategic spillover placement in the chosen direction
+      await binaryTreeService.placeUserInDirectionalSpillover(userId, uplineId, desiredPosition, sponsorId);
     }
-    if (desiredPosition === 'right' && uplineData.rightChildId) {
-      throw new Error('Right position under upline is already occupied');
-    }
-
-    // Place the user at the specific position under the upline
-    await binaryTreeService.placeUserInTree(userId, uplineId, desiredPosition, sponsorId);
   }
 }
 
