@@ -524,7 +524,7 @@ export class DatabaseStorage implements IStorage {
     }).returning();
 
     // Place user in binary tree at the position decided by upline
-    await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.recruiterId, pendingRecruit.position as 'left' | 'right');
+    await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, pendingRecruit.position as 'left' | 'right', pendingRecruit.recruiterId);
 
     // Remove from pending recruits
     await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
@@ -584,44 +584,32 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Place user at specific position decided by upline
-  async placeUserInBinaryTreeAtSpecificPosition(userId: string, sponsorId: string, desiredPosition: 'left' | 'right'): Promise<void> {
+  async placeUserInBinaryTreeAtSpecificPosition(userId: string, uplineId: string, desiredPosition: 'left' | 'right', sponsorId: string): Promise<void> {
     const { binaryTreeService } = await import('./binaryTreeService');
     
-    // Find the sponsor/recruiter
-    const sponsor = await this.getUser(sponsorId);
-    if (!sponsor) {
-      throw new Error('Sponsor not found');
+    // Get the upline who made the strategic decision
+    const upline = await this.getUser(uplineId);
+    if (!upline) {
+      throw new Error('Upline not found');
     }
 
-    // Get the parent (upline) who made the decision
-    const parentId = sponsor.parentId;
-    if (!parentId) {
-      throw new Error('Sponsor has no parent - cannot place recruit');
+    const uplineUser = await db.select().from(users).where(eq(users.id, uplineId)).limit(1);
+    if (!uplineUser.length) {
+      throw new Error('Upline not found in database');
     }
 
-    // Check if the desired position under parent is available
-    const parent = await this.getUser(parentId);
-    if (!parent) {
-      throw new Error('Parent not found');
+    const uplineData = uplineUser[0];
+
+    // Check if desired position under upline is available
+    if (desiredPosition === 'left' && uplineData.leftChildId) {
+      throw new Error('Left position under upline is already occupied');
+    }
+    if (desiredPosition === 'right' && uplineData.rightChildId) {
+      throw new Error('Right position under upline is already occupied');
     }
 
-    const parentUser = await db.select().from(users).where(eq(users.id, parentId)).limit(1);
-    if (!parentUser.length) {
-      throw new Error('Parent not found in database');
-    }
-
-    const parentData = parentUser[0];
-
-    // Check if desired position is available
-    if (desiredPosition === 'left' && parentData.leftChildId) {
-      throw new Error('Left position under parent is already occupied');
-    }
-    if (desiredPosition === 'right' && parentData.rightChildId) {
-      throw new Error('Right position under parent is already occupied');
-    }
-
-    // Place the user at the specific position
-    await binaryTreeService.placeUserInTree(userId, parentId, desiredPosition, sponsorId);
+    // Place the user at the specific position under the upline
+    await binaryTreeService.placeUserInTree(userId, uplineId, desiredPosition, sponsorId);
   }
 }
 
