@@ -344,6 +344,84 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(pendingRecruits.createdAt));
   }
 
+  // Get pending recruits with strategic decision information
+  async getPendingRecruitsForUplineWithDetails(uplineId: string): Promise<any[]> {
+    const pendingRecruits = await this.getPendingRecruitsForUpline(uplineId);
+    
+    const enrichedRecruits = await Promise.all(
+      pendingRecruits.map(async (recruit) => {
+        // Get recruiter information
+        const recruiter = await this.getUser(recruit.recruiterId);
+        
+        // Get upline's leg balance information
+        const upline = await this.getUser(uplineId);
+        const leftLegStats = upline?.leftChildId ? await this.getLegStats(upline.leftChildId) : { count: 0, volume: 0 };
+        const rightLegStats = upline?.rightChildId ? await this.getLegStats(upline.rightChildId) : { count: 0, volume: 0 };
+        
+        // Get available positions
+        const availablePositions = await this.getAvailablePositions(uplineId);
+        
+        // Calculate strategic recommendations
+        const weakerLeg = leftLegStats.count <= rightLegStats.count ? 'left' : 'right';
+        const strongerLeg = weakerLeg === 'left' ? 'right' : 'left';
+        
+        return {
+          ...recruit,
+          recruiterInfo: {
+            id: recruiter?.id,
+            name: `${recruiter?.firstName} ${recruiter?.lastName}`,
+            email: recruiter?.email,
+            position: recruiter?.position,
+            level: recruiter?.level,
+            packageAmount: recruiter?.packageAmount,
+            activationDate: recruiter?.activationDate,
+          },
+          legBalance: {
+            leftLeg: leftLegStats,
+            rightLeg: rightLegStats,
+            weakerLeg,
+            strongerLeg,
+            balanceRatio: leftLegStats.count === 0 && rightLegStats.count === 0 ? 1 : 
+              Math.min(leftLegStats.count, rightLegStats.count) / Math.max(leftLegStats.count, rightLegStats.count, 1)
+          },
+          availablePositions,
+          strategicRecommendation: {
+            recommendedPosition: weakerLeg,
+            reason: `Build the weaker ${weakerLeg} leg to balance your binary structure`,
+            impactAnalysis: {
+              leftChoice: `Left leg would have ${leftLegStats.count + 1} members`,
+              rightChoice: `Right leg would have ${rightLegStats.count + 1} members`
+            }
+          }
+        };
+      })
+    );
+    
+    return enrichedRecruits;
+  }
+
+  // Get statistical information for a leg (downline count and volume)
+  async getLegStats(rootUserId: string): Promise<{ count: number; volume: number }> {
+    const downlineMembers = await this.getDownline(rootUserId);
+    const totalVolume = downlineMembers.reduce((sum, member) => 
+      sum + parseFloat(member.packageAmount || '0'), 0
+    );
+    
+    return {
+      count: downlineMembers.length + 1, // Include the root user
+      volume: totalVolume + parseFloat((await this.getUser(rootUserId))?.packageAmount || '0')
+    };
+  }
+
+  // Check available positions for a given upline
+  async getAvailablePositions(uplineId: string): Promise<{ left: boolean; right: boolean }> {
+    const upline = await this.getUser(uplineId);
+    return {
+      left: !upline?.leftChildId,
+      right: !upline?.rightChildId
+    };
+  }
+
   // Upline decides position for pending recruit
   async uplineDecidePosition(pendingRecruitId: string, uplineId: string, decision: 'approved' | 'rejected', position?: 'left' | 'right'): Promise<void> {
     if (decision === 'approved' && !position) {

@@ -677,11 +677,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get pending recruits awaiting upline decision  
+  // Get pending recruits awaiting upline decision with strategic information
   app.get("/api/upline/pending-recruits", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;
-      const pendingRecruits = await storage.getPendingRecruitsForUpline(userId);
+      const pendingRecruits = await storage.getPendingRecruitsForUplineWithDetails(userId);
       res.json(pendingRecruits);
     } catch (error) {
       console.error("Error getting pending recruits for upline:", error);
