@@ -363,16 +363,20 @@ export class DatabaseStorage implements IStorage {
         // Get recruiter information
         const recruiter = await this.getUser(recruit.recruiterId);
         
-        // Get upline's leg balance information
+        // Get upline's leg balance information (use total downline for strategic view)
         const upline = await this.getUser(uplineId);
         const leftLegStats = upline?.leftChildId ? await this.getLegStats(upline.leftChildId) : { count: 0, volume: 0 };
         const rightLegStats = upline?.rightChildId ? await this.getLegStats(upline.rightChildId) : { count: 0, volume: 0 };
         
+        // For position recommendations, use direct children only
+        const leftDirectStats = upline?.leftChildId ? { count: 1, volume: parseFloat((await this.getUser(upline.leftChildId))?.packageAmount || '0') } : { count: 0, volume: 0 };
+        const rightDirectStats = upline?.rightChildId ? { count: 1, volume: parseFloat((await this.getUser(upline.rightChildId))?.packageAmount || '0') } : { count: 0, volume: 0 };
+        
         // Get available positions
         const availablePositions = await this.getAvailablePositions(uplineId);
         
-        // Calculate strategic recommendations
-        const weakerLeg = leftLegStats.count <= rightLegStats.count ? 'left' : 'right';
+        // Calculate strategic recommendations based on direct children
+        const weakerLeg = leftDirectStats.count <= rightDirectStats.count ? 'left' : 'right';
         const strongerLeg = weakerLeg === 'left' ? 'right' : 'left';
         
         return {
@@ -391,16 +395,16 @@ export class DatabaseStorage implements IStorage {
             rightLeg: rightLegStats,
             weakerLeg,
             strongerLeg,
-            balanceRatio: leftLegStats.count === 0 && rightLegStats.count === 0 ? 1 : 
-              Math.min(leftLegStats.count, rightLegStats.count) / Math.max(leftLegStats.count, rightLegStats.count, 1)
+            balanceRatio: leftDirectStats.count === 0 && rightDirectStats.count === 0 ? 1 : 
+              Math.min(leftDirectStats.count, rightDirectStats.count) / Math.max(leftDirectStats.count, rightDirectStats.count, 1)
           },
           availablePositions,
           strategicRecommendation: {
             recommendedPosition: weakerLeg,
             reason: `Build the weaker ${weakerLeg} leg to balance your binary structure`,
             impactAnalysis: {
-              leftChoice: `Left leg would have ${leftLegStats.count + 1} members`,
-              rightChoice: `Right leg would have ${rightLegStats.count + 1} members`
+              leftChoice: `Left leg would have ${leftDirectStats.count + 1} direct child`,
+              rightChoice: `Right leg would have ${rightDirectStats.count + 1} direct child`
             }
           }
         };
@@ -420,6 +424,22 @@ export class DatabaseStorage implements IStorage {
     return {
       count: downlineMembers.length + 1, // Include the root user
       volume: totalVolume + parseFloat((await this.getUser(rootUserId))?.packageAmount || '0')
+    };
+  }
+
+  // Get direct children stats for position recommendations (not entire downline)
+  async getDirectChildrenStats(rootUserId: string): Promise<{ count: number; volume: number }> {
+    const directChildren = await db.select()
+      .from(users)
+      .where(eq(users.parentId, rootUserId));
+    
+    const totalVolume = directChildren.reduce((sum, member) => 
+      sum + parseFloat(member.packageAmount || '0'), 0
+    );
+    
+    return {
+      count: directChildren.length,
+      volume: totalVolume
     };
   }
 
