@@ -321,14 +321,41 @@ export class DatabaseStorage implements IStorage {
       uplineId = recruiter.parentId || recruiterId;
     }
 
+    // Check available positions for the determined upline
+    const uplineAvailability = await this.getAvailablePositions(uplineId);
+    const availableCount = (uplineAvailability.left ? 1 : 0) + (uplineAvailability.right ? 1 : 0);
+    
+    let status: 'awaiting_upline' | 'awaiting_admin' = 'awaiting_upline';
+    let uplineDecision: 'pending' | 'approved' = 'pending';
+    let position: 'Left' | 'Right' | null = null;
+
+    // If only one position available, auto-assign and skip upline decision
+    if (availableCount === 1) {
+      status = 'awaiting_admin';
+      uplineDecision = 'approved';
+      position = uplineAvailability.left ? 'Left' : 'Right';
+    }
+    // If both positions available, require upline decision
+    else if (availableCount === 2) {
+      status = 'awaiting_upline';
+      uplineDecision = 'pending';
+      position = 'Left'; // Default, will be overridden by upline choice
+    }
+    // If no positions available, this shouldn't happen with corrected logic
+    else {
+      throw new Error('No available positions found for placement');
+    }
+
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId, // Use upline with available positions
-      status: 'awaiting_upline',
-      uplineDecision: 'pending',
+      uplineId,
+      status,
+      uplineDecision,
+      position,
+      uplineDecisionAt: availableCount === 1 ? new Date() : null,
     }).returning();
     return pendingRecruit;
   }
