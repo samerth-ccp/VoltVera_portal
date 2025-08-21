@@ -649,6 +649,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { id } = req.params;
       const { packageAmount } = req.body;
+      
+      console.log('=== ADMIN APPROVE REQUEST ===');
+      console.log('Recruit ID:', id);
+      console.log('Package Amount:', packageAmount);
+      console.log('Admin User:', req.user.email);
 
       if (!packageAmount) {
         return res.status(400).json({ message: "Package amount is required" });
@@ -661,7 +666,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error approving recruit:", error);
-      res.status(500).json({ message: "Failed to approve recruit" });
+      console.error("Error details:", error.message);
+      
+      // Send specific error message to frontend
+      const errorMessage = error.message || "Failed to approve recruit";
+      res.status(500).json({ 
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
     }
   });
 

@@ -506,6 +506,7 @@ export class DatabaseStorage implements IStorage {
     console.log('Position:', pendingRecruit?.position);
     
     if (!pendingRecruit) {
+      console.log('ERROR: Pending recruit not found with ID:', id);
       throw new Error('Pending recruit not found');
     }
 
@@ -522,7 +523,9 @@ export class DatabaseStorage implements IStorage {
 
     // Check if user already exists
     const existingUser = await this.getUserByEmail(pendingRecruit.email);
+    console.log('Existing user check:', !!existingUser);
     if (existingUser) {
+      console.log('ERROR: User already exists with email:', pendingRecruit.email);
       throw new Error('User already exists with this email');
     }
 
