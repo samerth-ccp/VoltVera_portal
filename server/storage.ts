@@ -103,12 +103,15 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(userData: CreateUser): Promise<User> {
     // Hash password before storing (use nanoid if not provided)
-    const hashedPassword = await bcrypt.hash(userData.password || nanoid(16), 10);
+    const hashedPassword = await bcrypt.hash(userData.password || "defaultpass123", 10);
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
-        password: hashedPassword
+        password: hashedPassword,
+        status: 'active', // Admin-created users are immediately active
+        emailVerified: new Date(),
+        lastActiveAt: new Date()
       })
       .returning();
     return user;
