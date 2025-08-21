@@ -80,7 +80,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     console.log('Database URL exists:', !!process.env.DATABASE_URL);
     
     try {
+      console.log('Attempting login for:', email);
       const user = await storage.getUserByEmailAndPassword(email, password);
+      console.log('User found:', !!user);
       if (user) {
         // Update last active timestamp
         await storage.updateUser(user.id, { lastActiveAt: new Date() });
