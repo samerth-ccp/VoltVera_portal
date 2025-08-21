@@ -70,14 +70,21 @@ export default function MyTeam() {
       const response = await apiRequest('POST', '/api/team/recruit', data);
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/team/stats"] });
       setIsRecruitOpen(false);
       form.reset();
+      
+      // Dynamic message based on workflow
+      const isUserAdmin = user?.role === 'admin';
+      const description = isUserAdmin 
+        ? "Position decision needed first, then final admin approval and credentials will be sent"
+        : "Your upline will review the position placement, then admin will finalize and send credentials";
+      
       toast({
-        title: "Recruit submitted",
-        description: "Admin will process and send credentials to your recruit",
+        title: "Recruit submitted successfully",
+        description,
       });
     },
     onError: (error: any) => {
@@ -102,6 +109,8 @@ export default function MyTeam() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500';
+      case 'awaiting_upline': return 'bg-blue-500';
+      case 'awaiting_admin': return 'bg-orange-500';
       case 'pending': return 'bg-yellow-500';
       case 'inactive': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -111,6 +120,8 @@ export default function MyTeam() {
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'active': return 'Active';
+      case 'awaiting_upline': return 'Awaiting Upline Decision';
+      case 'awaiting_admin': return 'Awaiting Admin Approval'; 
       case 'pending': return 'Pending Admin';
       case 'inactive': return 'Inactive';
       default: return 'Unknown';
