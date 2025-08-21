@@ -102,8 +102,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: CreateUser): Promise<User> {
-    // Hash password before storing
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    // Hash password before storing (use nanoid if not provided)
+    const hashedPassword = await bcrypt.hash(userData.password || nanoid(16), 10);
     const [user] = await db
       .insert(users)
       .values({

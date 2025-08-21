@@ -127,11 +127,13 @@ export const createUserInvitationSchema = createInsertSchema(users).pick({
 // Schema for creating users with password (admin function)
 export const createUserSchema = createInsertSchema(users).pick({
   email: true,
-  password: true,
   firstName: true,
   lastName: true,
   role: true,
   sponsorId: true,
+}).extend({
+  // Password is optional for admin-created users (auto-generated)
+  password: z.string().optional(),
 });
 
 // Keep only the first recruitUserSchema definition above

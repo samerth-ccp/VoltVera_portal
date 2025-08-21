@@ -191,7 +191,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/users", isAuthenticated, isAdmin, async (req, res) => {
     try {
-      const userData = createUserSchema.parse(req.body);
+      // Remove password from validation schema for admin creation
+      const adminUserSchema = createUserSchema.omit({ password: true });
+      const userData = adminUserSchema.parse(req.body);
       
       // Check if email already exists
       if (userData.email) {
