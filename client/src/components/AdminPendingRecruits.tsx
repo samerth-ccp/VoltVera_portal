@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { UserCheck, CheckCircle, XCircle, DollarSign } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
+import { RejectRecruitDialog } from "./RejectRecruitDialog";
 
 interface PendingRecruit {
   id: string;
@@ -34,6 +35,7 @@ export function AdminPendingRecruits() {
   const [packageAmount, setPackageAmount] = useState("0.00");
   const [position, setPosition] = useState("Left");
   const [isApproveOpen, setIsApproveOpen] = useState(false);
+  const [rejectDialogRecruit, setRejectDialogRecruit] = useState<PendingRecruit | null>(null);
 
   // Fetch pending recruits
   const { data: pendingRecruits = [], isLoading } = useQuery<PendingRecruit[]>({
@@ -70,27 +72,7 @@ export function AdminPendingRecruits() {
     },
   });
 
-  // Reject recruit mutation
-  const rejectMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const response = await apiRequest('DELETE', `/api/admin/pending-recruits/${id}`);
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/pending-recruits"] });
-      toast({
-        title: "Recruit rejected",
-        description: "Recruitment request has been rejected",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reject recruit",
-        variant: "destructive",
-      });
-    },
-  });
+  // Note: Reject functionality is now handled by RejectRecruitDialog
 
   const handleApprove = (recruit: PendingRecruit) => {
     setSelectedRecruit(recruit);
@@ -109,10 +91,8 @@ export function AdminPendingRecruits() {
     });
   };
 
-  const handleReject = (id: string) => {
-    if (confirm("Are you sure you want to reject this recruitment request?")) {
-      rejectMutation.mutate(id);
-    }
+  const handleReject = (recruit: PendingRecruit) => {
+    setRejectDialogRecruit(recruit);
   };
 
   if (isLoading) {
@@ -187,8 +167,7 @@ export function AdminPendingRecruits() {
                   <Button
                     size="sm"
                     variant="destructive"
-                    onClick={() => handleReject(recruit.id)}
-                    disabled={rejectMutation.isPending}
+                    onClick={() => handleReject(recruit)}
                   >
                     <XCircle className="h-4 w-4 mr-1" />
                     Reject
@@ -263,6 +242,14 @@ export function AdminPendingRecruits() {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Reject Dialog */}
+        <RejectRecruitDialog
+          isOpen={rejectDialogRecruit !== null}
+          onClose={() => setRejectDialogRecruit(null)}
+          recruitId={rejectDialogRecruit?.id || ""}
+          recruitName={rejectDialogRecruit?.fullName || ""}
+        />
       </CardContent>
     </Card>
   );

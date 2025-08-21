@@ -7,6 +7,7 @@ import {
   timestamp,
   varchar,
   pgEnum,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -84,6 +85,21 @@ export const pendingRecruits = pgTable("pending_recruits", {
   status: varchar("status").default('awaiting_upline'), // 'awaiting_upline', 'awaiting_admin', 'approved', 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  rejectionReason: varchar("rejection_reason"), // Why it was rejected
+  rejectedBy: varchar("rejected_by"), // User ID who rejected it
+  rejectedAt: timestamp("rejected_at"), // When it was rejected
+});
+
+// Notifications table for tracking system events
+export const notifications = pgTable("notifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(), // Who receives the notification
+  type: varchar("type").notNull(), // 'recruit_rejected', 'recruit_approved', 'position_decided', etc.
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  data: jsonb("data"), // Additional data (recruit info, etc.)
+  read: boolean("read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Schema for upserting users (used by Replit Auth)
@@ -171,6 +187,20 @@ export const createTokenSchema = createInsertSchema(emailTokens).pick({
 export const passwordResetSchema = z.object({
   token: z.string().min(1, "Token is required"),
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
+});
+
+// Schema for rejecting recruits with reason
+export const rejectRecruitSchema = z.object({
+  reason: z.string().min(1, "Rejection reason is required"),
+});
+
+// Schema for notifications
+export const createNotificationSchema = createInsertSchema(notifications).pick({
+  userId: true,
+  type: true,
+  title: true,
+  message: true,
+  data: true,
 });
 
 // Schema for updating users

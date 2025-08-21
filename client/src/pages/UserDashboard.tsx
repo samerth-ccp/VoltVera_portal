@@ -7,6 +7,7 @@ import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Sett
 import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import MyTeam from "./MyTeam";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
   const first = firstName?.[0] || '';
@@ -69,9 +70,7 @@ export default function UserDashboard() {
             </div>
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
-            <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10 hidden sm:block">
-              <Bell className="h-4 w-4" />
-            </Button>
+            <NotificationCenter />
             <Link href="/change-password">
               <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
                 <Lock className="h-4 w-4" />

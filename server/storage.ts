@@ -13,7 +13,7 @@ import {
   type PendingRecruit,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or, desc, and } from "drizzle-orm";
+import { eq, ilike, or, desc, and, sql } from "drizzle-orm";
 import bcrypt from "bcrypt";
 import { nanoid } from "nanoid";
 
@@ -66,7 +66,7 @@ export interface IStorage {
   createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit>;
   getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]>;
   approvePendingRecruit(id: string, adminData: { packageAmount: string; position: string }): Promise<User>;
-  rejectPendingRecruit(id: string): Promise<boolean>;
+  rejectPendingRecruit(id: string, rejectedBy: string, reason: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -591,9 +591,110 @@ export class DatabaseStorage implements IStorage {
     return newUser;
   }
 
-  async rejectPendingRecruit(id: string): Promise<boolean> {
-    const result = await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
+  async rejectPendingRecruit(id: string, rejectedBy: string, reason: string): Promise<boolean> {
+    // Get the pending recruit data for notifications
+    const [recruit] = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, id));
+    
+    if (!recruit) {
+      return false;
+    }
+
+    // Create notifications for all involved parties
+    await this.createRejectNotifications(recruit, rejectedBy, reason);
+    
+    // Update the recruit status to rejected instead of deleting
+    const result = await db.update(pendingRecruits)
+      .set({
+        status: 'rejected',
+        uplineDecision: 'rejected',
+        rejectionReason: reason,
+        rejectedBy: rejectedBy,
+        rejectedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(pendingRecruits.id, id));
+    
     return result.rowCount > 0;
+  }
+
+  // Create notifications for recruit rejection
+  private async createRejectNotifications(recruit: any, rejectedBy: string, reason: string) {
+    const { notifications } = await import('@shared/schema');
+    
+    // Get rejector info
+    const rejector = await this.getUser(rejectedBy);
+    const rejectorName = rejector ? `${rejector.firstName} ${rejector.lastName}`.trim() : 'Admin';
+    
+    // Notification for recruiter
+    await db.insert(notifications).values({
+      userId: recruit.recruiterId,
+      type: 'recruit_rejected',
+      title: 'Recruit Rejected',
+      message: `Your recruit "${recruit.fullName}" has been rejected by ${rejectorName}. Reason: ${reason}`,
+      data: {
+        recruitId: recruit.id,
+        recruitName: recruit.fullName,
+        recruitEmail: recruit.email,
+        rejectedBy: rejectedBy,
+        reason: reason
+      }
+    });
+
+    // If upline is different from recruiter, notify upline too
+    if (recruit.uplineId && recruit.uplineId !== recruit.recruiterId) {
+      await db.insert(notifications).values({
+        userId: recruit.uplineId,
+        type: 'recruit_rejected',
+        title: 'Position Decision Rejected',
+        message: `Recruit "${recruit.fullName}" that required your position decision has been rejected by ${rejectorName}. Reason: ${reason}`,
+        data: {
+          recruitId: recruit.id,
+          recruitName: recruit.fullName,
+          recruitEmail: recruit.email,
+          rejectedBy: rejectedBy,
+          reason: reason
+        }
+      });
+    }
+  }
+
+  // Notifications operations
+  async getNotifications(userId: string): Promise<any[]> {
+    const { notifications } = await import('@shared/schema');
+    return await db.select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt));
+  }
+
+  async markNotificationAsRead(notificationId: string, userId: string): Promise<boolean> {
+    const { notifications } = await import('@shared/schema');
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(and(
+        eq(notifications.id, notificationId),
+        eq(notifications.userId, userId)
+      ));
+    return result.rowCount > 0;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<boolean> {
+    const { notifications } = await import('@shared/schema');
+    const result = await db.update(notifications)
+      .set({ read: true })
+      .where(eq(notifications.userId, userId));
+    return result.rowCount > 0;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const { notifications } = await import('@shared/schema');
+    const [result] = await db.select({ count: sql`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.read, false)
+      ));
+    return parseInt(result.count as string) || 0;
   }
 
   // Binary MLM Tree operations

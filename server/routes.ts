@@ -680,13 +680,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/admin/pending-recruits/:id", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const success = await storage.rejectPendingRecruit(id);
+      const { reason = "No reason provided" } = req.body;
+      const rejectedBy = req.user.id;
+      
+      const success = await storage.rejectPendingRecruit(id, rejectedBy, reason);
       
       if (!success) {
         return res.status(404).json({ message: "Pending recruit not found" });
       }
 
-      res.json({ message: "Recruit rejected successfully" });
+      res.json({ message: "Recruit rejected successfully with notifications sent" });
     } catch (error) {
       console.error("Error rejecting recruit:", error);
       res.status(500).json({ message: "Failed to reject recruit" });
@@ -742,6 +745,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting user pending recruits:", error);
       res.status(500).json({ message: "Failed to get pending recruits" });
+    }
+  });
+
+  // Notification endpoints
+  app.get("/api/notifications", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const notifications = await storage.getNotifications(userId);
+      res.json(notifications);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      res.status(500).json({ message: "Failed to fetch notifications" });
+    }
+  });
+
+  app.get("/api/notifications/unread-count", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const count = await storage.getUnreadNotificationCount(userId);
+      res.json({ count });
+    } catch (error) {
+      console.error("Error fetching unread notification count:", error);
+      res.status(500).json({ message: "Failed to fetch unread count" });
+    }
+  });
+
+  app.post("/api/notifications/:id/read", isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const userId = req.user.id;
+      const success = await storage.markNotificationAsRead(id, userId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      res.json({ message: "Notification marked as read" });
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+      res.status(500).json({ message: "Failed to mark notification as read" });
+    }
+  });
+
+  app.post("/api/notifications/read-all", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      await storage.markAllNotificationsAsRead(userId);
+      res.json({ message: "All notifications marked as read" });
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+      res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
   });
 

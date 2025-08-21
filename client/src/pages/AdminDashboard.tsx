@@ -16,6 +16,7 @@ import { User, CreateUser } from "@shared/schema";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
+import { NotificationCenter } from "@/components/NotificationCenter";
 
 interface UserStats {
   totalUsers: number;
@@ -263,6 +264,7 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex items-center space-x-4">
+              <NotificationCenter />
               <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
                 <DialogTrigger asChild>
                   <Button className="volt-gradient text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
