@@ -320,15 +320,29 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Recruiter not found');
     }
 
-    // Find the appropriate upline with available positions
-    let uplineId = recruiterId; // Start with the recruiter themselves
+    // EDGE CASE: Admin-created users have no parent_id
+    // They become their own upline for position decisions
+    let uplineId = recruiterId; // Default: recruiter is upline
     
     // Check if recruiter has available positions
     const recruiterAvailability = await this.getAvailablePositions(recruiterId);
     if (!recruiterAvailability.left && !recruiterAvailability.right) {
-      // If recruiter is full, use their parent as upline
-      uplineId = recruiter.parentId || recruiterId;
+      // If recruiter is full, spillover logic
+      if (recruiter.parentId) {
+        // Normal case: use parent as upline for spillover
+        uplineId = recruiter.parentId;
+      } else {
+        // EDGE CASE: No parent (admin-created user) 
+        // Keep recruiter as upline, they'll handle spillover placement
+        uplineId = recruiterId;
+      }
     }
+
+    console.log('=== RECRUIT CREATION ===');
+    console.log('Recruiter:', recruiter.email);
+    console.log('Recruiter parent:', recruiter.parentId);
+    console.log('Upline chosen:', uplineId);
+    console.log('Recruiter positions available:', recruiterAvailability);
 
     // Always require upline decision - no auto-assignment
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
