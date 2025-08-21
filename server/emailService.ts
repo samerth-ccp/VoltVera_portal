@@ -5,7 +5,7 @@ if (!process.env.SENDGRID_API_KEY) {
 }
 
 const mailService = new MailService();
-mailService.setApiKey(process.env.SENDGRID_API_KEY);
+mailService.setApiKey(process.env.SENDGRID_API_KEY!);
 
 interface EmailParams {
   to: string;
@@ -185,5 +185,67 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
       </div>
     `,
     text: `Reset your Voltverashop password by visiting: ${resetUrl}`
+  });
+}
+
+export async function sendLoginCredentialsEmail(email: string, firstName: string, password: string): Promise<boolean> {
+  // Use actual production domain
+  const baseUrl = 'https://voltveratech.com';
+  const loginUrl = `${baseUrl}/login`;
+  
+  return sendEmail({
+    to: email,
+    from: 'noreply@voltveratech.com', // Using verified domain
+    subject: 'Welcome to Voltverashop - Your Account is Ready',
+    html: `
+      <div style="font-family: 'Segoe UI', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%); padding: 30px; border-radius: 12px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome to Voltverashop</h1>
+        </div>
+        
+        <div style="background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+          <h2 style="color: #1f2937; margin-top: 0;">Hi ${firstName},</h2>
+          <p style="color: #6b7280; line-height: 1.6;">
+            Great news! Your account has been approved and is now ready. You can now access your Voltverashop dashboard using the credentials below.
+          </p>
+          
+          <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+            <h3 style="color: #1f2937; margin-top: 0;">Your Login Credentials</h3>
+            <p style="margin: 10px 0;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 10px 0;"><strong>Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${password}</code></p>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${loginUrl}" style="
+              background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+              color: white;
+              padding: 12px 30px;
+              text-decoration: none;
+              border-radius: 6px;
+              font-weight: 600;
+              display: inline-block;
+            ">Login to Your Account</a>
+          </div>
+          
+          <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; margin: 20px 0;">
+            <h4 style="color: #92400e; margin-top: 0; font-size: 14px;">🔒 Security Recommendation</h4>
+            <p style="color: #92400e; font-size: 14px; margin: 0;">
+              For your security, we recommend changing your password after your first login. Go to Account Settings → Change Password.
+            </p>
+          </div>
+          
+          <p style="color: #9ca3af; font-size: 14px;">
+            If the button doesn't work, copy and paste this link into your browser:<br>
+            <a href="${loginUrl}" style="color: #16a34a;">${loginUrl}</a>
+          </p>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px; color: #9ca3af; font-size: 12px;">
+          <p>© 2025 Voltverashop. All rights reserved.</p>
+          <p>This email contains sensitive information. Please keep it secure.</p>
+        </div>
+      </div>
+    `,
+    text: `Hi ${firstName}, Welcome to Voltverashop! Your account is ready. Login details: Email: ${email}, Password: ${password}. Login at: ${loginUrl}`
   });
 }

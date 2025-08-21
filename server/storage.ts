@@ -511,6 +511,7 @@ export class DatabaseStorage implements IStorage {
     const firstName = names[0];
     const lastName = names.slice(1).join(' ') || '';
 
+    const defaultPassword = 'defaultpass123';
     const [newUser] = await db.insert(users).values({
       email: pendingRecruit.email,
       firstName,
@@ -524,7 +525,7 @@ export class DatabaseStorage implements IStorage {
       idStatus: 'Active',
       role: 'user',
       status: 'active',
-      password: await bcrypt.hash('defaultpass123', 10), // Generate default password
+      password: await bcrypt.hash(defaultPassword, 10), // Generate default password
     }).returning();
 
     // Place user in binary tree at the position decided by upline
@@ -532,6 +533,20 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Upline ID is required for position placement');
     }
     await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, pendingRecruit.position as 'left' | 'right', pendingRecruit.recruiterId);
+
+    // Send login credentials email
+    try {
+      const { sendLoginCredentialsEmail } = await import('./emailService');
+      const emailSent = await sendLoginCredentialsEmail(newUser.email!, firstName, defaultPassword);
+      if (emailSent) {
+        console.log(`Login credentials email sent to ${newUser.email}`);
+      } else {
+        console.log(`Failed to send email to ${newUser.email} - User can still login with default password: ${defaultPassword}`);
+      }
+    } catch (emailError) {
+      console.error('Error sending login credentials email:', emailError);
+      // Continue with user creation even if email fails
+    }
 
     // Remove from pending recruits
     await db.delete(pendingRecruits).where(eq(pendingRecruits.id, id));
