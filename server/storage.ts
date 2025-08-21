@@ -494,18 +494,29 @@ export class DatabaseStorage implements IStorage {
   }
 
   async approvePendingRecruit(id: string, adminData: { packageAmount: string }): Promise<User> {
+    console.log('=== APPROVING PENDING RECRUIT ===');
+    console.log('Recruit ID:', id);
+    console.log('Package Amount:', adminData.packageAmount);
+    
     // Get the pending recruit
     const [pendingRecruit] = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, id));
+    console.log('Found pending recruit:', !!pendingRecruit);
+    console.log('Recruit status:', pendingRecruit?.status);
+    console.log('Upline decision:', pendingRecruit?.uplineDecision);
+    console.log('Position:', pendingRecruit?.position);
+    
     if (!pendingRecruit) {
       throw new Error('Pending recruit not found');
     }
 
     // Check if upline has approved the position
     if (pendingRecruit.status !== 'awaiting_admin' || pendingRecruit.uplineDecision !== 'approved') {
+      console.log('ERROR: Recruit not ready for admin approval');
       throw new Error('Recruit must be approved by upline first');
     }
 
     if (!pendingRecruit.position) {
+      console.log('ERROR: No position set by upline');
       throw new Error('Position must be set by upline before admin approval');
     }
 
