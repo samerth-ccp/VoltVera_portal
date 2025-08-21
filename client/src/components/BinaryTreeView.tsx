@@ -106,7 +106,7 @@ const BinaryTreeLevel = ({
 export default function BinaryTreeView() {
   const { user } = useAuth();
 
-  const { data: treeData, isLoading } = useQuery({
+  const { data: treeData, isLoading } = useQuery<BinaryTreeNode>({
     queryKey: ["/api/binary-tree"],
     enabled: !!user?.id,
   });
@@ -183,12 +183,59 @@ export default function BinaryTreeView() {
             </div>
           </div>
 
-          {/* Level 1 - Direct Recruits */}
+          {/* Level 1 - Binary Tree Children */}
           <BinaryTreeLevel 
-            leftNode={directRecruits.find((r: any) => r.position === 'left') || null}
-            rightNode={directRecruits.find((r: any) => r.position === 'right') || null}
+            leftNode={treeData?.leftChild || null}
+            rightNode={treeData?.rightChild || null}
             onNodeClick={handleNodeClick}
           />
+
+          {/* Level 2 - Show grandchildren */}
+          {(treeData?.leftChild?.leftChild || treeData?.leftChild?.rightChild || treeData?.rightChild?.leftChild || treeData?.rightChild?.rightChild) && (
+            <>
+              {/* Connection Lines for Level 2 */}
+              <div className="flex justify-center space-x-8 md:space-x-16">
+                {/* Left side connections */}
+                <div className="relative w-32 h-8">
+                  {treeData?.leftChild && (treeData.leftChild.leftChild || treeData.leftChild.rightChild) && (
+                    <>
+                      <div className="absolute top-0 left-1/2 w-px h-4 bg-gray-300 dark:bg-gray-600 transform -translate-x-1/2"></div>
+                      <div className="absolute top-4 left-4 right-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+                      <div className="absolute top-4 left-4 w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                      <div className="absolute top-4 right-4 w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                    </>
+                  )}
+                </div>
+                {/* Right side connections */}
+                <div className="relative w-32 h-8">
+                  {treeData?.rightChild && (treeData.rightChild.leftChild || treeData.rightChild.rightChild) && (
+                    <>
+                      <div className="absolute top-0 left-1/2 w-px h-4 bg-gray-300 dark:bg-gray-600 transform -translate-x-1/2"></div>
+                      <div className="absolute top-4 left-4 right-4 h-px bg-gray-300 dark:bg-gray-600"></div>
+                      <div className="absolute top-4 left-4 w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                      <div className="absolute top-4 right-4 w-px h-4 bg-gray-300 dark:bg-gray-600"></div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Level 2 nodes */}
+              <div className="flex justify-center space-x-8 md:space-x-16">
+                {/* Left side level 2 */}
+                <BinaryTreeLevel 
+                  leftNode={treeData?.leftChild?.leftChild || null}
+                  rightNode={treeData?.leftChild?.rightChild || null}
+                  onNodeClick={handleNodeClick}
+                />
+                {/* Right side level 2 */}
+                <BinaryTreeLevel 
+                  leftNode={treeData?.rightChild?.leftChild || null}
+                  rightNode={treeData?.rightChild?.rightChild || null}
+                  onNodeClick={handleNodeClick}
+                />
+              </div>
+            </>
+          )}
 
           {/* Tree Statistics */}
           <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -206,9 +253,9 @@ export default function BinaryTreeView() {
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
                 <p className="text-2xl font-bold">
-                  {directRecruits.filter((r: any) => r.position === 'left').length}
+                  {treeData?.leftChild ? 1 : 0}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Left Leg</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Left Position</p>
               </CardContent>
             </Card>
             
@@ -218,9 +265,9 @@ export default function BinaryTreeView() {
                   <div className="w-2 h-2 bg-white rounded-full"></div>
                 </div>
                 <p className="text-2xl font-bold">
-                  {directRecruits.filter((r: any) => r.position === 'right').length}
+                  {treeData?.rightChild ? 1 : 0}
                 </p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Right Leg</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Right Position</p>
               </CardContent>
             </Card>
           </div>

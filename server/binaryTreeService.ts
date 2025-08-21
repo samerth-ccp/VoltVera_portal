@@ -185,9 +185,9 @@ export class BinaryTreeService {
   }
 
   /**
-   * Get the binary tree structure starting from a user
+   * Get the binary tree structure starting from a user (with recursive children)
    */
-  async getBinaryTree(userId: string, depth: number = 3): Promise<BinaryTreeUser | null> {
+  async getBinaryTree(userId: string, depth: number = 5): Promise<BinaryTreeUser | null> {
     if (depth <= 0) return null;
     
     const userResult = await db.select().from(users).where(eq(users.id, userId)).limit(1);
@@ -196,7 +196,7 @@ export class BinaryTreeService {
     
     const user = userResult[0];
     
-    const treeUser: BinaryTreeUser = {
+    const treeUser: BinaryTreeUser & { leftChild?: BinaryTreeUser | null; rightChild?: BinaryTreeUser | null } = {
       id: user.id,
       firstName: user.firstName,
       lastName: user.lastName,
@@ -212,6 +212,15 @@ export class BinaryTreeService {
       activationDate: user.activationDate,
       idStatus: user.idStatus,
     };
+
+    // Recursively build left and right subtrees
+    if (user.leftChildId && depth > 1) {
+      treeUser.leftChild = await this.getBinaryTree(user.leftChildId, depth - 1);
+    }
+    
+    if (user.rightChildId && depth > 1) {
+      treeUser.rightChild = await this.getBinaryTree(user.rightChildId, depth - 1);
+    }
 
     return treeUser;
   }

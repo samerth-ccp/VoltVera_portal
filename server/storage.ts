@@ -600,7 +600,11 @@ export class DatabaseStorage implements IStorage {
   async getBinaryTreeData(userId: string): Promise<any> {
     // Import and use binary tree service
     const { binaryTreeService } = await import('./binaryTreeService');
-    return await binaryTreeService.getBinaryTree(userId, 3);
+    const treeData = await binaryTreeService.getBinaryTree(userId, 5);
+    console.log('=== BINARY TREE DATA ===');
+    console.log('Root user:', userId);
+    console.log('Tree structure:', JSON.stringify(treeData, null, 2));
+    return treeData;
   }
 
   async getDirectRecruits(userId: string): Promise<User[]> {
