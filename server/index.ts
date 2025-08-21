@@ -37,9 +37,16 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  console.log('Starting server initialization...');
+  console.log('Environment:', process.env.NODE_ENV);
+  console.log('Database URL configured:', !!process.env.DATABASE_URL);
+  console.log('SendGrid configured:', !!process.env.SENDGRID_API_KEY);
+  
+  try {
+    const server = await registerRoutes(app);
+    console.log('Routes registered successfully');
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
@@ -60,6 +67,16 @@ app.use((req, res, next) => {
   // Other ports are firewalled. Default to 5000 if not specified.
   // this serves both the API and the client.
   // It is the only port that is not firewalled.
+  // Health check endpoint for deployment
+  app.get('/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV,
+      port: parseInt(process.env.PORT || '5000', 10)
+    });
+  });
+
   const port = parseInt(process.env.PORT || '5000', 10);
   
   server.listen({
@@ -83,4 +100,11 @@ app.use((req, res, next) => {
       process.exit(0);
     });
   });
-})();
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+})().catch(error => {
+  console.error('Unhandled startup error:', error);
+  process.exit(1);
+});

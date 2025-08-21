@@ -666,13 +666,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error approving recruit:", error);
-      console.error("Error details:", error.message);
+      console.error("Error details:", error instanceof Error ? error.message : error);
       
       // Send specific error message to frontend
-      const errorMessage = error.message || "Failed to approve recruit";
+      const errorMessage = error instanceof Error ? error.message : "Failed to approve recruit";
       res.status(500).json({ 
         message: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
       });
     }
   });
