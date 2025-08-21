@@ -78,8 +78,14 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
-    if (user && await bcrypt.compare(password, user.password)) {
-      return user;
+    console.log('Database lookup for email:', email, 'found user:', !!user);
+    if (user) {
+      console.log('User password hash:', user.password);
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      console.log('Password match result:', passwordMatch);
+      if (passwordMatch) {
+        return user;
+      }
     }
     return undefined;
   }
