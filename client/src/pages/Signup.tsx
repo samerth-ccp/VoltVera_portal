@@ -24,6 +24,7 @@ const signupSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
+  sponsorCode: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -35,6 +36,12 @@ export default function Signup() {
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [sponsorInfo, setSponsorInfo] = useState<{ name: string; email: string } | null>(null);
+
+  // Extract sponsor code from URL
+  const [location] = useLocation();
+  const urlParams = new URLSearchParams(location.split('?')[1] || '');
+  const sponsorCodeFromUrl = urlParams.get('sponsor') || urlParams.get('ref');
 
   const form = useForm<SignupForm>({
     resolver: zodResolver(signupSchema),
@@ -43,15 +50,37 @@ export default function Signup() {
       email: "",
       password: "",
       confirmPassword: "",
+      sponsorCode: sponsorCodeFromUrl || "",
+    },
+  });
+
+  // Verify sponsor code
+  const verifySponsorMutation = useMutation({
+    mutationFn: async (sponsorCode: string) => {
+      const response = await fetch(`/api/auth/verify-sponsor/${sponsorCode}`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      setSponsorInfo(data.sponsor);
+      setError("");
+    },
+    onError: () => {
+      setSponsorInfo(null);
+      setError("Invalid sponsor code");
     },
   });
 
   const signupMutation = useMutation({
     mutationFn: async (data: Omit<SignupForm, 'confirmPassword'>) => {
-      return await apiRequest("/api/auth/signup", {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
+      return await apiRequest("/api/auth/signup", "POST", data);
     },
     onSuccess: (data: any) => {
       setMessage(data.message);
@@ -59,7 +88,18 @@ export default function Signup() {
       form.reset();
     },
     onError: (error: any) => {
-      setError(error.message || "Signup failed");
+      let errorMessage = error.message || "Signup failed";
+      
+      // Handle specific error cases
+      if (error.status === 409) {
+        errorMessage = "An account with this email already exists. Please use a different email or try logging in.";
+      } else if (error.status === 429) {
+        errorMessage = "Too many signup attempts. Please try again in a few minutes.";
+      } else if (error.message?.includes('email service')) {
+        errorMessage = "Account created but email verification couldn't be sent. Please contact support.";
+      }
+      
+      setError(errorMessage);
       setMessage("");
     },
   });
@@ -83,6 +123,16 @@ export default function Signup() {
             <CardDescription className="text-gray-600 dark:text-gray-300">
               Join Voltverashop today
             </CardDescription>
+            {sponsorInfo && (
+              <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                  Referred by: {sponsorInfo.name}
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400">
+                  {sponsorInfo.email}
+                </p>
+              </div>
+            )}
           </div>
         </CardHeader>
         
@@ -174,6 +224,38 @@ export default function Signup() {
                         {...field}
                         className="border-gray-300 focus:border-green-500 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
                       />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="sponsorCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-gray-700 dark:text-gray-200">
+                      Sponsor Code <span className="text-sm text-gray-500">(Optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <div className="flex space-x-2">
+                        <Input 
+                          placeholder="Enter referral code"
+                          {...field}
+                          className="border-gray-300 focus:border-green-500 focus:ring-green-500 dark:border-gray-600 dark:bg-gray-700"
+                          onBlur={() => {
+                            if (field.value && field.value.length > 0) {
+                              verifySponsorMutation.mutate(field.value);
+                            }
+                          }}
+                        />
+                        {field.value && verifySponsorMutation.isPending && (
+                          <div className="flex items-center px-3">
+                            <div className="w-4 h-4 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

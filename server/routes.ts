@@ -407,7 +407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
       
-      // Create pending user
+      // Create pending user with sponsor if provided
       const user = await storage.createSignupUser(userData);
       
       // Generate verification token
@@ -447,6 +447,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Sponsor verification route
+  app.get("/api/auth/verify-sponsor/:code", async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+      if (!code) {
+        return res.status(400).json({ message: "Sponsor code is required" });
+      }
+      
+      // Check if sponsor exists by user ID or email
+      let sponsor = await storage.getUser(code);
+      if (!sponsor) {
+        sponsor = await storage.getUserByEmail(code);
+      }
+      
+      if (!sponsor) {
+        return res.status(404).json({ message: "Invalid sponsor code" });
+      }
+      
+      if (sponsor.status !== 'active') {
+        return res.status(400).json({ message: "Sponsor account is not active" });
+      }
+      
+      res.json({ 
+        sponsor: {
+          name: `${sponsor.firstName} ${sponsor.lastName}`,
+          email: sponsor.email,
+          id: sponsor.id
+        }
+      });
+    } catch (error) {
+      console.error("Error verifying sponsor:", error);
+      res.status(500).json({ message: "Failed to verify sponsor" });
+    }
+  });
+
   // Email verification route
   app.post("/api/auth/verify-email", async (req, res) => {
     try {
@@ -474,6 +510,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error verifying email:", error);
       res.status(500).json({ message: "Failed to verify email" });
+    }
+  });
+
+  // Get user KYC documents
+  app.get("/api/kyc", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const documents = await storage.getUserKYCDocuments(req.session.userId!);
+      res.json(documents);
+    } catch (error) {
+      console.error("Error fetching KYC documents:", error);
+      res.status(500).json({ message: "Failed to fetch KYC documents" });
+    }
+  });
+
+  // Submit KYC document
+  app.post("/api/kyc", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { documentType, documentUrl, documentNumber } = req.body;
+      
+      if (!documentType || !documentUrl) {
+        return res.status(400).json({ message: "Document type and URL are required" });
+      }
+      
+      // Check if user already has a pending or approved document of this type
+      const existingDocs = await storage.getUserKYCDocuments(req.session.userId!);
+      const existingDoc = existingDocs.find(doc => 
+        doc.documentType === documentType && (doc.status === 'pending' || doc.status === 'approved')
+      );
+      
+      if (existingDoc) {
+        return res.status(400).json({ 
+          message: "You already have a document of this type submitted or approved" 
+        });
+      }
+      
+      const kycData = {
+        documentType,
+        documentUrl,
+        documentNumber: documentNumber || undefined,
+      };
+      
+      const document = await storage.createKYCDocument(req.session.userId!, kycData);
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error submitting KYC document:", error);
+      res.status(500).json({ message: "Failed to submit KYC document" });
     }
   });
 

@@ -12,6 +12,7 @@ import ChangePassword from "@/pages/ChangePassword";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Signup from "@/pages/Signup";
 import VerifyEmail from "@/pages/VerifyEmail";
+import KYCUpload from "@/pages/KYCUpload";
 import ResetPassword from "@/pages/ResetPassword";
 import CompleteInvitation from "@/pages/CompleteInvitation";
 import MyTeam from "@/pages/MyTeam";
@@ -38,6 +39,7 @@ function Router() {
           {/* Protected routes for authenticated users */}
           <Route path="/change-password" component={ChangePassword} />
           <Route path="/dashboard" component={UserDashboard} />
+          <Route path="/kyc-upload" component={KYCUpload} />
           <Route path="/my-team" component={MyTeam} />
           <Route path="/products" component={ProductCatalog} />
           <Route path="/my-purchases" component={MyPurchases} />
