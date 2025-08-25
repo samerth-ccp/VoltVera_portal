@@ -218,9 +218,12 @@ export const transactions = pgTable("transactions", {
 export const withdrawalRequests = pgTable("withdrawal_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
+  withdrawalType: varchar("withdrawal_type").notNull().default('bank'), // 'bank', 'usdt'
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
   status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected', 'processed'
-  bankDetails: jsonb("bank_details").notNull(),
+  bankDetails: jsonb("bank_details"), // Now optional for USDT withdrawals
+  usdtWalletAddress: varchar("usdt_wallet_address"), // For USDT withdrawals
+  networkType: varchar("network_type"), // 'TRC20', 'ERC20', 'BEP20' for USDT
   adminNotes: text("admin_notes"),
   processedBy: varchar("processed_by"),
   processedAt: timestamp("processed_at"),
@@ -464,17 +467,30 @@ export const createPurchaseSchema = createInsertSchema(purchases).pick({
 });
 
 // Schema for withdrawal requests
-export const createWithdrawalSchema = createInsertSchema(withdrawalRequests).pick({
-  amount: true,
-  bankDetails: true,
-}).extend({
+export const createWithdrawalSchema = z.object({
+  withdrawalType: z.enum(['bank', 'usdt'], { required_error: "Withdrawal type is required" }),
   amount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid amount is required"),
+  // Bank details (required for bank withdrawals)
   bankDetails: z.object({
     accountNumber: z.string().min(1, "Account number is required"),
     ifscCode: z.string().min(1, "IFSC code is required"),
     bankName: z.string().min(1, "Bank name is required"),
     accountHolderName: z.string().min(1, "Account holder name is required"),
-  }),
+  }).optional(),
+  // USDT details (required for USDT withdrawals)
+  usdtWalletAddress: z.string().optional(),
+  networkType: z.enum(['TRC20', 'ERC20', 'BEP20']).optional(),
+}).refine((data) => {
+  if (data.withdrawalType === 'bank') {
+    return data.bankDetails !== undefined;
+  }
+  if (data.withdrawalType === 'usdt') {
+    return data.usdtWalletAddress && data.networkType;
+  }
+  return false;
+}, {
+  message: "Please provide required details based on withdrawal type",
+  path: ["withdrawalType"]
 });
 
 // Schema for KYC document upload

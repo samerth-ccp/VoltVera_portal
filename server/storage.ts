@@ -1130,12 +1130,20 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Insufficient balance');
     }
 
-    const [withdrawal] = await db.insert(withdrawalRequests).values({
+    const withdrawalData: any = {
       userId,
       amount: data.amount,
-      bankDetails: data.bankDetails,
-    }).returning();
+      withdrawalType: data.withdrawalType,
+    };
 
+    if (data.withdrawalType === 'bank') {
+      withdrawalData.bankDetails = data.bankDetails;
+    } else if (data.withdrawalType === 'usdt') {
+      withdrawalData.usdtWalletAddress = data.usdtWalletAddress;
+      withdrawalData.networkType = data.networkType;
+    }
+
+    const [withdrawal] = await db.insert(withdrawalRequests).values(withdrawalData).returning();
     return withdrawal;
   }
 

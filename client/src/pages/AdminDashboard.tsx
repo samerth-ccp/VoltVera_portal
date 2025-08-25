@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter, ChevronDown, ChevronRight, Wallet, TrendingUp, Activity, Mail, RefreshCw } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter, ChevronDown, ChevronRight, Wallet, TrendingUp, Activity, Mail, RefreshCw, CheckCircle, XCircle } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -845,7 +845,204 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Enhanced Section Content */}
+          {/* Withdrawal Management Sections */}
+          {activeSection === 'pending-withdraw' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <DollarSign className="mr-2 h-5 w-5 text-volt-light" />
+                  Pending Withdrawal Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium text-gray-700">User</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Type</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Amount</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Details</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Date</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="p-3">
+                          <div>
+                            <p className="font-medium">John Doe</p>
+                            <p className="text-sm text-gray-500">john.doe@example.com</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            Bank Transfer
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium">₹5,000.00</td>
+                        <td className="p-3">
+                          <div className="text-sm">
+                            <p>HDFC Bank</p>
+                            <p className="text-gray-500">****1234</p>
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm text-gray-500">Aug 25, 2025</td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            <Button size="sm" className="volt-gradient text-white">Approve</Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="p-3">
+                          <div>
+                            <p className="font-medium">Jane Smith</p>
+                            <p className="text-sm text-gray-500">jane.smith@example.com</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            USDT (TRC20)
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium">$100.00</td>
+                        <td className="p-3">
+                          <div className="text-sm">
+                            <p className="font-mono">TBiQ7...4D2a</p>
+                            <p className="text-gray-500">TRC20 Network</p>
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm text-gray-500">Aug 25, 2025</td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            <Button size="sm" className="volt-gradient text-white">Approve</Button>
+                            <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50">Reject</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'approved-withdraw' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <CheckCircle className="mr-2 h-5 w-5 text-green-600" />
+                  Approved Withdrawal Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium text-gray-700">User</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Type</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Amount</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Details</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Status</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="p-3">
+                          <div>
+                            <p className="font-medium">Alice Johnson</p>
+                            <p className="text-sm text-gray-500">alice.j@example.com</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            USDT (BEP20)
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium">$250.00</td>
+                        <td className="p-3">
+                          <div className="text-sm">
+                            <p className="font-mono">0x7b2...9c4f</p>
+                            <p className="text-gray-500">BEP20 Network</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                            Processed
+                          </span>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline" className="text-blue-600">View Details</Button>
+                            <Button size="sm" variant="outline" className="text-gray-600">Transaction ID</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'rejected-withdraw' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <XCircle className="mr-2 h-5 w-5 text-red-600" />
+                  Rejected Withdrawal Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left p-3 font-medium text-gray-700">User</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Type</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Amount</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Reason</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Date</th>
+                        <th className="text-left p-3 font-medium text-gray-700">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b hover:bg-gray-50">
+                        <td className="p-3">
+                          <div>
+                            <p className="font-medium">Bob Wilson</p>
+                            <p className="text-sm text-gray-500">bob.w@example.com</p>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            Bank Transfer
+                          </span>
+                        </td>
+                        <td className="p-3 font-medium">₹10,000.00</td>
+                        <td className="p-3">
+                          <p className="text-sm text-red-600">Insufficient KYC documentation</p>
+                        </td>
+                        <td className="p-3 text-sm text-gray-500">Aug 24, 2025</td>
+                        <td className="p-3">
+                          <div className="flex space-x-2">
+                            <Button size="sm" variant="outline" className="text-blue-600">Reconsider</Button>
+                            <Button size="sm" variant="outline" className="text-gray-600">Contact User</Button>
+                          </div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Enhanced Section Content for other sections */}
           {(activeSection === 'paid-members' || 
             activeSection === 'today-joinings' || 
             activeSection === 'free-users' || 
@@ -858,9 +1055,6 @@ export default function AdminDashboard() {
             activeSection === 'pending-kyc' ||
             activeSection === 'approved-kyc' ||
             activeSection === 'rejected-kyc' ||
-            activeSection === 'pending-withdraw' ||
-            activeSection === 'approved-withdraw' ||
-            activeSection === 'rejected-withdraw' ||
             activeSection === 'send-fund' ||
             activeSection === 'fund-history' ||
             activeSection === 'manage-fund' ||
