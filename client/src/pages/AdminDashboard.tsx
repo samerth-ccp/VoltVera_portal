@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter, ChevronDown, ChevronRight, Wallet, TrendingUp, Activity, Mail, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -49,6 +49,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [kycFilter, setKycFilter] = useState('');
+  const [expandedMenus, setExpandedMenus] = useState<string[]>(['main']);
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -63,6 +64,14 @@ export default function AdminDashboard() {
       }, 1500);
     }
   }, [isAuthenticated, isLoading, user, toast]);
+
+  const toggleMenu = (menuId: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(menuId) 
+        ? prev.filter(id => id !== menuId)
+        : [...prev, menuId]
+    );
+  };
 
   // Fetch users with enhanced search
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
@@ -222,7 +231,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-slate-900">
       {/* Mobile menu overlay */}
       {isSidebarOpen && (
         <div 
@@ -231,327 +240,563 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 w-64 volt-gradient text-white z-30 transform transition-transform lg:translate-x-0 ${
+      {/* Modern Sidebar */}
+      <div className={`fixed inset-y-0 left-0 w-72 bg-slate-800 text-white z-30 transform transition-transform lg:translate-x-0 overflow-y-auto ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <div className="flex items-center justify-between h-20 border-b border-white/20 px-4">
+        <div className="flex items-center justify-between h-16 border-b border-slate-700 px-4">
           <div className="flex items-center">
             <VoltverashopLogo size="small" />
             <div className="ml-3">
               <div className="text-lg font-bold">Voltverashop</div>
-              <div className="text-xs opacity-75">Admin Portal</div>
+              <div className="text-xs text-slate-400">Admin Portal</div>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden text-white hover:bg-white/10"
+            className="lg:hidden text-white hover:bg-slate-700"
             onClick={() => setIsSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
           </Button>
         </div>
         
-        <nav className="mt-8">
-          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider">Management</div>
+        <nav className="p-4 space-y-2">
+          {/* Main Dashboard */}
           <button 
             onClick={() => setActiveSection('dashboard')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'dashboard' ? 'bg-white/10' : 'hover:bg-white/10'
+            className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${
+              activeSection === 'dashboard' ? 'bg-orange-600 text-white' : 'hover:bg-slate-700 text-slate-300'
             }`}
           >
             <BarChart3 className="mr-3 h-5 w-5" />
-            Dashboard
+            <span className="font-medium">Dashboard</span>
           </button>
-          <button 
-            onClick={() => setActiveSection('users')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'users' ? 'bg-white/10' : 'hover:bg-white/10'
-            }`}
-          >
-            <Users className="mr-3 h-5 w-5" />
-            User Management
-          </button>
-          <button 
-            onClick={() => setActiveSection('kyc')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'kyc' ? 'bg-white/10' : 'hover:bg-white/10'
-            }`}
-          >
-            <Shield className="mr-3 h-5 w-5" />
-            KYC Approvals
-          </button>
-          
-          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Financial</div>
-          <button 
-            onClick={() => setActiveSection('withdrawals')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'withdrawals' ? 'bg-white/10' : 'hover:bg-white/10'
-            }`}
-          >
-            <DollarSign className="mr-3 h-5 w-5" />
-            Withdrawal Requests
-          </button>
-          <button 
-            onClick={() => setActiveSection('reports')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'reports' ? 'bg-white/10' : 'hover:bg-white/10'
-            }`}
-          >
-            <FileText className="mr-3 h-5 w-5" />
-            Income Reports
-          </button>
-          
-          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Operations</div>
-          <button 
-            onClick={() => setActiveSection('franchise')}
-            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'franchise' ? 'bg-white/10' : 'hover:bg-white/10'
-            }`}
-          >
-            <Award className="mr-3 h-5 w-5" />
-            Franchise Requests
-          </button>
-          
-          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Account</div>
-          <Link href="/change-password">
-            <button className="flex items-center px-6 py-3 text-white/90 hover:bg-white/10 hover:text-white transition-colors w-full text-left">
-              <Lock className="mr-3 h-5 w-5" />
-              Change Password
+
+          {/* User Details Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('users')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+            >
+              <Users className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">User Details</span>
+              {expandedMenus.includes('users') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
             </button>
-          </Link>
-          <button 
-            onClick={() => {
-              fetch('/api/logout', { method: 'POST', credentials: 'include' })
-                .then(() => window.location.href = '/');
-            }}
-            className="flex items-center px-6 py-3 text-white/90 hover:bg-white/10 hover:text-white transition-colors w-full text-left"
-          >
-            <span className="mr-3">🚪</span>
-            Logout
-          </button>
+            {expandedMenus.includes('users') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('all-members')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'all-members' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  All Members
+                </button>
+                <button 
+                  onClick={() => setActiveSection('paid-members')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'paid-members' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Paid Members
+                </button>
+                <button 
+                  onClick={() => setActiveSection('today-joinings')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'today-joinings' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  View Today Joinings
+                </button>
+                <button 
+                  onClick={() => setActiveSection('free-users')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'free-users' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Free Users
+                </button>
+                <button 
+                  onClick={() => setActiveSection('user-activities')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'user-activities' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Users Activities
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Income Reports Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('income')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+            >
+              <TrendingUp className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">Income Reports</span>
+              {expandedMenus.includes('income') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </button>
+            {expandedMenus.includes('income') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('direct-income')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'direct-income' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Direct Income
+                </button>
+                <button 
+                  onClick={() => setActiveSection('roi-income')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'roi-income' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  ROI Income
+                </button>
+                <button 
+                  onClick={() => setActiveSection('salary-income')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'salary-income' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Salary Income
+                </button>
+                <button 
+                  onClick={() => setActiveSection('payout-summary')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'payout-summary' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Payout Summary
+                </button>
+                <button 
+                  onClick={() => setActiveSection('holiday-reward')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'holiday-reward' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Holiday Reward Summary
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* KYC Details Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('kyc')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+            >
+              <Shield className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">KYC Details</span>
+              {expandedMenus.includes('kyc') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </button>
+            {expandedMenus.includes('kyc') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('pending-kyc')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'pending-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Pending KYC Requests
+                </button>
+                <button 
+                  onClick={() => setActiveSection('approved-kyc')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'approved-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Approved KYC Requests
+                </button>
+                <button 
+                  onClick={() => setActiveSection('rejected-kyc')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'rejected-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Rejected KYC Requests
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Withdraw Management Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('withdraw')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+            >
+              <DollarSign className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">Withdraw Management</span>
+              {expandedMenus.includes('withdraw') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </button>
+            {expandedMenus.includes('withdraw') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('pending-withdraw')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'pending-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Pending Withdraw Requests
+                </button>
+                <button 
+                  onClick={() => setActiveSection('approved-withdraw')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'approved-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Approved Withdraw Requests
+                </button>
+                <button 
+                  onClick={() => setActiveSection('rejected-withdraw')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'rejected-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Rejected Withdraw Requests
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Fund Management Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('fund')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+            >
+              <Wallet className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">Fund Management</span>
+              {expandedMenus.includes('fund') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </button>
+            {expandedMenus.includes('fund') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('send-fund')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'send-fund' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Send Fund
+                </button>
+                <button 
+                  onClick={() => setActiveSection('fund-history')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'fund-history' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Fund History
+                </button>
+                <button 
+                  onClick={() => setActiveSection('manage-fund')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'manage-fund' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Manage Fund
+                </button>
+                <button 
+                  onClick={() => setActiveSection('pending-fund')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
+                    activeSection === 'pending-fund' ? 'text-orange-400' : 'text-slate-300'
+                  }`}
+                >
+                  Pending Fund Requests
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-700 pt-4 mt-6">
+            <Link href="/change-password">
+              <button className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-slate-700 text-slate-300">
+                <Lock className="mr-3 h-5 w-5" />
+                <span className="font-medium">Change Password</span>
+              </button>
+            </Link>
+            <button 
+              onClick={() => {
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                  .then(() => window.location.href = '/');
+              }}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-slate-700 text-slate-300"
+            >
+              <span className="mr-3">🚪</span>
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
         </nav>
       </div>
       
       {/* Main Content */}
-      <div className="lg:ml-64">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b border-gray-200">
-          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
+      <div className="lg:ml-72">
+        {/* Modern Header */}
+        <header className="bg-slate-800 border-b border-slate-700">
+          <div className="flex items-center justify-between px-6 py-4">
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
-                className="lg:hidden mr-4 text-gray-600 hover:bg-gray-100"
+                className="lg:hidden mr-4 text-white hover:bg-slate-700"
                 onClick={() => setIsSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
-                  {activeSection === 'dashboard' && 'Admin Dashboard'}
-                  {activeSection === 'users' && 'User Management'}
-                  {activeSection === 'kyc' && 'KYC Approvals'}
-                  {activeSection === 'withdrawals' && 'Withdrawal Requests'}
-                  {activeSection === 'reports' && 'Income Reports'}
-                  {activeSection === 'franchise' && 'Franchise Requests'}
-                </h1>
-                <p className="text-gray-600 text-sm hidden sm:block">
-                  {activeSection === 'dashboard' && 'Monitor income stats, active users, and pending requests'}
-                  {activeSection === 'users' && 'Manage portal users and their access'}
-                  {activeSection === 'kyc' && 'Review and approve KYC documents'}
-                  {activeSection === 'withdrawals' && 'Approve or reject withdrawal requests'}
-                  {activeSection === 'reports' && 'View detailed income reports by category'}
-                  {activeSection === 'franchise' && 'Manage franchise applications and approvals'}
-                </p>
+                <p className="text-sm text-slate-400">Starter Page</p>
+                <p className="text-white font-medium">SMS Left: 2712</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <NotificationCenter />
-              <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-                <DialogTrigger asChild>
-                  <Button className="volt-gradient text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Invite New User</DialogTitle>
-                  </DialogHeader>
-                  <form onSubmit={handleCreateUser} className="space-y-4">
-                    <div>
-                      <Label htmlFor="fullName">Full Name</Label>
-                      <Input name="fullName" placeholder="Enter full name" required />
-                    </div>
-                    <div>
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input name="email" type="email" placeholder="Enter email address" required />
-                    </div>
-
-                    <div>
-                      <Label htmlFor="role">Role</Label>
-                      <Select name="role" defaultValue="user" required>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex space-x-3 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                        Cancel
-                      </Button>
-                      <Button 
-                        type="submit" 
-                        className="volt-gradient text-white"
-                        disabled={createUserMutation.isPending}
-                      >
-                        {createUserMutation.isPending ? "Sending Invitation..." : "Send Invitation"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
-
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-10 bg-slate-700 border-slate-600 text-white placeholder-slate-400 w-64"
+                />
+              </div>
+              <Button className="bg-orange-600 hover:bg-orange-700 text-white">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Withdraw Refresh
+              </Button>
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-volt-light rounded-full flex items-center justify-center text-white font-medium text-sm">
+                <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
                   A
                 </div>
-                <span className="text-gray-700 font-medium">{user.firstName} {user.lastName}</span>
+                <span className="text-white font-medium">{user.firstName} {user.lastName}</span>
               </div>
             </div>
           </div>
         </header>
         
-        {/* Dashboard Content */}
-        <div className="p-4 sm:p-6 lg:p-8">
+        {/* Modern Dashboard Content */}
+        <div className="p-6 bg-slate-900 min-h-screen">
           {activeSection === 'dashboard' && (
             <>
-              {/* Enhanced Dashboard Overview Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
-                    <Users className="h-4 w-4 text-green-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">{adminStats?.activeUsers || 0}</div>
-                    <p className="text-xs text-gray-500">of {adminStats?.totalUsers || 0} total users</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Pending KYC</CardTitle>
-                    <Shield className="h-4 w-4 text-yellow-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">{adminStats?.pendingKYC || 0}</div>
-                    <p className="text-xs text-gray-500">Documents awaiting review</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Withdrawal Requests</CardTitle>
-                    <DollarSign className="h-4 w-4 text-blue-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">{adminStats?.withdrawalRequests || 0}</div>
-                    <p className="text-xs text-gray-500">Pending approval</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium text-gray-600">Franchise Requests</CardTitle>
-                    <Award className="h-4 w-4 text-purple-500" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">{adminStats?.franchiseRequests || 0}</div>
-                    <p className="text-xs text-gray-500">Applications under review</p>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Financial Overview */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-medium text-gray-800">Total BV in System</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-4xl font-bold text-volt-light">₹{adminStats?.totalBV || '0.00'}</div>
-                    <p className="text-sm text-gray-500 mt-2">Cumulative Business Volume</p>
-                  </CardContent>
-                </Card>
-                
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg font-medium text-gray-800">Monthly Income</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-4xl font-bold text-green-600">₹{adminStats?.monthlyIncome || '0.00'}</div>
-                    <p className="text-sm text-gray-500 mt-2">Total system income this month</p>
-                  </CardContent>
-                </Card>
-              </div>
-              
-              {/* Recent Activity */}
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Recent Admin Actions Required</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Shield className="h-5 w-5 text-yellow-600" />
-                        <div>
-                          <p className="font-medium">KYC Document Submitted</p>
-                          <p className="text-sm text-gray-600">User ID: VTR001234 - Aadhaar & PAN verification</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline">Review</Button>
+              {/* Modern Statistical Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+                {/* Total Payout Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TOTAL PAYOUT</p>
+                      <p className="text-white text-2xl font-bold">₹{adminStats?.totalBV || '277,506.08'}</p>
                     </div>
-                    
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <DollarSign className="h-5 w-5 text-blue-600" />
-                        <div>
-                          <p className="font-medium">Withdrawal Request</p>
-                          <p className="text-sm text-gray-600">Amount: ₹5,000 - User ID: VTR005678</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline">Approve</Button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Award className="h-5 w-5 text-purple-600" />
-                        <div>
-                          <p className="font-medium">Franchise Application</p>
-                          <p className="text-sm text-gray-600">Mini Franchise - Location: Mumbai</p>
-                        </div>
-                      </div>
-                      <Button size="sm" variant="outline">Review</Button>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-6 w-6 text-blue-400" />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+
+                {/* Direct Income Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">DIRECT INCOME</p>
+                      <p className="text-white text-2xl font-bold">₹{adminStats?.monthlyIncome || '0.00'}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-green-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* ROI Income Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">ROI INCOME</p>
+                      <p className="text-white text-2xl font-bold">₹187,462.29</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <BarChart3 className="h-6 w-6 text-purple-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Salary Income Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">SALARY INCOME</p>
+                      <p className="text-white text-2xl font-bold">₹13,664.49</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Activity className="h-6 w-6 text-orange-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Members Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">MEMBERS</p>
+                      <p className="text-white text-2xl font-bold">{adminStats?.totalUsers || '1,463'}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Users className="h-6 w-6 text-blue-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today Withdraw Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY WITHDRAW</p>
+                      <p className="text-white text-2xl font-bold">{adminStats?.withdrawalRequests || '0'}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <DollarSign className="h-6 w-6 text-red-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today Active Members Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY ACTIVE MEMBERS</p>
+                      <p className="text-white text-2xl font-bold">{adminStats?.activeUsers || '0'}</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <UserCheck className="h-6 w-6 text-green-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today Deposit Members Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY DEPOSIT MEMBERS</p>
+                      <p className="text-white text-2xl font-bold">0</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Wallet className="h-6 w-6 text-yellow-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Paid Members Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">PAID MEMBERS</p>
+                      <p className="text-white text-2xl font-bold">349</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Crown className="h-6 w-6 text-gold-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today Joined Members Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY JOINED MEMBERS</p>
+                      <p className="text-white text-2xl font-bold">0</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Plus className="h-6 w-6 text-cyan-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Withdrawal Status Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">WITHDRAWAL STATUS</p>
+                      <p className="text-green-400 text-2xl font-bold">ON</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Shield className="h-6 w-6 text-green-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* E-mail Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">E-MAIL</p>
+                      <p className="text-white text-lg">Total: 0</p>
+                      <p className="text-white text-lg">Read: 0</p>
+                      <p className="text-white text-lg">Unread: 0</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Mail className="h-6 w-6 text-indigo-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Row Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* S Wallet Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">S WALLET</p>
+                      <p className="text-white text-lg">Wallet Bal: $4,342.48</p>
+                      <p className="text-white text-lg">Used: $4,807.49</p>
+                      <p className="text-white text-lg">Requested: $91,546.17</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <Wallet className="h-6 w-6 text-emerald-400" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today Payout Card */}
+                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY PAYOUT</p>
+                      <p className="text-white text-lg">Today Matching: 0.00</p>
+                      <p className="text-white text-lg">Today Paid DI: 0</p>
+                      <p className="text-white text-lg">Today Business: 0</p>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
+                      <TrendingUp className="h-6 w-6 text-pink-400" />
+                    </div>
+                  </div>
+                </div>
+              </div>
             </>
           )}
           
-          {activeSection === 'users' && (
-            <>
+          {activeSection === 'all-members' && (
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
+              <h3 className="text-lg font-medium text-white mb-6">All Members Management</h3>
               {/* Enhanced User Search */}
-              <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
-                <h3 className="text-lg font-medium text-gray-800 mb-4">Advanced User Search</h3>
+              <div className="bg-slate-700 rounded-lg p-6 mb-6 border border-slate-600">
+                <h4 className="text-md font-medium text-white mb-4">Advanced User Search</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div>
                     <Label htmlFor="searchQuery">Search Query</Label>
@@ -589,7 +834,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="All Status" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Status</SelectItem>
+                        <SelectItem value="all">All Status</SelectItem>
                         <SelectItem value="active">Active</SelectItem>
                         <SelectItem value="inactive">Inactive</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
@@ -604,7 +849,7 @@ export default function AdminDashboard() {
                         <SelectValue placeholder="All KYC" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All KYC</SelectItem>
+                        <SelectItem value="all">All KYC</SelectItem>
                         <SelectItem value="approved">Approved</SelectItem>
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="rejected">Rejected</SelectItem>
@@ -614,19 +859,20 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-slate-300">
                     Found {users.length} user{users.length !== 1 ? 's' : ''}
                     {searchQuery && ` matching "${searchQuery}"`}
                   </p>
                   <Button
                     variant="outline"
                     size="sm"
+                    className="border-slate-500 text-slate-300 hover:bg-slate-600"
                     onClick={() => {
                       setSearchQuery('');
                       setSearchType('name');
-                      setStatusFilter('');
-                      setRoleFilter('');
-                      setKycFilter('');
+                      setStatusFilter('all');
+                      setRoleFilter('all');
+                      setKycFilter('all');
                     }}
                   >
                     <Filter className="mr-2 h-4 w-4" />
@@ -635,171 +881,205 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* Stats Cards */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
-                <Users className="h-4 w-4 text-volt-light" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-800">{stats?.totalUsers || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
-                <UserCheck className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-800">{stats?.activeUsers || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Admins</CardTitle>
-                <Crown className="h-4 w-4 text-purple-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-800">{stats?.adminUsers || 0}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Pending</CardTitle>
-                <Clock className="h-4 w-4 text-yellow-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-3xl font-bold text-gray-800">{stats?.pendingUsers || 0}</div>
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Pending Recruits Management */}
-          <div className="mb-6 lg:mb-8">
-            <AdminPendingRecruits />
-          </div>
-          
-          {/* User Table */}
-          <DataTable
-            users={users}
-            onEdit={setEditingUser}
-            onDelete={handleDeleteUser}
-            onSearch={setSearch}
-          />
-
-          {/* Edit User Dialog */}
-          <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Edit User</DialogTitle>
-              </DialogHeader>
-              {editingUser && (
-                <form onSubmit={handleUpdateUser} className="space-y-4">
-                  <div>
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input name="firstName" defaultValue={editingUser.firstName || ''} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input name="lastName" defaultValue={editingUser.lastName || ''} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input name="email" type="email" defaultValue={editingUser.email || ''} required />
-                  </div>
-                  <div>
-                    <Label htmlFor="role">Role</Label>
-                    <Select name="role" defaultValue={editingUser.role} required>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="status">Status</Label>
-                    <Select name="status" defaultValue={editingUser.status} required>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex space-x-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
-                      Cancel
-                    </Button>
-                    <Button 
-                      type="submit" 
-                      className="volt-gradient text-white"
-                      disabled={updateUserMutation.isPending}
-                    >
-                      {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </DialogContent>
-          </Dialog>
-            </>
+              {/* User Table */}
+              <DataTable
+                users={users}
+                onEdit={setEditingUser}
+                onDelete={handleDeleteUser}
+                onSearch={setSearch}
+              />
+            </div>
           )}
-          
-          {activeSection === 'kyc' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>KYC Document Approvals</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">KYC approval system will be built here - reviewing Aadhaar, PAN, bank documents</p>
-              </CardContent>
-            </Card>
+
+          {/* Other section placeholders */}
+          {(activeSection === 'paid-members' || 
+            activeSection === 'today-joinings' || 
+            activeSection === 'free-users' || 
+            activeSection === 'user-activities' ||
+            activeSection === 'direct-income' ||
+            activeSection === 'roi-income' ||
+            activeSection === 'salary-income' ||
+            activeSection === 'payout-summary' ||
+            activeSection === 'holiday-reward' ||
+            activeSection === 'pending-kyc' ||
+            activeSection === 'approved-kyc' ||
+            activeSection === 'rejected-kyc' ||
+            activeSection === 'pending-withdraw' ||
+            activeSection === 'approved-withdraw' ||
+            activeSection === 'rejected-withdraw' ||
+            activeSection === 'send-fund' ||
+            activeSection === 'fund-history' ||
+            activeSection === 'manage-fund' ||
+            activeSection === 'pending-fund') && (
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
+              <h3 className="text-lg font-medium text-white mb-4">
+                {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </h3>
+              <p className="text-slate-400">
+                This section is under development. Content will be added based on the {activeSection.replace('-', ' ')} functionality.
+              </p>
+            </div>
           )}
-          
-          {activeSection === 'withdrawals' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Withdrawal Request Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Withdrawal approval system will be built here - managing payout requests</p>
-              </CardContent>
-            </Card>
-          )}
-          
-          {activeSection === 'reports' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Income Reports by Category</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Financial reporting system will be built here - sales incentive, bonus, consistency, franchise income</p>
-              </CardContent>
-            </Card>
-          )}
-          
-          {activeSection === 'franchise' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Franchise Application Management</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Franchise approval system will be built here - managing Mini and Basic franchise requests</p>
-              </CardContent>
-            </Card>
+
+          {/* Legacy sections for backwards compatibility - these will be removed */}
+          {(activeSection === 'users' || activeSection === 'kyc' || activeSection === 'withdrawals' || activeSection === 'reports' || activeSection === 'franchise') && (
+            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
+              <h3 className="text-lg font-medium text-white mb-4">
+                Legacy Section - {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+              </h3>
+              <p className="text-slate-400 mb-4">
+                This is the legacy section. Please use the new expandable menu options in the sidebar for better functionality.
+              </p>
+              <p className="text-orange-400 text-sm">
+                ↗ Use the sidebar menus: User Details, Income Reports, KYC Details, Withdraw Management, etc.
+              </p>
+            </div>
           )}
         </div>
       </div>
+
+      {/* Add User Dialog */}
+      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+        <DialogContent className="max-w-md bg-slate-800 border-slate-600">
+          <DialogHeader>
+            <DialogTitle className="text-white">Invite New User</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div>
+              <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
+              <Input 
+                name="fullName" 
+                placeholder="Enter full name" 
+                required 
+                className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+              />
+            </div>
+            <div>
+              <Label htmlFor="email" className="text-slate-300">Email Address</Label>
+              <Input 
+                name="email" 
+                type="email" 
+                placeholder="Enter email address" 
+                required 
+                className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="role" className="text-slate-300">Role</Label>
+              <Select name="role" defaultValue="user" required>
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex space-x-3 pt-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsAddUserOpen(false)}
+                className="border-slate-500 text-slate-300 hover:bg-slate-600"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+                disabled={createUserMutation.isPending}
+              >
+                {createUserMutation.isPending ? "Sending Invitation..." : "Send Invitation"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit User Dialog */}
+      <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
+        <DialogContent className="max-w-md bg-slate-800 border-slate-600">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit User</DialogTitle>
+          </DialogHeader>
+          {editingUser && (
+            <form onSubmit={handleUpdateUser} className="space-y-4">
+              <div>
+                <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
+                <Input 
+                  name="firstName" 
+                  defaultValue={editingUser.firstName || ''} 
+                  required 
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
+                <Input 
+                  name="lastName" 
+                  defaultValue={editingUser.lastName || ''} 
+                  required 
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="email" className="text-slate-300">Email Address</Label>
+                <Input 
+                  name="email" 
+                  type="email" 
+                  defaultValue={editingUser.email || ''} 
+                  required 
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
+              </div>
+              <div>
+                <Label htmlFor="role" className="text-slate-300">Role</Label>
+                <Select name="role" defaultValue={editingUser.role} required>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="admin">Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="status" className="text-slate-300">Status</Label>
+                <Select name="status" defaultValue={editingUser.status} required>
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-700 border-slate-600">
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => setEditingUser(null)}
+                  className="border-slate-500 text-slate-300 hover:bg-slate-600"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  disabled={updateUserMutation.isPending}
+                >
+                  {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
