@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -25,6 +25,16 @@ interface UserStats {
   pendingUsers: number;
 }
 
+interface AdminStats {
+  totalUsers: number;
+  activeUsers: number;
+  pendingKYC: number;
+  withdrawalRequests: number;
+  franchiseRequests: number;
+  totalBV: string;
+  monthlyIncome: string;
+}
+
 export default function AdminDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
@@ -34,6 +44,11 @@ export default function AdminDashboard() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchType, setSearchType] = useState<'id' | 'name' | 'bv' | 'rank'>('name');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
+  const [kycFilter, setKycFilter] = useState('');
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -49,13 +64,33 @@ export default function AdminDashboard() {
     }
   }, [isAuthenticated, isLoading, user, toast]);
 
-  // Fetch users
+  // Fetch users with enhanced search
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ["/api/users", search],
+    queryKey: ["/api/admin/users/search", searchQuery, searchType, statusFilter, roleFilter, kycFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchQuery) params.append('query', searchQuery);
+      if (searchType) params.append('searchType', searchType);
+      if (statusFilter) params.append('status', statusFilter);
+      if (roleFilter) params.append('role', roleFilter);
+      if (kycFilter) params.append('kycStatus', kycFilter);
+      
+      const response = await fetch(`/api/admin/users/search?${params.toString()}`, {
+        credentials: 'include',
+      });
+      if (!response.ok) throw new Error('Failed to fetch users');
+      return response.json();
+    },
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
-  // Fetch user stats
+  // Fetch enhanced admin stats
+  const { data: adminStats } = useQuery<AdminStats>({
+    queryKey: ["/api/admin/stats"],
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+
+  // Keep legacy stats for compatibility
   const { data: stats } = useQuery<UserStats>({
     queryKey: ["/api/users/stats"],
     enabled: isAuthenticated && user?.role === 'admin',
@@ -397,7 +432,7 @@ export default function AdminDashboard() {
         <div className="p-4 sm:p-6 lg:p-8">
           {activeSection === 'dashboard' && (
             <>
-              {/* Dashboard Overview Stats */}
+              {/* Enhanced Dashboard Overview Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -405,8 +440,8 @@ export default function AdminDashboard() {
                     <Users className="h-4 w-4 text-green-500" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">{stats?.activeUsers || 0}</div>
-                    <p className="text-xs text-gray-500">Currently active</p>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.activeUsers || 0}</div>
+                    <p className="text-xs text-gray-500">of {adminStats?.totalUsers || 0} total users</p>
                   </CardContent>
                 </Card>
                 
@@ -416,8 +451,8 @@ export default function AdminDashboard() {
                     <Shield className="h-4 w-4 text-yellow-500" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">12</div>
-                    <p className="text-xs text-gray-500">Awaiting review</p>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.pendingKYC || 0}</div>
+                    <p className="text-xs text-gray-500">Documents awaiting review</p>
                   </CardContent>
                 </Card>
                 
@@ -427,7 +462,7 @@ export default function AdminDashboard() {
                     <DollarSign className="h-4 w-4 text-blue-500" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">8</div>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.withdrawalRequests || 0}</div>
                     <p className="text-xs text-gray-500">Pending approval</p>
                   </CardContent>
                 </Card>
@@ -438,8 +473,31 @@ export default function AdminDashboard() {
                     <Award className="h-4 w-4 text-purple-500" />
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-gray-800">3</div>
-                    <p className="text-xs text-gray-500">Under review</p>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.franchiseRequests || 0}</div>
+                    <p className="text-xs text-gray-500">Applications under review</p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Financial Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-gray-800">Total BV in System</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-volt-light">₹{adminStats?.totalBV || '0.00'}</div>
+                    <p className="text-sm text-gray-500 mt-2">Cumulative Business Volume</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-gray-800">Monthly Income</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-green-600">₹{adminStats?.monthlyIncome || '0.00'}</div>
+                    <p className="text-sm text-gray-500 mt-2">Total system income this month</p>
                   </CardContent>
                 </Card>
               </div>
@@ -491,6 +549,92 @@ export default function AdminDashboard() {
           
           {activeSection === 'users' && (
             <>
+              {/* Enhanced User Search */}
+              <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+                <h3 className="text-lg font-medium text-gray-800 mb-4">Advanced User Search</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <Label htmlFor="searchQuery">Search Query</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="searchQuery"
+                        placeholder="Enter search term..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="searchType">Search Type</Label>
+                    <Select value={searchType} onValueChange={(value: 'id' | 'name' | 'bv' | 'rank') => setSearchType(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Name</SelectItem>
+                        <SelectItem value="id">User ID</SelectItem>
+                        <SelectItem value="bv">BV Amount</SelectItem>
+                        <SelectItem value="rank">Rank</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="statusFilter">Status Filter</Label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All Status</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="kycFilter">KYC Status</Label>
+                    <Select value={kycFilter} onValueChange={setKycFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All KYC" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">All KYC</SelectItem>
+                        <SelectItem value="approved">Approved</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="rejected">Rejected</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-600">
+                    Found {users.length} user{users.length !== 1 ? 's' : ''}
+                    {searchQuery && ` matching "${searchQuery}"`}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchType('name');
+                      setStatusFilter('');
+                      setRoleFilter('');
+                      setKycFilter('');
+                    }}
+                  >
+                    <Filter className="mr-2 h-4 w-4" />
+                    Clear Filters
+                  </Button>
+                </div>
+              </div>
+              
               {/* Stats Cards */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <Card>

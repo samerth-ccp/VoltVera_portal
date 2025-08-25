@@ -50,6 +50,37 @@ const requireAdmin = async (req: any, res: any, next: any) => {
   }
 };
 
+// ===== ADMIN ROUTES =====
+// Get enhanced admin statistics
+router.get('/admin/stats', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const stats = await storage.getAdminStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching admin stats:', error);
+    res.status(500).json({ message: 'Failed to fetch admin statistics' });
+  }
+});
+
+// Enhanced user search for admin
+router.get('/admin/users/search', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { query = '', searchType, status, role, kycStatus } = req.query;
+    
+    const users = await storage.searchUsers(query as string, {
+      searchType: searchType as 'id' | 'name' | 'bv' | 'rank',
+      status: status as string,
+      role: role as string,
+      kycStatus: kycStatus as string,
+    });
+    
+    res.json(users);
+  } catch (error) {
+    console.error('Error searching users:', error);
+    res.status(500).json({ message: 'Failed to search users' });
+  }
+});
+
 // ===== PRODUCT ROUTES =====
 // Get all products
 router.get('/products', requireAuth, async (req, res) => {

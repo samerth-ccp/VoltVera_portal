@@ -57,6 +57,12 @@ export interface IStorage {
   
   // User management operations
   getAllUsers(search?: string): Promise<User[]>;
+  searchUsers(query: string, filters: {
+    searchType?: 'id' | 'name' | 'bv' | 'rank';
+    status?: string;
+    role?: string;
+    kycStatus?: string;
+  }): Promise<User[]>;
   createUser(user: CreateUser): Promise<User>;
   recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
@@ -67,6 +73,15 @@ export interface IStorage {
     activeUsers: number;
     adminUsers: number;
     pendingUsers: number;
+  }>;
+  getAdminStats(): Promise<{
+    totalUsers: number;
+    activeUsers: number;
+    pendingKYC: number;
+    withdrawalRequests: number;
+    franchiseRequests: number;
+    totalBV: string;
+    monthlyIncome: string;
   }>;
   
   // Password management
@@ -278,6 +293,93 @@ export class DatabaseStorage implements IStorage {
       activeUsers: allUsers.filter(u => u.status === 'active').length,
       adminUsers: allUsers.filter(u => u.role === 'admin').length,
       pendingUsers: allUsers.filter(u => u.status === 'pending').length,
+    };
+  }
+
+  async searchUsers(query: string, filters: {
+    searchType?: 'id' | 'name' | 'bv' | 'rank';
+    status?: string;
+    role?: string;
+    kycStatus?: string;
+  }): Promise<User[]> {
+    let searchConditions: any[] = [];
+    
+    // Build search conditions based on search type
+    if (filters.searchType === 'id') {
+      searchConditions.push(ilike(users.id, `%${query}%`));
+    } else if (filters.searchType === 'name') {
+      searchConditions.push(
+        or(
+          ilike(users.firstName, `%${query}%`),
+          ilike(users.lastName, `%${query}%`),
+          ilike(sql`concat(${users.firstName}, ' ', ${users.lastName})`, `%${query}%`)
+        )
+      );
+    } else if (filters.searchType === 'bv') {
+      // Search by BV amount
+      searchConditions.push(ilike(users.totalBV, `%${query}%`));
+    } else if (filters.searchType === 'rank') {
+      searchConditions.push(ilike(users.currentRank, `%${query}%`));
+    } else {
+      // Default: search across multiple fields
+      searchConditions.push(
+        or(
+          ilike(users.id, `%${query}%`),
+          ilike(users.firstName, `%${query}%`),
+          ilike(users.lastName, `%${query}%`),
+          ilike(users.email, `%${query}%`),
+          ilike(users.currentRank, `%${query}%`)
+        )
+      );
+    }
+    
+    // Add filter conditions
+    const filterConditions: any[] = [];
+    if (filters.status) {
+      filterConditions.push(eq(users.status, filters.status));
+    }
+    if (filters.role) {
+      filterConditions.push(eq(users.role, filters.role));
+    }
+    if (filters.kycStatus) {
+      filterConditions.push(eq(users.kycStatus, filters.kycStatus));
+    }
+    
+    // Combine all conditions
+    const allConditions = [...searchConditions, ...filterConditions];
+    
+    let searchQuery = db.select().from(users).orderBy(desc(users.createdAt));
+    
+    if (allConditions.length > 0) {
+      searchQuery = searchQuery.where(and(...allConditions)) as typeof searchQuery;
+    }
+    
+    return await searchQuery;
+  }
+
+  async getAdminStats() {
+    const [userStats, kycCount, withdrawalCount, franchiseCount] = await Promise.all([
+      this.getUserStats(),
+      db.select({ count: sql<number>`count(*)` }).from(kycDocuments).where(eq(kycDocuments.status, 'pending')),
+      db.select({ count: sql<number>`count(*)` }).from(withdrawalRequests).where(eq(withdrawalRequests.status, 'pending')),
+      db.select({ count: sql<number>`count(*)` }).from(franchiseRequests).where(eq(franchiseRequests.status, 'pending'))
+    ]);
+    
+    // Calculate total BV in system
+    const allUsers = await db.select({ totalBV: users.totalBV }).from(users);
+    const totalBV = allUsers.reduce((sum, user) => sum + parseFloat(user.totalBV || '0'), 0);
+    
+    // Calculate monthly income (placeholder - would need transaction history)
+    const monthlyIncome = '125000.00'; // This would be calculated from actual transactions
+    
+    return {
+      totalUsers: userStats.totalUsers,
+      activeUsers: userStats.activeUsers,
+      pendingKYC: kycCount[0]?.count || 0,
+      withdrawalRequests: withdrawalCount[0]?.count || 0,
+      franchiseRequests: franchiseCount[0]?.count || 0,
+      totalBV: totalBV.toFixed(2),
+      monthlyIncome
     };
   }
 
