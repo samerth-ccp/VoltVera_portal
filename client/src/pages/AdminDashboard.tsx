@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, ShoppingCart, Package } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -17,6 +17,8 @@ import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import ProductCatalog from "./ProductCatalog";
+import MyPurchases from "./MyPurchases";
 
 interface UserStats {
   totalUsers: number;
@@ -33,6 +35,7 @@ export default function AdminDashboard() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState('users');
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -219,10 +222,35 @@ export default function AdminDashboard() {
         
         <nav className="mt-8">
           <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider">Management</div>
-          <a href="#" className="flex items-center px-6 py-3 text-white bg-white/10">
+          <button 
+            onClick={() => setActiveSection('users')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'users' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
             <Users className="mr-3 h-5 w-5" />
             User Management
-          </a>
+          </button>
+          
+          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Products</div>
+          <button 
+            onClick={() => setActiveSection('products')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'products' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
+            <ShoppingCart className="mr-3 h-5 w-5" />
+            Product Catalog
+          </button>
+          <button 
+            onClick={() => setActiveSection('purchases')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'purchases' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
+            <Package className="mr-3 h-5 w-5" />
+            My Purchases
+          </button>
           
           <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Account</div>
           <Link href="/change-password">
@@ -259,8 +287,16 @@ export default function AdminDashboard() {
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">User Management</h1>
-                <p className="text-gray-600 text-sm hidden sm:block">Manage portal users and their access</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  {activeSection === 'users' && 'User Management'}
+                  {activeSection === 'products' && 'Product Catalog'}
+                  {activeSection === 'purchases' && 'My Purchases'}
+                </h1>
+                <p className="text-gray-600 text-sm hidden sm:block">
+                  {activeSection === 'users' && 'Manage portal users and their access'}
+                  {activeSection === 'products' && 'Browse and manage Voltvera products'}
+                  {activeSection === 'purchases' && 'View purchase history and orders'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -325,9 +361,11 @@ export default function AdminDashboard() {
         </header>
         
         {/* Dashboard Content */}
-        <div className="p-4 sm:p-6 lg:p-8">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
+        <div className={`${activeSection === 'products' || activeSection === 'purchases' ? 'p-0' : 'p-4 sm:p-6 lg:p-8'}`}>
+          {activeSection === 'users' && (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6 lg:mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
@@ -443,6 +481,12 @@ export default function AdminDashboard() {
               )}
             </DialogContent>
           </Dialog>
+            </>
+          )}
+          
+          {activeSection === 'products' && <ProductCatalog />}
+          
+          {activeSection === 'purchases' && <MyPurchases />}
         </div>
       </div>
     </div>
