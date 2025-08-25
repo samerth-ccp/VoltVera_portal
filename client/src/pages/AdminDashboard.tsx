@@ -231,7 +231,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900">
+    <div className="min-h-screen bg-gray-50">
       {/* Mobile menu overlay */}
       {isSidebarOpen && (
         <div 
@@ -240,22 +240,22 @@ export default function AdminDashboard() {
         />
       )}
 
-      {/* Modern Sidebar */}
-      <div className={`fixed inset-y-0 left-0 w-72 bg-slate-800 text-white z-30 transform transition-transform lg:translate-x-0 overflow-y-auto ${
+      {/* Enhanced Sidebar with Voltvera Theme */}
+      <div className={`fixed inset-y-0 left-0 w-72 volt-gradient text-white z-30 transform transition-transform lg:translate-x-0 overflow-y-auto ${
         isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
-        <div className="flex items-center justify-between h-16 border-b border-slate-700 px-4">
+        <div className="flex items-center justify-between h-16 border-b border-white/20 px-4">
           <div className="flex items-center">
             <VoltverashopLogo size="small" />
             <div className="ml-3">
               <div className="text-lg font-bold">Voltverashop</div>
-              <div className="text-xs text-slate-400">Admin Portal</div>
+              <div className="text-xs text-white/70">Admin Portal</div>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
-            className="lg:hidden text-white hover:bg-slate-700"
+            className="lg:hidden text-white hover:bg-white/10"
             onClick={() => setIsSidebarOpen(false)}
           >
             <X className="h-5 w-5" />
@@ -267,7 +267,7 @@ export default function AdminDashboard() {
           <button 
             onClick={() => setActiveSection('dashboard')}
             className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${
-              activeSection === 'dashboard' ? 'bg-orange-600 text-white' : 'hover:bg-slate-700 text-slate-300'
+              activeSection === 'dashboard' ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/90'
             }`}
           >
             <BarChart3 className="mr-3 h-5 w-5" />
@@ -278,7 +278,7 @@ export default function AdminDashboard() {
           <div className="space-y-1">
             <button 
               onClick={() => toggleMenu('users')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
             >
               <Users className="mr-3 h-5 w-5" />
               <span className="font-medium flex-1">User Details</span>
@@ -291,40 +291,40 @@ export default function AdminDashboard() {
               <div className="ml-8 space-y-1">
                 <button 
                   onClick={() => setActiveSection('all-members')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'all-members' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'all-members' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   All Members
                 </button>
                 <button 
                   onClick={() => setActiveSection('paid-members')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'paid-members' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'paid-members' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Paid Members
                 </button>
                 <button 
                   onClick={() => setActiveSection('today-joinings')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'today-joinings' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'today-joinings' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   View Today Joinings
                 </button>
                 <button 
                   onClick={() => setActiveSection('free-users')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'free-users' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'free-users' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Free Users
                 </button>
                 <button 
                   onClick={() => setActiveSection('user-activities')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'user-activities' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'user-activities' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Users Activities
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
           <div className="space-y-1">
             <button 
               onClick={() => toggleMenu('income')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
             >
               <TrendingUp className="mr-3 h-5 w-5" />
               <span className="font-medium flex-1">Income Reports</span>
@@ -350,40 +350,40 @@ export default function AdminDashboard() {
               <div className="ml-8 space-y-1">
                 <button 
                   onClick={() => setActiveSection('direct-income')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'direct-income' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'direct-income' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Direct Income
                 </button>
                 <button 
                   onClick={() => setActiveSection('roi-income')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'roi-income' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'roi-income' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   ROI Income
                 </button>
                 <button 
                   onClick={() => setActiveSection('salary-income')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'salary-income' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'salary-income' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Salary Income
                 </button>
                 <button 
                   onClick={() => setActiveSection('payout-summary')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'payout-summary' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'payout-summary' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Payout Summary
                 </button>
                 <button 
                   onClick={() => setActiveSection('holiday-reward')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'holiday-reward' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'holiday-reward' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Holiday Reward Summary
@@ -396,7 +396,7 @@ export default function AdminDashboard() {
           <div className="space-y-1">
             <button 
               onClick={() => toggleMenu('kyc')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
             >
               <Shield className="mr-3 h-5 w-5" />
               <span className="font-medium flex-1">KYC Details</span>
@@ -409,24 +409,24 @@ export default function AdminDashboard() {
               <div className="ml-8 space-y-1">
                 <button 
                   onClick={() => setActiveSection('pending-kyc')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'pending-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'pending-kyc' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Pending KYC Requests
                 </button>
                 <button 
                   onClick={() => setActiveSection('approved-kyc')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'approved-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'approved-kyc' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Approved KYC Requests
                 </button>
                 <button 
                   onClick={() => setActiveSection('rejected-kyc')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'rejected-kyc' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'rejected-kyc' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Rejected KYC Requests
@@ -439,7 +439,7 @@ export default function AdminDashboard() {
           <div className="space-y-1">
             <button 
               onClick={() => toggleMenu('withdraw')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
             >
               <DollarSign className="mr-3 h-5 w-5" />
               <span className="font-medium flex-1">Withdraw Management</span>
@@ -452,24 +452,24 @@ export default function AdminDashboard() {
               <div className="ml-8 space-y-1">
                 <button 
                   onClick={() => setActiveSection('pending-withdraw')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'pending-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'pending-withdraw' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Pending Withdraw Requests
                 </button>
                 <button 
                   onClick={() => setActiveSection('approved-withdraw')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'approved-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'approved-withdraw' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Approved Withdraw Requests
                 </button>
                 <button 
                   onClick={() => setActiveSection('rejected-withdraw')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'rejected-withdraw' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'rejected-withdraw' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Rejected Withdraw Requests
@@ -482,7 +482,7 @@ export default function AdminDashboard() {
           <div className="space-y-1">
             <button 
               onClick={() => toggleMenu('fund')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-orange-600 transition-colors group"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
             >
               <Wallet className="mr-3 h-5 w-5" />
               <span className="font-medium flex-1">Fund Management</span>
@@ -495,32 +495,32 @@ export default function AdminDashboard() {
               <div className="ml-8 space-y-1">
                 <button 
                   onClick={() => setActiveSection('send-fund')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'send-fund' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'send-fund' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Send Fund
                 </button>
                 <button 
                   onClick={() => setActiveSection('fund-history')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'fund-history' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'fund-history' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Fund History
                 </button>
                 <button 
                   onClick={() => setActiveSection('manage-fund')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'manage-fund' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'manage-fund' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Manage Fund
                 </button>
                 <button 
                   onClick={() => setActiveSection('pending-fund')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-slate-700 ${
-                    activeSection === 'pending-fund' ? 'text-orange-400' : 'text-slate-300'
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'pending-fund' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
                   Pending Fund Requests
@@ -529,9 +529,9 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="border-t border-slate-700 pt-4 mt-6">
+          <div className="border-t border-white/20 pt-4 mt-6">
             <Link href="/change-password">
-              <button className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-slate-700 text-slate-300">
+              <button className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 text-white/90">
                 <Lock className="mr-3 h-5 w-5" />
                 <span className="font-medium">Change Password</span>
               </button>
@@ -541,7 +541,7 @@ export default function AdminDashboard() {
                 fetch('/api/logout', { method: 'POST', credentials: 'include' })
                   .then(() => window.location.href = '/');
               }}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-slate-700 text-slate-300"
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 text-white/90"
             >
               <span className="mr-3">🚪</span>
               <span className="font-medium">Logout</span>
@@ -552,251 +552,206 @@ export default function AdminDashboard() {
       
       {/* Main Content */}
       <div className="lg:ml-72">
-        {/* Modern Header */}
-        <header className="bg-slate-800 border-b border-slate-700">
-          <div className="flex items-center justify-between px-6 py-4">
+        {/* Enhanced Header */}
+        <header className="bg-white shadow-sm border-b border-gray-200">
+          <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center">
               <Button
                 variant="ghost"
                 size="sm"
-                className="lg:hidden mr-4 text-white hover:bg-slate-700"
+                className="lg:hidden mr-4 text-gray-600 hover:bg-gray-100"
                 onClick={() => setIsSidebarOpen(true)}
               >
                 <Menu className="h-5 w-5" />
               </Button>
               <div>
-                <p className="text-sm text-slate-400">Starter Page</p>
-                <p className="text-white font-medium">SMS Left: 2712</p>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  {activeSection === 'dashboard' && 'Admin Dashboard'}
+                  {activeSection.includes('members') && 'User Management'}
+                  {activeSection.includes('kyc') && 'KYC Management'}
+                  {activeSection.includes('withdraw') && 'Withdrawal Management'}
+                  {activeSection.includes('income') && 'Income Reports'}
+                  {activeSection.includes('fund') && 'Fund Management'}
+                  {(activeSection === 'users' || activeSection === 'kyc' || activeSection === 'withdrawals' || activeSection === 'reports' || activeSection === 'franchise') && 'Legacy Section'}
+                </h1>
+                <p className="text-gray-600 text-sm hidden sm:block">
+                  {activeSection === 'dashboard' && 'Monitor income stats, active users, and system performance'}
+                  {activeSection.includes('members') && 'Manage portal users and their access levels'}
+                  {activeSection.includes('kyc') && 'Review and approve KYC documents'}
+                  {activeSection.includes('withdraw') && 'Process withdrawal requests and approvals'}
+                  {activeSection.includes('income') && 'View detailed income reports by category'}
+                  {activeSection.includes('fund') && 'Manage fund transfers and wallet operations'}
+                </p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  placeholder="Search..."
-                  className="pl-10 bg-slate-700 border-slate-600 text-white placeholder-slate-400 w-64"
-                />
-              </div>
-              <Button className="bg-orange-600 hover:bg-orange-700 text-white">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Withdraw Refresh
-              </Button>
+              <NotificationCenter />
+              <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+                <DialogTrigger asChild>
+                  <Button className="volt-gradient text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add User
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+
               <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-orange-600 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                <div className="w-8 h-8 bg-volt-light rounded-full flex items-center justify-center text-white font-medium text-sm">
                   A
                 </div>
-                <span className="text-white font-medium">{user.firstName} {user.lastName}</span>
+                <span className="text-gray-700 font-medium">{user.firstName} {user.lastName}</span>
               </div>
             </div>
           </div>
         </header>
         
-        {/* Modern Dashboard Content */}
-        <div className="p-6 bg-slate-900 min-h-screen">
+        {/* Enhanced Dashboard Content */}
+        <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen">
           {activeSection === 'dashboard' && (
             <>
-              {/* Modern Statistical Cards Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-                {/* Total Payout Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TOTAL PAYOUT</p>
-                      <p className="text-white text-2xl font-bold">₹{adminStats?.totalBV || '277,506.08'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <DollarSign className="h-6 w-6 text-blue-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Direct Income Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">DIRECT INCOME</p>
-                      <p className="text-white text-2xl font-bold">₹{adminStats?.monthlyIncome || '0.00'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-green-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* ROI Income Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">ROI INCOME</p>
-                      <p className="text-white text-2xl font-bold">₹187,462.29</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <BarChart3 className="h-6 w-6 text-purple-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Salary Income Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">SALARY INCOME</p>
-                      <p className="text-white text-2xl font-bold">₹13,664.49</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Activity className="h-6 w-6 text-orange-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Members Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">MEMBERS</p>
-                      <p className="text-white text-2xl font-bold">{adminStats?.totalUsers || '1,463'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Users className="h-6 w-6 text-blue-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today Withdraw Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY WITHDRAW</p>
-                      <p className="text-white text-2xl font-bold">{adminStats?.withdrawalRequests || '0'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <DollarSign className="h-6 w-6 text-red-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today Active Members Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY ACTIVE MEMBERS</p>
-                      <p className="text-white text-2xl font-bold">{adminStats?.activeUsers || '0'}</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <UserCheck className="h-6 w-6 text-green-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today Deposit Members Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY DEPOSIT MEMBERS</p>
-                      <p className="text-white text-2xl font-bold">0</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Wallet className="h-6 w-6 text-yellow-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Paid Members Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">PAID MEMBERS</p>
-                      <p className="text-white text-2xl font-bold">349</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Crown className="h-6 w-6 text-gold-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today Joined Members Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY JOINED MEMBERS</p>
-                      <p className="text-white text-2xl font-bold">0</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Plus className="h-6 w-6 text-cyan-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Withdrawal Status Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">WITHDRAWAL STATUS</p>
-                      <p className="text-green-400 text-2xl font-bold">ON</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Shield className="h-6 w-6 text-green-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* E-mail Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">E-MAIL</p>
-                      <p className="text-white text-lg">Total: 0</p>
-                      <p className="text-white text-lg">Read: 0</p>
-                      <p className="text-white text-lg">Unread: 0</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Mail className="h-6 w-6 text-indigo-400" />
-                    </div>
-                  </div>
-                </div>
+              {/* Enhanced Dashboard Overview Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Total Users</CardTitle>
+                    <Users className="h-4 w-4 text-volt-light" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.totalUsers || 0}</div>
+                    <p className="text-xs text-gray-500">All registered members</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
+                    <UserCheck className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.activeUsers || 0}</div>
+                    <p className="text-xs text-gray-500">Currently active members</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Pending KYC</CardTitle>
+                    <Shield className="h-4 w-4 text-yellow-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.pendingKYC || 0}</div>
+                    <p className="text-xs text-gray-500">Documents awaiting review</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Withdrawal Requests</CardTitle>
+                    <DollarSign className="h-4 w-4 text-blue-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">{adminStats?.withdrawalRequests || 0}</div>
+                    <p className="text-xs text-gray-500">Pending approval</p>
+                  </CardContent>
+                </Card>
               </div>
+              
+              {/* Financial Overview */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                      <BarChart3 className="mr-2 h-5 w-5 text-volt-light" />
+                      Total Business Volume
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-volt-light">₹{adminStats?.totalBV || '0.00'}</div>
+                    <p className="text-sm text-gray-500 mt-2">Cumulative system BV</p>
+                  </CardContent>
+                </Card>
+                
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                      <TrendingUp className="mr-2 h-5 w-5 text-green-600" />
+                      Monthly Income
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-green-600">₹{adminStats?.monthlyIncome || '0.00'}</div>
+                    <p className="text-sm text-gray-500 mt-2">System income this month</p>
+                  </CardContent>
+                </Card>
 
-              {/* Bottom Row Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* S Wallet Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">S WALLET</p>
-                      <p className="text-white text-lg">Wallet Bal: $4,342.48</p>
-                      <p className="text-white text-lg">Used: $4,807.49</p>
-                      <p className="text-white text-lg">Requested: $91,546.17</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <Wallet className="h-6 w-6 text-emerald-400" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Today Payout Card */}
-                <div className="bg-gradient-to-br from-slate-800 to-slate-700 rounded-lg p-6 border border-slate-600">
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <p className="text-slate-400 text-sm uppercase tracking-wider">TODAY PAYOUT</p>
-                      <p className="text-white text-lg">Today Matching: 0.00</p>
-                      <p className="text-white text-lg">Today Paid DI: 0</p>
-                      <p className="text-white text-lg">Today Business: 0</p>
-                    </div>
-                    <div className="w-12 h-12 bg-slate-600 rounded-full flex items-center justify-center">
-                      <TrendingUp className="h-6 w-6 text-pink-400" />
-                    </div>
-                  </div>
-                </div>
+                <Card className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                      <Award className="mr-2 h-5 w-5 text-purple-500" />
+                      Franchise Requests
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-4xl font-bold text-purple-500">{adminStats?.franchiseRequests || 0}</div>
+                    <p className="text-sm text-gray-500 mt-2">Applications under review</p>
+                  </CardContent>
+                </Card>
               </div>
+              
+              {/* Recent Activity */}
+              <Card className="mb-6 hover:shadow-lg transition-shadow">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Activity className="mr-2 h-5 w-5 text-volt-light" />
+                    Recent Admin Actions Required
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg border-l-4 border-yellow-400">
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-yellow-600" />
+                        <div>
+                          <p className="font-medium">KYC Document Submitted</p>
+                          <p className="text-sm text-gray-600">User ID: VTR001234 - Aadhaar & PAN verification</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="volt-gradient text-white">Review</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400">
+                      <div className="flex items-center gap-3">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium">Withdrawal Request</p>
+                          <p className="text-sm text-gray-600">Amount: ₹5,000 - User ID: VTR005678</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="volt-gradient text-white">Approve</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg border-l-4 border-purple-400">
+                      <div className="flex items-center gap-3">
+                        <Award className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="font-medium">Franchise Application</p>
+                          <p className="text-sm text-gray-600">Mini Franchise - Location: Mumbai</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="volt-gradient text-white">Review</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </>
           )}
           
           {activeSection === 'all-members' && (
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-              <h3 className="text-lg font-medium text-white mb-6">All Members Management</h3>
+            <div className="bg-white rounded-lg shadow-sm border p-6">
+              <h3 className="text-lg font-medium text-gray-800 mb-6">All Members Management</h3>
               {/* Enhanced User Search */}
-              <div className="bg-slate-700 rounded-lg p-6 mb-6 border border-slate-600">
-                <h4 className="text-md font-medium text-white mb-4">Advanced User Search</h4>
+              <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
+                <h4 className="text-md font-medium text-gray-800 mb-4">Advanced User Search</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div>
                     <Label htmlFor="searchQuery">Search Query</Label>
@@ -859,14 +814,13 @@ export default function AdminDashboard() {
                 </div>
                 
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-slate-300">
+                  <p className="text-sm text-gray-600">
                     Found {users.length} user{users.length !== 1 ? 's' : ''}
                     {searchQuery && ` matching "${searchQuery}"`}
                   </p>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-slate-500 text-slate-300 hover:bg-slate-600"
                     onClick={() => {
                       setSearchQuery('');
                       setSearchType('name');
@@ -891,7 +845,7 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* Other section placeholders */}
+          {/* Enhanced Section Content */}
           {(activeSection === 'paid-members' || 
             activeSection === 'today-joinings' || 
             activeSection === 'free-users' || 
@@ -911,84 +865,94 @@ export default function AdminDashboard() {
             activeSection === 'fund-history' ||
             activeSection === 'manage-fund' ||
             activeSection === 'pending-fund') && (
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-              <h3 className="text-lg font-medium text-white mb-4">
-                {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </h3>
-              <p className="text-slate-400">
-                This section is under development. Content will be added based on the {activeSection.replace('-', ' ')} functionality.
-              </p>
-            </div>
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <BarChart3 className="mr-2 h-5 w-5 text-volt-light" />
+                  {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <div className="w-16 h-16 mx-auto bg-volt-light/10 rounded-full flex items-center justify-center mb-4">
+                    <Settings className="h-8 w-8 text-volt-light" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Under Development</h3>
+                  <p className="text-gray-600 mb-4">
+                    This {activeSection.replace('-', ' ')} section is being built with advanced features and real-time data.
+                  </p>
+                  <Button className="volt-gradient text-white">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Configure {activeSection.replace('-', ' ').split(' ')[0]}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Legacy sections for backwards compatibility - these will be removed */}
+          {/* Legacy sections for backwards compatibility */}
           {(activeSection === 'users' || activeSection === 'kyc' || activeSection === 'withdrawals' || activeSection === 'reports' || activeSection === 'franchise') && (
-            <div className="bg-slate-800 rounded-lg p-6 border border-slate-600">
-              <h3 className="text-lg font-medium text-white mb-4">
-                Legacy Section - {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-              </h3>
-              <p className="text-slate-400 mb-4">
-                This is the legacy section. Please use the new expandable menu options in the sidebar for better functionality.
-              </p>
-              <p className="text-orange-400 text-sm">
-                ↗ Use the sidebar menus: User Details, Income Reports, KYC Details, Withdraw Management, etc.
-              </p>
-            </div>
+            <Card className="border-l-4 border-volt-light">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <Activity className="mr-2 h-5 w-5 text-volt-light" />
+                  Legacy Section - {activeSection.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400 mb-4">
+                  <p className="text-gray-700 mb-2">
+                    This is the legacy section. For better functionality, please use the new expandable menu options in the sidebar.
+                  </p>
+                  <p className="text-volt-light font-medium text-sm">
+                    ↗ Use the sidebar menus: User Details, Income Reports, KYC Details, Withdraw Management, etc.
+                  </p>
+                </div>
+                <Button className="volt-gradient text-white">
+                  <ChevronRight className="mr-2 h-4 w-4" />
+                  Go to New Section
+                </Button>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
 
       {/* Add User Dialog */}
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="max-w-md bg-slate-800 border-slate-600">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Invite New User</DialogTitle>
+            <DialogTitle>Invite New User</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateUser} className="space-y-4">
             <div>
-              <Label htmlFor="fullName" className="text-slate-300">Full Name</Label>
-              <Input 
-                name="fullName" 
-                placeholder="Enter full name" 
-                required 
-                className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
-              />
+              <Label htmlFor="fullName">Full Name</Label>
+              <Input name="fullName" placeholder="Enter full name" required />
             </div>
             <div>
-              <Label htmlFor="email" className="text-slate-300">Email Address</Label>
-              <Input 
-                name="email" 
-                type="email" 
-                placeholder="Enter email address" 
-                required 
-                className="bg-slate-700 border-slate-600 text-white placeholder-slate-400"
-              />
+              <Label htmlFor="email">Email Address</Label>
+              <Input name="email" type="email" placeholder="Enter email address" required />
             </div>
 
             <div>
-              <Label htmlFor="role" className="text-slate-300">Role</Label>
+              <Label htmlFor="role">Role</Label>
               <Select name="role" defaultValue="user" required>
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-700 border-slate-600">
+                <SelectContent>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="flex space-x-3 pt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsAddUserOpen(false)}
-                className="border-slate-500 text-slate-300 hover:bg-slate-600"
-              >
+              <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>
                 Cancel
               </Button>
               <Button 
                 type="submit" 
-                className="bg-orange-600 hover:bg-orange-700 text-white"
+                className="volt-gradient text-white"
                 disabled={createUserMutation.isPending}
               >
                 {createUserMutation.isPending ? "Sending Invitation..." : "Send Invitation"}
@@ -1000,59 +964,43 @@ export default function AdminDashboard() {
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
-        <DialogContent className="max-w-md bg-slate-800 border-slate-600">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-white">Edit User</DialogTitle>
+            <DialogTitle>Edit User</DialogTitle>
           </DialogHeader>
           {editingUser && (
             <form onSubmit={handleUpdateUser} className="space-y-4">
               <div>
-                <Label htmlFor="firstName" className="text-slate-300">First Name</Label>
-                <Input 
-                  name="firstName" 
-                  defaultValue={editingUser.firstName || ''} 
-                  required 
-                  className="bg-slate-700 border-slate-600 text-white"
-                />
+                <Label htmlFor="firstName">First Name</Label>
+                <Input name="firstName" defaultValue={editingUser.firstName || ''} required />
               </div>
               <div>
-                <Label htmlFor="lastName" className="text-slate-300">Last Name</Label>
-                <Input 
-                  name="lastName" 
-                  defaultValue={editingUser.lastName || ''} 
-                  required 
-                  className="bg-slate-700 border-slate-600 text-white"
-                />
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input name="lastName" defaultValue={editingUser.lastName || ''} required />
               </div>
               <div>
-                <Label htmlFor="email" className="text-slate-300">Email Address</Label>
-                <Input 
-                  name="email" 
-                  type="email" 
-                  defaultValue={editingUser.email || ''} 
-                  required 
-                  className="bg-slate-700 border-slate-600 text-white"
-                />
+                <Label htmlFor="email">Email Address</Label>
+                <Input name="email" type="email" defaultValue={editingUser.email || ''} required />
               </div>
               <div>
-                <Label htmlFor="role" className="text-slate-300">Role</Label>
+                <Label htmlFor="role">Role</Label>
                 <Select name="role" defaultValue={editingUser.role} required>
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectContent>
                     <SelectItem value="user">User</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="status" className="text-slate-300">Status</Label>
+                <Label htmlFor="status">Status</Label>
                 <Select name="status" defaultValue={editingUser.status} required>
-                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-700 border-slate-600">
+                  <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
@@ -1060,17 +1008,12 @@ export default function AdminDashboard() {
                 </Select>
               </div>
               <div className="flex space-x-3 pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setEditingUser(null)}
-                  className="border-slate-500 text-slate-300 hover:bg-slate-600"
-                >
+                <Button type="button" variant="outline" onClick={() => setEditingUser(null)}>
                   Cancel
                 </Button>
                 <Button 
                   type="submit" 
-                  className="bg-orange-600 hover:bg-orange-700 text-white"
+                  className="volt-gradient text-white"
                   disabled={updateUserMutation.isPending}
                 >
                   {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
