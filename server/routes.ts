@@ -888,6 +888,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Additional admin endpoints for user management
+  // Get wallet balances for all users
+  app.get('/api/admin/wallet-balances', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const walletBalances = await storage.getAllWalletBalances();
+      res.json(walletBalances);
+    } catch (error) {
+      console.error('Error fetching wallet balances:', error);
+      res.status(500).json({ message: 'Failed to fetch wallet balances' });
+    }
+  });
+
+  // Get withdrawal requests for all users
+  app.get('/api/admin/withdrawal-requests', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const withdrawalRequests = await storage.getAllWithdrawalRequests();
+      res.json(withdrawalRequests);
+    } catch (error) {
+      console.error('Error fetching withdrawal requests:', error);
+      res.status(500).json({ message: 'Failed to fetch withdrawal requests' });
+    }
+  });
+
+  // Admin login as user
+  app.post('/api/admin/login-as-user/:userId', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const targetUser = await storage.getUserById(userId);
+
+      if (!targetUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Update session to log in as the target user
+      req.session.userId = userId;
+      req.session.user = targetUser;
+
+      res.json({ message: 'Successfully logged in as user', user: targetUser });
+    } catch (error) {
+      console.error('Error logging in as user:', error);
+      res.status(500).json({ message: 'Failed to login as user' });
+    }
+  });
+
+  // Update user status (block/unblock)
+  app.patch('/api/admin/users/:userId/status', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { status } = req.body;
+
+      if (!['active', 'inactive', 'pending'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+
+      const updatedUser = await storage.updateUserStatus(userId, status);
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      res.json({ message: 'User status updated successfully', user: updatedUser });
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      res.status(500).json({ message: 'Failed to update user status' });
+    }
+  });
+
+  // Update user details
+  app.patch('/api/admin/users/:userId', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const updateData = req.body;
+
+      // Remove sensitive fields that shouldn't be updated directly
+      delete updateData.id;
+      delete updateData.password;
+      delete updateData.createdAt;
+
+      const updatedUser = await storage.updateUser(userId, updateData);
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Remove password from response
+      const { password, ...safeUser } = updatedUser;
+      res.json({ message: 'User updated successfully', user: safeUser });
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+
   // Mount MLM routes with /api prefix
   app.use('/api', mlmRoutes);
 

@@ -15,6 +15,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { User, CreateUser } from "@shared/schema";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
+import UserManagementTable from "@/components/UserManagementTable";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
@@ -92,6 +93,37 @@ export default function AdminDashboard() {
     },
     enabled: isAuthenticated && user?.role === 'admin',
   });
+
+  // Fetch wallet data for all users
+  const { data: walletBalances = [] } = useQuery({
+    queryKey: ["/api/admin/wallet-balances"],
+    queryFn: () => apiRequest('/api/admin/wallet-balances'),
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+
+  // Fetch withdrawal data for all users
+  const { data: withdrawalRequests = [] } = useQuery({
+    queryKey: ["/api/admin/withdrawal-requests"],
+    queryFn: () => apiRequest('/api/admin/withdrawal-requests'),
+    enabled: isAuthenticated && user?.role === 'admin',
+  });
+
+  // Create data maps for efficient lookup
+  const walletDataMap = walletBalances.reduce((acc: any, wallet: any) => {
+    acc[wallet.userId] = {
+      balance: wallet.balance,
+      totalEarnings: wallet.totalEarnings,
+      totalWithdrawals: wallet.totalWithdrawals,
+    };
+    return acc;
+  }, {});
+
+  const withdrawalDataMap = withdrawalRequests.reduce((acc: any, withdrawal: any) => {
+    acc[withdrawal.userId] = {
+      status: withdrawal.status,
+    };
+    return acc;
+  }, {});
 
   // Fetch enhanced admin stats
   const { data: adminStats } = useQuery<AdminStats>({
@@ -835,12 +867,11 @@ export default function AdminDashboard() {
                 </div>
               </div>
               
-              {/* User Table */}
-              <DataTable
+              {/* Complete User Management Table */}
+              <UserManagementTable 
                 users={users}
-                onEdit={setEditingUser}
-                onDelete={handleDeleteUser}
-                onSearch={setSearch}
+                walletData={walletDataMap}
+                withdrawalData={withdrawalDataMap}
               />
             </div>
           )}

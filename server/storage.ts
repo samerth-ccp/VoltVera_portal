@@ -53,7 +53,9 @@ import { nanoid } from "nanoid";
 export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
+  getUserById(id: string): Promise<User | undefined>;
   getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined>;
+  updateUserStatus(userId: string, status: string): Promise<User | undefined>;
   
   // User management operations
   getAllUsers(search?: string): Promise<User[]>;
@@ -183,6 +185,10 @@ export interface IStorage {
   calculateUserBV(userId: string): Promise<{ totalBV: string; leftBV: string; rightBV: string }>;
   updateUserBVStats(userId: string): Promise<void>;
   processIncomeDistribution(purchaseId: string): Promise<void>;
+
+  // Financial operations for admin
+  getAllWalletBalances(): Promise<WalletBalance[]>;
+  getAllWithdrawalRequests(): Promise<WithdrawalRequest[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1557,6 +1563,29 @@ export class DatabaseStorage implements IStorage {
       .where(eq(news.id, id))
       .returning();
     return newsItem;
+  }
+
+  // Additional user management methods
+  async getUserById(id: string): Promise<User | undefined> {
+    return this.getUser(id);
+  }
+
+  async updateUserStatus(userId: string, status: string): Promise<User | undefined> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ status, updatedAt: new Date().toISOString() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updatedUser;
+  }
+
+  // Financial operations for admin
+  async getAllWalletBalances(): Promise<WalletBalance[]> {
+    return await db.select().from(walletBalances);
+  }
+
+  async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
+    return await db.select().from(withdrawalRequests).orderBy(desc(withdrawalRequests.createdAt));
   }
 }
 
