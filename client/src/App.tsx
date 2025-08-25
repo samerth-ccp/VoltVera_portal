@@ -15,6 +15,8 @@ import VerifyEmail from "@/pages/VerifyEmail";
 import ResetPassword from "@/pages/ResetPassword";
 import CompleteInvitation from "@/pages/CompleteInvitation";
 import MyTeam from "@/pages/MyTeam";
+import ProductCatalog from "@/pages/ProductCatalog";
+import MyPurchases from "@/pages/MyPurchases";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -37,6 +39,8 @@ function Router() {
           <Route path="/change-password" component={ChangePassword} />
           <Route path="/dashboard" component={UserDashboard} />
           <Route path="/my-team" component={MyTeam} />
+          <Route path="/products" component={ProductCatalog} />
+          <Route path="/my-purchases" component={MyPurchases} />
           
           {/* Role-based routing for authenticated users */}
           {user?.role === 'admin' ? (

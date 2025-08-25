@@ -3,10 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings } from "lucide-react";
+import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings, ShoppingCart, Package } from "lucide-react";
 import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import MyTeam from "./MyTeam";
+import ProductCatalog from "./ProductCatalog";
+import MyPurchases from "./MyPurchases";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 function getInitials(firstName?: string | null, lastName?: string | null) {
@@ -123,6 +125,28 @@ export default function UserDashboard() {
               >
                 <Users className="mr-2 h-4 w-4" />
                 My Team
+              </button>
+              <button
+                onClick={() => setActiveTab('products')}
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'products'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-white/70 hover:text-white hover:border-white/30'
+                }`}
+              >
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Products
+              </button>
+              <button
+                onClick={() => setActiveTab('purchases')}
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                  activeTab === 'purchases'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-white/70 hover:text-white hover:border-white/30'
+                }`}
+              >
+                <Package className="mr-2 h-4 w-4" />
+                My Purchases
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
@@ -243,6 +267,10 @@ export default function UserDashboard() {
         )}
         
         {activeTab === 'team' && <MyTeam />}
+        
+        {activeTab === 'products' && <ProductCatalog />}
+        
+        {activeTab === 'purchases' && <MyPurchases />}
         
         {activeTab === 'settings' && (
           <div className="p-4 sm:p-6 lg:p-8">
