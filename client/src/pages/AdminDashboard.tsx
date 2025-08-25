@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, ShoppingCart, Package } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -17,8 +17,6 @@ import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import ProductCatalog from "./ProductCatalog";
-import MyPurchases from "./MyPurchases";
 
 interface UserStats {
   totalUsers: number;
@@ -35,7 +33,7 @@ export default function AdminDashboard() {
   const [isAddUserOpen, setIsAddUserOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState('users');
+  const [activeSection, setActiveSection] = useState('dashboard');
 
   // Redirect if not authenticated or not admin
   useEffect(() => {
@@ -223,6 +221,15 @@ export default function AdminDashboard() {
         <nav className="mt-8">
           <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider">Management</div>
           <button 
+            onClick={() => setActiveSection('dashboard')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'dashboard' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
+            <BarChart3 className="mr-3 h-5 w-5" />
+            Dashboard
+          </button>
+          <button 
             onClick={() => setActiveSection('users')}
             className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
               activeSection === 'users' ? 'bg-white/10' : 'hover:bg-white/10'
@@ -231,25 +238,45 @@ export default function AdminDashboard() {
             <Users className="mr-3 h-5 w-5" />
             User Management
           </button>
-          
-          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Products</div>
           <button 
-            onClick={() => setActiveSection('products')}
+            onClick={() => setActiveSection('kyc')}
             className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'products' ? 'bg-white/10' : 'hover:bg-white/10'
+              activeSection === 'kyc' ? 'bg-white/10' : 'hover:bg-white/10'
             }`}
           >
-            <ShoppingCart className="mr-3 h-5 w-5" />
-            Product Catalog
+            <Shield className="mr-3 h-5 w-5" />
+            KYC Approvals
+          </button>
+          
+          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Financial</div>
+          <button 
+            onClick={() => setActiveSection('withdrawals')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'withdrawals' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
+            <DollarSign className="mr-3 h-5 w-5" />
+            Withdrawal Requests
           </button>
           <button 
-            onClick={() => setActiveSection('purchases')}
+            onClick={() => setActiveSection('reports')}
             className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
-              activeSection === 'purchases' ? 'bg-white/10' : 'hover:bg-white/10'
+              activeSection === 'reports' ? 'bg-white/10' : 'hover:bg-white/10'
             }`}
           >
-            <Package className="mr-3 h-5 w-5" />
-            My Purchases
+            <FileText className="mr-3 h-5 w-5" />
+            Income Reports
+          </button>
+          
+          <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Operations</div>
+          <button 
+            onClick={() => setActiveSection('franchise')}
+            className={`flex items-center px-6 py-3 text-white w-full text-left transition-colors ${
+              activeSection === 'franchise' ? 'bg-white/10' : 'hover:bg-white/10'
+            }`}
+          >
+            <Award className="mr-3 h-5 w-5" />
+            Franchise Requests
           </button>
           
           <div className="px-4 py-2 text-xs font-semibold text-white/60 uppercase tracking-wider mt-8">Account</div>
@@ -288,14 +315,20 @@ export default function AdminDashboard() {
               </Button>
               <div>
                 <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
+                  {activeSection === 'dashboard' && 'Admin Dashboard'}
                   {activeSection === 'users' && 'User Management'}
-                  {activeSection === 'products' && 'Product Catalog'}
-                  {activeSection === 'purchases' && 'My Purchases'}
+                  {activeSection === 'kyc' && 'KYC Approvals'}
+                  {activeSection === 'withdrawals' && 'Withdrawal Requests'}
+                  {activeSection === 'reports' && 'Income Reports'}
+                  {activeSection === 'franchise' && 'Franchise Requests'}
                 </h1>
                 <p className="text-gray-600 text-sm hidden sm:block">
+                  {activeSection === 'dashboard' && 'Monitor income stats, active users, and pending requests'}
                   {activeSection === 'users' && 'Manage portal users and their access'}
-                  {activeSection === 'products' && 'Browse and manage Voltvera products'}
-                  {activeSection === 'purchases' && 'View purchase history and orders'}
+                  {activeSection === 'kyc' && 'Review and approve KYC documents'}
+                  {activeSection === 'withdrawals' && 'Approve or reject withdrawal requests'}
+                  {activeSection === 'reports' && 'View detailed income reports by category'}
+                  {activeSection === 'franchise' && 'Manage franchise applications and approvals'}
                 </p>
               </div>
             </div>
@@ -361,7 +394,101 @@ export default function AdminDashboard() {
         </header>
         
         {/* Dashboard Content */}
-        <div className={`${activeSection === 'products' || activeSection === 'purchases' ? 'p-0' : 'p-4 sm:p-6 lg:p-8'}`}>
+        <div className="p-4 sm:p-6 lg:p-8">
+          {activeSection === 'dashboard' && (
+            <>
+              {/* Dashboard Overview Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Active Users</CardTitle>
+                    <Users className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">{stats?.activeUsers || 0}</div>
+                    <p className="text-xs text-gray-500">Currently active</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Pending KYC</CardTitle>
+                    <Shield className="h-4 w-4 text-yellow-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">12</div>
+                    <p className="text-xs text-gray-500">Awaiting review</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Withdrawal Requests</CardTitle>
+                    <DollarSign className="h-4 w-4 text-blue-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">8</div>
+                    <p className="text-xs text-gray-500">Pending approval</p>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-gray-600">Franchise Requests</CardTitle>
+                    <Award className="h-4 w-4 text-purple-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-gray-800">3</div>
+                    <p className="text-xs text-gray-500">Under review</p>
+                  </CardContent>
+                </Card>
+              </div>
+              
+              {/* Recent Activity */}
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Recent Admin Actions Required</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-yellow-600" />
+                        <div>
+                          <p className="font-medium">KYC Document Submitted</p>
+                          <p className="text-sm text-gray-600">User ID: VTR001234 - Aadhaar & PAN verification</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">Review</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <DollarSign className="h-5 w-5 text-blue-600" />
+                        <div>
+                          <p className="font-medium">Withdrawal Request</p>
+                          <p className="text-sm text-gray-600">Amount: ₹5,000 - User ID: VTR005678</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">Approve</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Award className="h-5 w-5 text-purple-600" />
+                        <div>
+                          <p className="font-medium">Franchise Application</p>
+                          <p className="text-sm text-gray-600">Mini Franchise - Location: Mumbai</p>
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline">Review</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
+          
           {activeSection === 'users' && (
             <>
               {/* Stats Cards */}
@@ -484,9 +611,49 @@ export default function AdminDashboard() {
             </>
           )}
           
-          {activeSection === 'products' && <ProductCatalog />}
+          {activeSection === 'kyc' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>KYC Document Approvals</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">KYC approval system will be built here - reviewing Aadhaar, PAN, bank documents</p>
+              </CardContent>
+            </Card>
+          )}
           
-          {activeSection === 'purchases' && <MyPurchases />}
+          {activeSection === 'withdrawals' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Withdrawal Request Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Withdrawal approval system will be built here - managing payout requests</p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeSection === 'reports' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Income Reports by Category</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Financial reporting system will be built here - sales incentive, bonus, consistency, franchise income</p>
+              </CardContent>
+            </Card>
+          )}
+          
+          {activeSection === 'franchise' && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Franchise Application Management</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-600">Franchise approval system will be built here - managing Mini and Basic franchise requests</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
