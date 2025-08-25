@@ -8,6 +8,8 @@ import {
   varchar,
   pgEnum,
   boolean,
+  decimal,
+  integer,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -28,6 +30,27 @@ export const userRoleEnum = pgEnum('user_role', ['admin', 'user']);
 
 // User status enum
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'pending']);
+
+// Rank enum for MLM progression
+export const rankEnum = pgEnum('rank', ['Executive', 'Bronze Star', 'Gold Star', 'Emerald Star', 'Ruby Star', 'Diamond', 'Wise President', 'President', 'Ambassador', 'Deputy Director', 'Director', 'Founder']);
+
+// Transaction type enum
+export const transactionTypeEnum = pgEnum('transaction_type', ['sponsor_income', 'sales_incentive', 'sales_bonus', 'consistency_bonus', 'franchise_income', 'car_fund', 'travel_fund', 'leadership_fund', 'house_fund', 'millionaire_club', 'royalty_income', 'withdrawal', 'purchase', 'admin_credit', 'admin_debit']);
+
+// KYC status enum
+export const kycStatusEnum = pgEnum('kyc_status', ['pending', 'approved', 'rejected']);
+
+// Purchase type enum  
+export const purchaseTypeEnum = pgEnum('purchase_type', ['first_purchase', 'second_purchase']);
+
+// Franchise type enum
+export const franchiseTypeEnum = pgEnum('franchise_type', ['Mini Franchise', 'Basic Franchise', 'Smart Franchise', 'Growth Franchise', 'Master Franchise', 'Super Franchise']);
+
+// Ticket status enum
+export const ticketStatusEnum = pgEnum('ticket_status', ['open', 'in_progress', 'resolved', 'closed']);
+
+// Ticket category enum
+export const ticketCategoryEnum = pgEnum('ticket_category', ['Payment', 'Product', 'ID', 'Technical', 'General']);
 
 // User storage table with Binary MLM structure
 export const users = pgTable("users", {
@@ -51,11 +74,42 @@ export const users = pgTable("users", {
   level: varchar("level").default('0'), // Depth in the binary tree
   
   // Team Management Fields
-  packageAmount: varchar("package_amount").default('0.00'),
+  packageAmount: decimal("package_amount", { precision: 10, scale: 2 }).default('0.00'),
   registrationDate: timestamp("registration_date").defaultNow(),
   activationDate: timestamp("activation_date"),
   idStatus: varchar("id_status").default('Inactive'),
   mobile: varchar("mobile"),
+  
+  // Enhanced Profile Fields
+  panNumber: varchar("pan_number"),
+  aadhaarNumber: varchar("aadhaar_number"),
+  bankAccountNumber: varchar("bank_account_number"),
+  bankIFSC: varchar("bank_ifsc"),
+  bankName: varchar("bank_name"),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  pincode: varchar("pincode"),
+  dateOfBirth: timestamp("date_of_birth"),
+  
+  // MLM Business Fields
+  currentRank: rankEnum("current_rank").default('Executive'),
+  totalBV: decimal("total_bv", { precision: 12, scale: 2 }).default('0.00'),
+  leftBV: decimal("left_bv", { precision: 12, scale: 2 }).default('0.00'),
+  rightBV: decimal("right_bv", { precision: 12, scale: 2 }).default('0.00'),
+  totalDirects: integer("total_directs").default(0),
+  leftDirects: integer("left_directs").default(0),
+  rightDirects: integer("right_directs").default(0),
+  
+  // KYC Status
+  kycStatus: kycStatusEnum("kyc_status").default('pending'),
+  kycSubmittedAt: timestamp("kyc_submitted_at"),
+  kycApprovedAt: timestamp("kyc_approved_at"),
+  
+  // Password change tracking
+  firstLogin: boolean("first_login").default(true),
+  passwordChangedAt: timestamp("password_changed_at"),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -100,6 +154,183 @@ export const notifications = pgTable("notifications", {
   data: jsonb("data"), // Additional data (recruit info, etc.)
   read: boolean("read").default(false),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Products table for MLM business
+export const products = pgTable("products", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull(),
+  description: text("description"),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  bv: decimal("bv", { precision: 10, scale: 2 }).notNull(), // Business Volume
+  gst: decimal("gst", { precision: 5, scale: 2 }).notNull(), // GST percentage
+  category: varchar("category").notNull(), // 'water_purifier', 'led', 'fan', etc.
+  purchaseType: purchaseTypeEnum("purchase_type").notNull(),
+  imageUrl: varchar("image_url"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// User purchases table
+export const purchases = pgTable("purchases", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  productId: varchar("product_id").notNull(),
+  quantity: integer("quantity").default(1),
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  totalBV: decimal("total_bv", { precision: 10, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method"),
+  paymentStatus: varchar("payment_status").default('pending'),
+  transactionId: varchar("transaction_id"),
+  deliveryAddress: text("delivery_address"),
+  deliveryStatus: varchar("delivery_status").default('pending'),
+  trackingId: varchar("tracking_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wallet balances table
+export const walletBalances = pgTable("wallet_balances", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().unique(),
+  balance: decimal("balance", { precision: 12, scale: 2 }).default('0.00'),
+  totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default('0.00'),
+  totalWithdrawals: decimal("total_withdrawals", { precision: 12, scale: 2 }).default('0.00'),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Transactions table for all financial activities
+export const transactions = pgTable("transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  type: transactionTypeEnum("type").notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  referenceId: varchar("reference_id"), // Purchase ID, User ID who generated the income, etc.
+  balanceBefore: decimal("balance_before", { precision: 12, scale: 2 }).notNull(),
+  balanceAfter: decimal("balance_after", { precision: 12, scale: 2 }).notNull(),
+  metadata: jsonb("metadata"), // Additional transaction data
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Withdrawal requests table
+export const withdrawalRequests = pgTable("withdrawal_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected', 'processed'
+  bankDetails: jsonb("bank_details").notNull(),
+  adminNotes: text("admin_notes"),
+  processedBy: varchar("processed_by"),
+  processedAt: timestamp("processed_at"),
+  transactionId: varchar("transaction_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// KYC documents table
+export const kycDocuments = pgTable("kyc_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  documentType: varchar("document_type").notNull(), // 'pan', 'aadhaar', 'bank_statement', 'photo'
+  documentUrl: varchar("document_url").notNull(),
+  documentNumber: varchar("document_number"),
+  status: kycStatusEnum("status").default('pending'),
+  rejectionReason: text("rejection_reason"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Rank achievements table
+export const rankAchievements = pgTable("rank_achievements", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  rank: rankEnum("rank").notNull(),
+  achievedAt: timestamp("achieved_at").defaultNow(),
+  teamBV: decimal("team_bv", { precision: 12, scale: 2 }).notNull(),
+  leftBV: decimal("left_bv", { precision: 12, scale: 2 }).notNull(),
+  rightBV: decimal("right_bv", { precision: 12, scale: 2 }).notNull(),
+  bonus: decimal("bonus", { precision: 10, scale: 2 }).default('0.00'),
+  metadata: jsonb("metadata"), // Additional achievement data
+});
+
+// Franchise requests table
+export const franchiseRequests = pgTable("franchise_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  franchiseType: franchiseTypeEnum("franchise_type").notNull(),
+  investmentAmount: decimal("investment_amount", { precision: 10, scale: 2 }).notNull(),
+  businessVolume: decimal("business_volume", { precision: 10, scale: 2 }).notNull(),
+  sponsorIncome: decimal("sponsor_income", { precision: 10, scale: 2 }).notNull(),
+  status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected'
+  businessPlan: text("business_plan"),
+  adminNotes: text("admin_notes"),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Support tickets table
+export const supportTickets = pgTable("support_tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  category: ticketCategoryEnum("category").notNull(),
+  subject: varchar("subject").notNull(),
+  description: text("description").notNull(),
+  status: ticketStatusEnum("status").default('open'),
+  priority: varchar("priority").default('medium'), // 'low', 'medium', 'high', 'urgent'
+  assignedTo: varchar("assigned_to"),
+  resolution: text("resolution"),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Achievers table for tracking top performers
+export const achievers = pgTable("achievers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  achievementType: varchar("achievement_type").notNull(), // 'top_earner', 'rank_achiever', 'bonanza_winner'
+  position: integer("position").notNull(), // 1st, 2nd, 3rd, etc.
+  amount: decimal("amount", { precision: 10, scale: 2 }),
+  period: varchar("period").notNull(), // 'monthly', 'quarterly', 'yearly'
+  periodDate: timestamp("period_date").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Cheques table
+export const cheques = pgTable("cheques", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull(),
+  chequeNumber: varchar("cheque_number").notNull().unique(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  bankName: varchar("bank_name").notNull(),
+  issuedDate: timestamp("issued_date").notNull(),
+  clearanceDate: timestamp("clearance_date"),
+  status: varchar("status").default('issued'), // 'issued', 'cleared', 'bounced', 'cancelled'
+  purpose: text("purpose"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// News and announcements table
+export const news = pgTable("news", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: varchar("title").notNull(),
+  content: text("content").notNull(),
+  type: varchar("type").default('announcement'), // 'announcement', 'promotion', 'update', 'warning'
+  priority: varchar("priority").default('normal'), // 'low', 'normal', 'high', 'urgent'
+  isActive: boolean("is_active").default(true),
+  publishedAt: timestamp("published_at").defaultNow(),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Schema for upserting users (used by Replit Auth)
@@ -203,6 +434,117 @@ export const createNotificationSchema = createInsertSchema(notifications).pick({
   data: true,
 });
 
+// Schema for products
+export const createProductSchema = createInsertSchema(products).pick({
+  name: true,
+  description: true,
+  price: true,
+  bv: true,
+  gst: true,
+  category: true,
+  purchaseType: true,
+  imageUrl: true,
+}).extend({
+  name: z.string().min(1, "Product name is required"),
+  price: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid price is required"),
+  bv: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid BV is required"),
+  gst: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, "Valid GST is required"),
+});
+
+// Schema for purchases
+export const createPurchaseSchema = createInsertSchema(purchases).pick({
+  productId: true,
+  quantity: true,
+  paymentMethod: true,
+  deliveryAddress: true,
+}).extend({
+  productId: z.string().min(1, "Product is required"),
+  quantity: z.number().min(1, "Quantity must be at least 1"),
+  deliveryAddress: z.string().min(10, "Complete delivery address is required"),
+});
+
+// Schema for withdrawal requests
+export const createWithdrawalSchema = createInsertSchema(withdrawalRequests).pick({
+  amount: true,
+  bankDetails: true,
+}).extend({
+  amount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid amount is required"),
+  bankDetails: z.object({
+    accountNumber: z.string().min(1, "Account number is required"),
+    ifscCode: z.string().min(1, "IFSC code is required"),
+    bankName: z.string().min(1, "Bank name is required"),
+    accountHolderName: z.string().min(1, "Account holder name is required"),
+  }),
+});
+
+// Schema for KYC document upload
+export const createKYCSchema = createInsertSchema(kycDocuments).pick({
+  documentType: true,
+  documentUrl: true,
+  documentNumber: true,
+}).extend({
+  documentType: z.enum(['pan', 'aadhaar', 'bank_statement', 'photo']),
+  documentUrl: z.string().url("Valid document URL is required"),
+  documentNumber: z.string().optional(),
+});
+
+// Schema for franchise requests
+export const createFranchiseRequestSchema = createInsertSchema(franchiseRequests).pick({
+  franchiseType: true,
+  businessPlan: true,
+}).extend({
+  businessPlan: z.string().min(50, "Business plan must be at least 50 characters"),
+});
+
+// Schema for support tickets
+export const createSupportTicketSchema = createInsertSchema(supportTickets).pick({
+  category: true,
+  subject: true,
+  description: true,
+  priority: true,
+}).extend({
+  subject: z.string().min(5, "Subject must be at least 5 characters"),
+  description: z.string().min(20, "Description must be at least 20 characters"),
+  priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
+});
+
+// Schema for news/announcements
+export const createNewsSchema = createInsertSchema(news).pick({
+  title: true,
+  content: true,
+  type: true,
+  priority: true,
+  publishedAt: true,
+  expiresAt: true,
+}).extend({
+  title: z.string().min(5, "Title must be at least 5 characters"),
+  content: z.string().min(20, "Content must be at least 20 characters"),
+  type: z.enum(['announcement', 'promotion', 'update', 'warning']).default('announcement'),
+  priority: z.enum(['low', 'normal', 'high', 'urgent']).default('normal'),
+});
+
+// Schema for enhanced user profile update
+export const updateUserProfileSchema = createInsertSchema(users).pick({
+  firstName: true,
+  lastName: true,
+  mobile: true,
+  panNumber: true,
+  aadhaarNumber: true,
+  bankAccountNumber: true,
+  bankIFSC: true,
+  bankName: true,
+  address: true,
+  city: true,
+  state: true,
+  pincode: true,
+  dateOfBirth: true,
+}).extend({
+  mobile: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number is required").optional(),
+  panNumber: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Valid PAN number is required (e.g. ABCDE1234F)").optional(),
+  aadhaarNumber: z.string().regex(/^\d{12}$/, "Valid 12-digit Aadhaar number is required").optional(),
+  pincode: z.string().regex(/^\d{6}$/, "Valid 6-digit pincode is required").optional(),
+}).partial();
+
 // Schema for updating users
 export const updateUserSchema = createInsertSchema(users).pick({
   email: true,
@@ -215,15 +557,48 @@ export const updateUserSchema = createInsertSchema(users).pick({
   lastActiveAt: true,
 }).partial();
 
+// Type exports
 export type UpsertUser = z.infer<typeof upsertUserSchema>;
 export type CreateUser = z.infer<typeof createUserSchema>;
 export type RecruitUser = z.infer<typeof recruitUserSchema>;
 export type SignupUser = z.infer<typeof signupUserSchema>;
 export type UpdateUser = z.infer<typeof updateUserSchema>;
+export type UpdateUserProfile = z.infer<typeof updateUserProfileSchema>;
 export type CreateToken = z.infer<typeof createTokenSchema>;
 export type PasswordReset = z.infer<typeof passwordResetSchema>;
+export type CreateProduct = z.infer<typeof createProductSchema>;
+export type CreatePurchase = z.infer<typeof createPurchaseSchema>;
+export type CreateWithdrawal = z.infer<typeof createWithdrawalSchema>;
+export type CreateKYC = z.infer<typeof createKYCSchema>;
+export type CreateFranchiseRequest = z.infer<typeof createFranchiseRequestSchema>;
+export type CreateSupportTicket = z.infer<typeof createSupportTicketSchema>;
+export type CreateNews = z.infer<typeof createNewsSchema>;
+
+// Table select types
 export type User = typeof users.$inferSelect;
+export type Product = typeof products.$inferSelect;
+export type Purchase = typeof purchases.$inferSelect;
+export type WalletBalance = typeof walletBalances.$inferSelect;
+export type Transaction = typeof transactions.$inferSelect;
+export type WithdrawalRequest = typeof withdrawalRequests.$inferSelect;
+export type KYCDocument = typeof kycDocuments.$inferSelect;
+export type RankAchievement = typeof rankAchievements.$inferSelect;
+export type FranchiseRequest = typeof franchiseRequests.$inferSelect;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type Achiever = typeof achievers.$inferSelect;
+export type Cheque = typeof cheques.$inferSelect;
+export type News = typeof news.$inferSelect;
 export type PendingRecruit = typeof pendingRecruits.$inferSelect;
 export type EmailToken = typeof emailTokens.$inferSelect;
+export type Notification = typeof notifications.$inferSelect;
+
+// Enum types
 export type UserRole = typeof users.$inferSelect.role;
 export type UserStatus = typeof users.$inferSelect.status;
+export type Rank = typeof users.$inferSelect.currentRank;
+export type TransactionType = typeof transactions.$inferSelect.type;
+export type KYCStatus = typeof kycDocuments.$inferSelect.status;
+export type PurchaseType = typeof products.$inferSelect.purchaseType;
+export type FranchiseType = typeof franchiseRequests.$inferSelect.franchiseType;
+export type TicketStatus = typeof supportTickets.$inferSelect.status;
+export type TicketCategory = typeof supportTickets.$inferSelect.category;

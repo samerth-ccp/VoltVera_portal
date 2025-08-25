@@ -2,15 +2,47 @@ import {
   users,
   emailTokens,
   pendingRecruits,
+  products,
+  purchases,
+  walletBalances,
+  transactions,
+  withdrawalRequests,
+  kycDocuments,
+  rankAchievements,
+  franchiseRequests,
+  supportTickets,
+  achievers,
+  cheques,
+  news,
   type User,
   type UpsertUser,
   type CreateUser,
   type RecruitUser,
   type UpdateUser,
+  type UpdateUserProfile,
   type SignupUser,
   type EmailToken,
   type CreateToken,
   type PendingRecruit,
+  type Product,
+  type CreateProduct,
+  type Purchase,
+  type CreatePurchase,
+  type WalletBalance,
+  type Transaction,
+  type WithdrawalRequest,
+  type CreateWithdrawal,
+  type KYCDocument,
+  type CreateKYC,
+  type RankAchievement,
+  type FranchiseRequest,
+  type CreateFranchiseRequest,
+  type SupportTicket,
+  type CreateSupportTicket,
+  type Achiever,
+  type Cheque,
+  type News,
+  type CreateNews,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc, and, sql } from "drizzle-orm";
@@ -28,6 +60,7 @@ export interface IStorage {
   createUser(user: CreateUser): Promise<User>;
   recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
+  updateUserProfile(id: string, updates: UpdateUserProfile): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
   getUserStats(): Promise<{
     totalUsers: number;
@@ -67,6 +100,74 @@ export interface IStorage {
   getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]>;
   approvePendingRecruit(id: string, adminData: { packageAmount: string; position: string }): Promise<User>;
   rejectPendingRecruit(id: string, rejectedBy: string, reason: string): Promise<boolean>;
+  
+  // Product operations
+  getAllProducts(): Promise<Product[]>;
+  getProductById(id: string): Promise<Product | undefined>;
+  getProductsByType(type: 'first_purchase' | 'second_purchase'): Promise<Product[]>;
+  createProduct(data: CreateProduct): Promise<Product>;
+  updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined>;
+  deleteProduct(id: string): Promise<boolean>;
+  
+  // Purchase operations
+  createPurchase(userId: string, data: CreatePurchase): Promise<Purchase>;
+  getUserPurchases(userId: string): Promise<Purchase[]>;
+  getPurchaseById(id: string): Promise<Purchase | undefined>;
+  updatePurchaseStatus(id: string, status: string): Promise<boolean>;
+  
+  // Wallet operations
+  getWalletBalance(userId: string): Promise<WalletBalance | undefined>;
+  createWalletBalance(userId: string): Promise<WalletBalance>;
+  updateWalletBalance(userId: string, amount: string, description: string, type: any): Promise<Transaction>;
+  getUserTransactions(userId: string): Promise<Transaction[]>;
+  
+  // Withdrawal operations
+  createWithdrawalRequest(userId: string, data: CreateWithdrawal): Promise<WithdrawalRequest>;
+  getUserWithdrawals(userId: string): Promise<WithdrawalRequest[]>;
+  getAllWithdrawals(): Promise<WithdrawalRequest[]>;
+  updateWithdrawalStatus(id: string, status: string, adminNotes?: string): Promise<boolean>;
+  
+  // KYC operations
+  getUserKYCDocuments(userId: string): Promise<KYCDocument[]>;
+  createKYCDocument(userId: string, data: CreateKYC): Promise<KYCDocument>;
+  updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean>;
+  getAllPendingKYC(): Promise<KYCDocument[]>;
+  
+  // Rank operations
+  getUserRankHistory(userId: string): Promise<RankAchievement[]>;
+  createRankAchievement(userId: string, rank: any, teamBV: string, leftBV: string, rightBV: string): Promise<RankAchievement>;
+  checkRankEligibility(userId: string): Promise<{ eligible: boolean; newRank?: any; teamBV: string }>;
+  
+  // Franchise operations
+  createFranchiseRequest(userId: string, data: CreateFranchiseRequest): Promise<FranchiseRequest>;
+  getUserFranchiseRequests(userId: string): Promise<FranchiseRequest[]>;
+  getAllFranchiseRequests(): Promise<FranchiseRequest[]>;
+  updateFranchiseRequestStatus(id: string, status: string, adminNotes?: string): Promise<boolean>;
+  
+  // Support operations
+  createSupportTicket(userId: string, data: CreateSupportTicket): Promise<SupportTicket>;
+  getUserTickets(userId: string): Promise<SupportTicket[]>;
+  getAllTickets(): Promise<SupportTicket[]>;
+  updateTicketStatus(id: string, status: any, resolution?: string): Promise<boolean>;
+  
+  // Achievers operations
+  getAchieversByType(type: string, period: string): Promise<Achiever[]>;
+  createAchiever(userId: string, type: string, position: number, amount?: string): Promise<Achiever>;
+  
+  // Cheque operations
+  getUserCheques(userId: string): Promise<Cheque[]>;
+  createCheque(userId: string, amount: string, purpose: string): Promise<Cheque>;
+  
+  // News operations
+  getAllNews(): Promise<News[]>;
+  getActiveNews(): Promise<News[]>;
+  createNews(data: CreateNews, createdBy: string): Promise<News>;
+  updateNews(id: string, updates: Partial<News>): Promise<News | undefined>;
+  
+  // BV calculation operations
+  calculateUserBV(userId: string): Promise<{ totalBV: string; leftBV: string; rightBV: string }>;
+  updateUserBVStats(userId: string): Promise<void>;
+  processIncomeDistribution(purchaseId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -155,6 +256,18 @@ export class DatabaseStorage implements IStorage {
   async deleteUser(id: string): Promise<boolean> {
     const result = await db.delete(users).where(eq(users.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateUserProfile(id: string, updates: UpdateUserProfile): Promise<User | undefined> {
+    const [user] = await db
+      .update(users)
+      .set({
+        ...updates,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 
   async getUserStats() {
@@ -507,7 +620,7 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async approvePendingRecruit(id: string, adminData: { packageAmount: string }): Promise<User> {
+  async approvePendingRecruit(id: string, adminData: { packageAmount: string; position?: string }): Promise<User> {
     console.log('=== APPROVING PENDING RECRUIT ===');
     console.log('Recruit ID:', id);
     console.log('Package Amount:', adminData.packageAmount);
@@ -774,6 +887,566 @@ export class DatabaseStorage implements IStorage {
       // Strategic spillover placement in the chosen direction
       await binaryTreeService.placeUserInDirectionalSpillover(userId, uplineId, desiredPosition, sponsorId);
     }
+  }
+
+  // ===== PRODUCT OPERATIONS =====
+  async getAllProducts(): Promise<Product[]> {
+    return await db.select().from(products).where(eq(products.isActive, true)).orderBy(desc(products.createdAt));
+  }
+
+  async getProductById(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product;
+  }
+
+  async getProductsByType(type: 'first_purchase' | 'second_purchase'): Promise<Product[]> {
+    return await db.select().from(products)
+      .where(and(eq(products.purchaseType, type), eq(products.isActive, true)))
+      .orderBy(desc(products.createdAt));
+  }
+
+  async createProduct(data: CreateProduct): Promise<Product> {
+    const [product] = await db.insert(products).values(data).returning();
+    return product;
+  }
+
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
+    const [product] = await db
+      .update(products)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return product;
+  }
+
+  async deleteProduct(id: string): Promise<boolean> {
+    const result = await db.update(products)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(products.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ===== PURCHASE OPERATIONS =====
+  async createPurchase(userId: string, data: CreatePurchase): Promise<Purchase> {
+    const product = await this.getProductById(data.productId);
+    if (!product) {
+      throw new Error('Product not found');
+    }
+
+    const totalAmount = parseFloat(product.price) * data.quantity;
+    const totalBV = parseFloat(product.bv) * data.quantity;
+
+    const [purchase] = await db.insert(purchases).values({
+      userId,
+      productId: data.productId,
+      quantity: data.quantity,
+      totalAmount: totalAmount.toString(),
+      totalBV: totalBV.toString(),
+      paymentMethod: data.paymentMethod,
+      deliveryAddress: data.deliveryAddress,
+    }).returning();
+
+    // Process income distribution and BV updates
+    await this.processIncomeDistribution(purchase.id);
+    
+    return purchase;
+  }
+
+  async getUserPurchases(userId: string): Promise<Purchase[]> {
+    return await db.select().from(purchases)
+      .where(eq(purchases.userId, userId))
+      .orderBy(desc(purchases.createdAt));
+  }
+
+  async getPurchaseById(id: string): Promise<Purchase | undefined> {
+    const [purchase] = await db.select().from(purchases).where(eq(purchases.id, id));
+    return purchase;
+  }
+
+  async updatePurchaseStatus(id: string, status: string): Promise<boolean> {
+    const result = await db
+      .update(purchases)
+      .set({ paymentStatus: status, updatedAt: new Date() })
+      .where(eq(purchases.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ===== WALLET OPERATIONS =====
+  async getWalletBalance(userId: string): Promise<WalletBalance | undefined> {
+    const [wallet] = await db.select().from(walletBalances).where(eq(walletBalances.userId, userId));
+    return wallet;
+  }
+
+  async createWalletBalance(userId: string): Promise<WalletBalance> {
+    const [wallet] = await db.insert(walletBalances).values({ userId }).returning();
+    return wallet;
+  }
+
+  async updateWalletBalance(userId: string, amount: string, description: string, type: any): Promise<Transaction> {
+    let wallet = await this.getWalletBalance(userId);
+    if (!wallet) {
+      wallet = await this.createWalletBalance(userId);
+    }
+
+    const currentBalance = parseFloat(wallet.balance);
+    const changeAmount = parseFloat(amount);
+    const newBalance = currentBalance + changeAmount;
+
+    // Update wallet balance
+    await db.update(walletBalances)
+      .set({ 
+        balance: newBalance.toString(),
+        totalEarnings: type === 'withdrawal' ? wallet.totalEarnings : (parseFloat(wallet.totalEarnings) + Math.max(0, changeAmount)).toString(),
+        totalWithdrawals: type === 'withdrawal' ? (parseFloat(wallet.totalWithdrawals) + Math.abs(changeAmount)).toString() : wallet.totalWithdrawals,
+        updatedAt: new Date()
+      })
+      .where(eq(walletBalances.userId, userId));
+
+    // Create transaction record
+    const [transaction] = await db.insert(transactions).values({
+      userId,
+      type,
+      amount,
+      description,
+      balanceBefore: currentBalance.toString(),
+      balanceAfter: newBalance.toString(),
+    }).returning();
+
+    return transaction;
+  }
+
+  async getUserTransactions(userId: string): Promise<Transaction[]> {
+    return await db.select().from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt));
+  }
+
+  // ===== WITHDRAWAL OPERATIONS =====
+  async createWithdrawalRequest(userId: string, data: CreateWithdrawal): Promise<WithdrawalRequest> {
+    const wallet = await this.getWalletBalance(userId);
+    if (!wallet || parseFloat(wallet.balance) < parseFloat(data.amount)) {
+      throw new Error('Insufficient balance');
+    }
+
+    const [withdrawal] = await db.insert(withdrawalRequests).values({
+      userId,
+      amount: data.amount,
+      bankDetails: data.bankDetails,
+    }).returning();
+
+    return withdrawal;
+  }
+
+  async getUserWithdrawals(userId: string): Promise<WithdrawalRequest[]> {
+    return await db.select().from(withdrawalRequests)
+      .where(eq(withdrawalRequests.userId, userId))
+      .orderBy(desc(withdrawalRequests.createdAt));
+  }
+
+  async getAllWithdrawals(): Promise<WithdrawalRequest[]> {
+    return await db.select().from(withdrawalRequests)
+      .orderBy(desc(withdrawalRequests.createdAt));
+  }
+
+  async updateWithdrawalStatus(id: string, status: string, adminNotes?: string): Promise<boolean> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (adminNotes) updateData.adminNotes = adminNotes;
+    if (status === 'processed') updateData.processedAt = new Date();
+
+    const result = await db
+      .update(withdrawalRequests)
+      .set(updateData)
+      .where(eq(withdrawalRequests.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ===== KYC OPERATIONS =====
+  async getUserKYCDocuments(userId: string): Promise<KYCDocument[]> {
+    return await db.select().from(kycDocuments)
+      .where(eq(kycDocuments.userId, userId))
+      .orderBy(desc(kycDocuments.createdAt));
+  }
+
+  async createKYCDocument(userId: string, data: CreateKYC): Promise<KYCDocument> {
+    const [kyc] = await db.insert(kycDocuments).values({
+      userId,
+      ...data,
+    }).returning();
+    
+    // Update user KYC submission timestamp
+    await db.update(users)
+      .set({ kycSubmittedAt: new Date() })
+      .where(eq(users.id, userId));
+    
+    return kyc;
+  }
+
+  async updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean> {
+    const updateData: any = { status, reviewedAt: new Date(), updatedAt: new Date() };
+    if (rejectionReason) updateData.rejectionReason = rejectionReason;
+
+    const result = await db
+      .update(kycDocuments)
+      .set(updateData)
+      .where(eq(kycDocuments.id, id));
+
+    // If approved, update user KYC status
+    if (status === 'approved') {
+      const [kyc] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
+      if (kyc) {
+        await db.update(users)
+          .set({ kycStatus: 'approved', kycApprovedAt: new Date() })
+          .where(eq(users.id, kyc.userId));
+      }
+    }
+
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getAllPendingKYC(): Promise<KYCDocument[]> {
+    return await db.select().from(kycDocuments)
+      .where(eq(kycDocuments.status, 'pending'))
+      .orderBy(desc(kycDocuments.createdAt));
+  }
+
+  // ===== RANK OPERATIONS =====
+  async getUserRankHistory(userId: string): Promise<RankAchievement[]> {
+    return await db.select().from(rankAchievements)
+      .where(eq(rankAchievements.userId, userId))
+      .orderBy(desc(rankAchievements.achievedAt));
+  }
+
+  async createRankAchievement(userId: string, rank: any, teamBV: string, leftBV: string, rightBV: string): Promise<RankAchievement> {
+    // Check rank eligibility and calculate bonus
+    const bonus = this.calculateRankBonus(rank, teamBV);
+    
+    const [achievement] = await db.insert(rankAchievements).values({
+      userId,
+      rank,
+      teamBV,
+      leftBV,
+      rightBV,
+      bonus: bonus.toString(),
+    }).returning();
+
+    // Update user's current rank
+    await db.update(users)
+      .set({ currentRank: rank })
+      .where(eq(users.id, userId));
+
+    // Credit rank achievement bonus
+    if (bonus > 0) {
+      await this.updateWalletBalance(userId, bonus.toString(), `Rank Achievement Bonus - ${rank}`, 'admin_credit');
+    }
+
+    return achievement;
+  }
+
+  private calculateRankBonus(rank: any, teamBV: string): number {
+    const bv = parseFloat(teamBV);
+    const bonuses: { [key: string]: number } = {
+      'Executive': 0,
+      'Bronze Star': 5000,
+      'Gold Star': 10000,
+      'Emerald Star': 36000,
+      'Ruby Star': 90000,
+      'Diamond': 225000,
+      'Wise President': 360000,
+      'President': 810000,
+      'Ambassador': 1620000,
+      'Deputy Director': 2500000,
+      'Director': 10000000,
+      'Founder': 35000000,
+    };
+    return bonuses[rank] || 0;
+  }
+
+  async checkRankEligibility(userId: string): Promise<{ eligible: boolean; newRank?: any; teamBV: string }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error('User not found');
+
+    const bvStats = await this.calculateUserBV(userId);
+    const teamBV = parseFloat(bvStats.totalBV);
+
+    // Rank eligibility criteria based on business plan
+    const rankCriteria: { [key: string]: number } = {
+      'Executive': 0,
+      'Bronze Star': 125000,
+      'Gold Star': 250000,
+      'Emerald Star': 900000,
+      'Ruby Star': 1800000,
+      'Diamond': 4500000,
+      'Wise President': 9000000,
+      'President': 27000000,
+      'Ambassador': 81000000,
+      'Deputy Director': 243000000,
+      'Director': 900000000,
+      'Founder': 2700000000,
+    };
+
+    const ranks = Object.keys(rankCriteria);
+    const currentRankIndex = ranks.indexOf(user.currentRank || 'Executive');
+    
+    for (let i = ranks.length - 1; i > currentRankIndex; i--) {
+      const rank = ranks[i];
+      if (teamBV >= rankCriteria[rank]) {
+        return { eligible: true, newRank: rank as any, teamBV: teamBV.toString() };
+      }
+    }
+
+    return { eligible: false, teamBV: teamBV.toString() };
+  }
+
+  // ===== BV CALCULATION OPERATIONS =====
+  async calculateUserBV(userId: string): Promise<{ totalBV: string; leftBV: string; rightBV: string }> {
+    const user = await this.getUser(userId);
+    if (!user) throw new Error('User not found');
+
+    // Calculate own BV from purchases
+    const userPurchases = await this.getUserPurchases(userId);
+    const ownBV = userPurchases
+      .filter(p => p.paymentStatus === 'completed')
+      .reduce((sum, p) => sum + parseFloat(p.totalBV), 0);
+
+    // Calculate left leg BV
+    let leftBV = 0;
+    if (user.leftChildId) {
+      const leftStats = await this.calculateUserBV(user.leftChildId);
+      leftBV = parseFloat(leftStats.totalBV);
+    }
+
+    // Calculate right leg BV
+    let rightBV = 0;
+    if (user.rightChildId) {
+      const rightStats = await this.calculateUserBV(user.rightChildId);
+      rightBV = parseFloat(rightStats.totalBV);
+    }
+
+    const totalBV = ownBV + leftBV + rightBV;
+
+    return {
+      totalBV: totalBV.toString(),
+      leftBV: leftBV.toString(),
+      rightBV: rightBV.toString(),
+    };
+  }
+
+  async updateUserBVStats(userId: string): Promise<void> {
+    const bvStats = await this.calculateUserBV(userId);
+    
+    await db.update(users)
+      .set({
+        totalBV: bvStats.totalBV,
+        leftBV: bvStats.leftBV,
+        rightBV: bvStats.rightBV,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+  }
+
+  async processIncomeDistribution(purchaseId: string): Promise<void> {
+    const purchase = await this.getPurchaseById(purchaseId);
+    if (!purchase) return;
+
+    const buyer = await this.getUser(purchase.userId);
+    if (!buyer || !buyer.sponsorId) return;
+
+    // 10% sponsor income to direct sponsor
+    const sponsorIncome = parseFloat(purchase.totalBV) * 0.1;
+    await this.updateWalletBalance(
+      buyer.sponsorId,
+      sponsorIncome.toString(),
+      `Sponsor Income from ${buyer.firstName} ${buyer.lastName}`,
+      'sponsor_income'
+    );
+
+    // Update BV stats for the buyer and uplines
+    await this.updateUserBVStats(purchase.userId);
+    
+    // Update upline BV stats (recursive)
+    let currentUser = buyer;
+    while (currentUser.parentId) {
+      await this.updateUserBVStats(currentUser.parentId);
+      const parentUser = await this.getUser(currentUser.parentId);
+      if (!parentUser) break;
+      currentUser = parentUser;
+    }
+
+    // Check rank eligibility for buyer and sponsor
+    const buyerRankCheck = await this.checkRankEligibility(purchase.userId);
+    if (buyerRankCheck.eligible && buyerRankCheck.newRank) {
+      await this.createRankAchievement(
+        purchase.userId,
+        buyerRankCheck.newRank,
+        buyerRankCheck.teamBV,
+        (await this.calculateUserBV(purchase.userId)).leftBV,
+        (await this.calculateUserBV(purchase.userId)).rightBV
+      );
+    }
+  }
+
+  // ===== FRANCHISE OPERATIONS =====
+  async createFranchiseRequest(userId: string, data: CreateFranchiseRequest): Promise<FranchiseRequest> {
+    // Calculate investment details based on franchise type
+    const franchiseDetails = this.getFranchiseDetails(data.franchiseType);
+    
+    const [request] = await db.insert(franchiseRequests).values({
+      userId,
+      franchiseType: data.franchiseType,
+      investmentAmount: franchiseDetails.amount.toString(),
+      businessVolume: franchiseDetails.bv.toString(),
+      sponsorIncome: franchiseDetails.sponsorIncome.toString(),
+      businessPlan: data.businessPlan,
+    }).returning();
+
+    return request;
+  }
+
+  private getFranchiseDetails(type: any): { amount: number; bv: number; sponsorIncome: number } {
+    const details: { [key: string]: { amount: number; bv: number; sponsorIncome: number } } = {
+      'Mini Franchise': { amount: 250000, bv: 62500, sponsorIncome: 12500 },
+      'Basic Franchise': { amount: 500000, bv: 125000, sponsorIncome: 25000 },
+      'Smart Franchise': { amount: 1000000, bv: 250000, sponsorIncome: 50000 },
+      'Growth Franchise': { amount: 2500000, bv: 625000, sponsorIncome: 125000 },
+      'Master Franchise': { amount: 5000000, bv: 1250000, sponsorIncome: 250000 },
+      'Super Franchise': { amount: 10000000, bv: 2500000, sponsorIncome: 500000 },
+    };
+    return details[type] || details['Mini Franchise'];
+  }
+
+  async getUserFranchiseRequests(userId: string): Promise<FranchiseRequest[]> {
+    return await db.select().from(franchiseRequests)
+      .where(eq(franchiseRequests.userId, userId))
+      .orderBy(desc(franchiseRequests.createdAt));
+  }
+
+  async getAllFranchiseRequests(): Promise<FranchiseRequest[]> {
+    return await db.select().from(franchiseRequests)
+      .orderBy(desc(franchiseRequests.createdAt));
+  }
+
+  async updateFranchiseRequestStatus(id: string, status: string, adminNotes?: string): Promise<boolean> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (adminNotes) updateData.adminNotes = adminNotes;
+    if (status === 'approved') updateData.reviewedAt = new Date();
+
+    const result = await db
+      .update(franchiseRequests)
+      .set(updateData)
+      .where(eq(franchiseRequests.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ===== SUPPORT OPERATIONS =====
+  async createSupportTicket(userId: string, data: CreateSupportTicket): Promise<SupportTicket> {
+    const [ticket] = await db.insert(supportTickets).values({
+      userId,
+      ...data,
+    }).returning();
+    return ticket;
+  }
+
+  async getUserTickets(userId: string): Promise<SupportTicket[]> {
+    return await db.select().from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async getAllTickets(): Promise<SupportTicket[]> {
+    return await db.select().from(supportTickets)
+      .orderBy(desc(supportTickets.createdAt));
+  }
+
+  async updateTicketStatus(id: string, status: any, resolution?: string): Promise<boolean> {
+    const updateData: any = { status, updatedAt: new Date() };
+    if (resolution) {
+      updateData.resolution = resolution;
+      if (status === 'resolved') updateData.resolvedAt = new Date();
+    }
+
+    const result = await db
+      .update(supportTickets)
+      .set(updateData)
+      .where(eq(supportTickets.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // ===== ACHIEVERS OPERATIONS =====
+  async getAchieversByType(type: string, period: string): Promise<Achiever[]> {
+    return await db.select().from(achievers)
+      .where(and(eq(achievers.achievementType, type), eq(achievers.period, period)))
+      .orderBy(achievers.position);
+  }
+
+  async createAchiever(userId: string, type: string, position: number, amount?: string): Promise<Achiever> {
+    const [achiever] = await db.insert(achievers).values({
+      userId,
+      achievementType: type,
+      position,
+      amount,
+      period: 'monthly',
+      periodDate: new Date(),
+    }).returning();
+
+    return achiever;
+  }
+
+  // ===== CHEQUE OPERATIONS =====
+  async getUserCheques(userId: string): Promise<Cheque[]> {
+    return await db.select().from(cheques)
+      .where(eq(cheques.userId, userId))
+      .orderBy(desc(cheques.issuedDate));
+  }
+
+  async createCheque(userId: string, amount: string, purpose: string): Promise<Cheque> {
+    const chequeNumber = `CHQ${Date.now()}${Math.random().toString(36).substr(2, 4).toUpperCase()}`;
+    
+    const [cheque] = await db.insert(cheques).values({
+      userId,
+      chequeNumber,
+      amount,
+      bankName: 'Voltvera Company Bank',
+      issuedDate: new Date(),
+      purpose,
+    }).returning();
+
+    return cheque;
+  }
+
+  // ===== NEWS OPERATIONS =====
+  async getAllNews(): Promise<News[]> {
+    return await db.select().from(news)
+      .orderBy(desc(news.publishedAt));
+  }
+
+  async getActiveNews(): Promise<News[]> {
+    const now = new Date();
+    return await db.select().from(news)
+      .where(and(
+        eq(news.isActive, true),
+        or(
+          sql`${news.expiresAt} IS NULL`,
+          sql`${news.expiresAt} > ${now}`
+        )
+      ))
+      .orderBy(desc(news.publishedAt));
+  }
+
+  async createNews(data: CreateNews, createdBy: string): Promise<News> {
+    const [newsItem] = await db.insert(news).values({
+      ...data,
+      createdBy,
+    }).returning();
+    return newsItem;
+  }
+
+  async updateNews(id: string, updates: Partial<News>): Promise<News | undefined> {
+    const [newsItem] = await db
+      .update(news)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(news.id, id))
+      .returning();
+    return newsItem;
   }
 }
 

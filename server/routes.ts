@@ -7,6 +7,7 @@ import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { sendSignupEmail, sendPasswordResetEmail, sendUserInvitationEmail } from "./emailService";
 import { nanoid } from "nanoid";
+import mlmRoutes from "./mlmRoutes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment
@@ -798,6 +799,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
   });
+
+  // Mount MLM routes with /api prefix
+  app.use('/api', mlmRoutes);
 
   const httpServer = createServer(app);
   return httpServer;
