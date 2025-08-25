@@ -106,6 +106,10 @@ export const users = pgTable("users", {
   kycSubmittedAt: timestamp("kyc_submitted_at"),
   kycApprovedAt: timestamp("kyc_approved_at"),
   
+  // Security & Financial Fields
+  txnPin: varchar("txn_pin"), // Transaction PIN for secure operations
+  cryptoWalletAddress: varchar("crypto_wallet_address"), // USDT/Crypto wallet address
+  
   // Password change tracking
   firstLogin: boolean("first_login").default(true),
   passwordChangedAt: timestamp("password_changed_at"),
