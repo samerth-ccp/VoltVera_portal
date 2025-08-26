@@ -798,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upline decides position for pending recruit
+  // Upline decides position for pending recruit and generates referral link
   app.post("/api/upline/pending-recruits/:id/decide", isAuthenticated, async (req: any, res) => {
     try {
       const { id } = req.params;
@@ -813,13 +813,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Position (left/right) is required when approving" });
       }
 
-      await storage.uplineDecidePosition(id, uplineId, decision, position);
-      
-      const message = decision === 'approved' 
-        ? `Recruit approved for ${position} position. Moved to admin approval.`
-        : "Recruit rejected.";
-
-      res.json({ message });
+      if (decision === 'approved') {
+        // Generate referral link for the approved recruit
+        const token = nanoid(32);
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
+        
+        const referralLink = await storage.createReferralLink({
+          token,
+          generatedBy: uplineId,
+          generatedByRole: req.user.role,
+          placementSide: position,
+          expiresAt,
+          pendingRecruitId: id // Link this referral to the pending recruit
+        });
+        
+        const baseUrl = process.env.NODE_ENV === 'production' 
+          ? 'https://voltveratech.com' 
+          : `http://localhost:5000`;
+        const fullUrl = `${baseUrl}/referral-register?token=${token}`;
+        
+        // Update the pending recruit with link generation step
+        await storage.uplineDecidePosition(id, uplineId, decision, position, token);
+        
+        res.json({ 
+          message: `Recruit approved for ${position} position. Share this link with them to complete registration.`,
+          referralLink: fullUrl,
+          expiresIn: '48 hours'
+        });
+      } else {
+        // Rejection flow remains the same
+        await storage.uplineDecidePosition(id, uplineId, decision, position);
+        res.json({ message: "Recruit rejected." });
+      }
     } catch (error) {
       console.error("Error processing upline decision:", error);
       res.status(500).json({ message: "Failed to process decision" });
@@ -968,39 +994,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Recruitment request endpoints
+  // Recruitment registration endpoint (when new user fills details via referral link)
   app.post('/api/recruitment/register', async (req, res) => {
     try {
-      const { referralToken, email, name, mobile } = req.body;
+      const { token, recruiteeName, recruiteeEmail } = req.body;
       
-      if (!referralToken || !email || !name) {
-        return res.status(400).json({ message: 'Referral token, email, and name are required' });
+      if (!token || !recruiteeName || !recruiteeEmail) {
+        return res.status(400).json({ message: 'Token, name, and email are required' });
       }
       
       // Validate referral link
-      const referralLink = await storage.getReferralLink(referralToken);
-      if (!referralLink || referralLink.isUsed || new Date() > referralLink.expiresAt) {
-        return res.status(400).json({ message: 'Invalid or expired referral link' });
+      const referralLink = await storage.getReferralLink(token);
+      if (!referralLink) {
+        return res.status(404).json({ message: 'Invalid or expired referral link' });
+      }
+      
+      if (referralLink.isUsed) {
+        return res.status(400).json({ message: 'This referral link has already been used' });
+      }
+      
+      if (new Date() > referralLink.expiresAt) {
+        return res.status(400).json({ message: 'This referral link has expired' });
       }
       
       // Check if email already exists
-      const existingUser = await storage.getUserByEmail(email);
+      const existingUser = await storage.getUserByEmail(recruiteeEmail);
       if (existingUser) {
         return res.status(409).json({ message: 'A user with this email already exists' });
       }
       
-      // Create recruitment request
-      const recruitmentRequest = await storage.createRecruitmentRequest({
-        referralLinkId: referralLink.id,
-        recruiteeEmail: email,
-        recruiteeName: name,
-        notes: mobile ? `Mobile: ${mobile}` : undefined
-      });
+      // Update the pending recruit with the user's details (this was already approved by upline)
+      if (referralLink.pendingRecruitId) {
+        // Update pending recruit status to awaiting admin (final approval)
+        await storage.updatePendingRecruitDetails(referralLink.pendingRecruitId, {
+          fullName: recruiteeName,
+          email: recruiteeEmail,
+          status: 'awaiting_admin'
+        });
+        
+        // Mark referral link as used
+        await storage.markReferralLinkAsUsed(token, referralLink.pendingRecruitId);
+      }
       
       res.json({
-        message: 'Registration request submitted successfully',
-        requestId: recruitmentRequest.id,
-        status: 'pending_approval'
+        message: 'Registration completed successfully! Your information has been submitted for final admin approval.',
+        status: 'awaiting_admin'
       });
     } catch (error) {
       console.error('Error processing recruitment registration:', error);

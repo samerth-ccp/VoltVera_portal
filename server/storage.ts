@@ -219,6 +219,9 @@ export interface IStorage {
   }>;
   getHiddenIds(): Promise<User[]>;
   overridePlacement(userId: string, newParentId: string, position: string): Promise<boolean>;
+  
+  // Update pending recruit details after user fills registration form
+  updatePendingRecruitDetails(recruitId: string, details: { fullName: string; email: string; status: string }): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -732,7 +735,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Upline decides position for pending recruit
-  async uplineDecidePosition(pendingRecruitId: string, uplineId: string, decision: 'approved' | 'rejected', position?: 'left' | 'right'): Promise<void> {
+  async uplineDecidePosition(pendingRecruitId: string, uplineId: string, decision: 'approved' | 'rejected', position?: 'left' | 'right', referralToken?: string): Promise<void> {
     if (decision === 'approved' && !position) {
       throw new Error('Position must be specified when approving');
     }
@@ -1770,6 +1773,24 @@ export class DatabaseStorage implements IStorage {
       return true;
     } catch (error) {
       console.error('Error overriding placement:', error);
+      return false;
+    }
+  }
+
+  async updatePendingRecruitDetails(recruitId: string, details: { fullName: string; email: string; status: string }): Promise<boolean> {
+    try {
+      const result = await db.update(pendingRecruits)
+        .set({
+          fullName: details.fullName,
+          email: details.email,
+          status: details.status,
+          updatedAt: new Date()
+        })
+        .where(eq(pendingRecruits.id, recruitId));
+      
+      return true;
+    } catch (error) {
+      console.error('Error updating pending recruit details:', error);
       return false;
     }
   }
