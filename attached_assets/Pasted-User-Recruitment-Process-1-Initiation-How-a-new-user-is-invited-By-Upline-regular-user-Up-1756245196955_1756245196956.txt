@@ -1,0 +1,120 @@
+User Recruitment Process
+1. Initiation (How a new user is invited)
+By Upline (regular user):
+
+Upline logs in → goes to “Add New User” ( “Generate Link”).
+
+Upline chooses placement Left or Right leg.
+
+System generates a unique referral link for that leg.
+
+Link is sent directly to the new recruit. Initially he can make the changes ( eg. Passwords, KYC details etc mentioned in the sheet)
+
+By Admin:
+
+Admin can also generate a user link (just like a regular user).
+
+But here, Admin does not need approval from upline.
+
+Placement is decided by Admin at the time of link generation.
+
+By Founder:
+
+Founder can either:
+
+Create new IDs directly.
+
+OR use hidden IDs and place them in any leg (special privilege).
+
+No one (not even Admin) can see or approve Founder placements.
+
+2. Registration
+New user clicks the referral link → redirected to Sign-Up Page.
+
+User fills in details (Name, Email, Mobile, Password, KYC docs ).
+
+Once submitted:
+
+Credentials are auto-generated (User ID + Password). Once they login they should get the feature to change the password initially
+
+They receive a confirmation email/SMS with login details.
+
+Answer to your question:
+Yes, new users get a joining link first. Once they register, they receive credentials (User ID + Password) via email.
+
+3. Activation Logic
+When does a user become “active”? 
+
+User becomes active only after Admin approval (e.g., KYC + purchase checked).
+
+Until purchase = status shows Registered / Inactive.
+
+After 1st purchase = Active + counted in BV + appears in downline.
+
+4. Approval & Placement Flow
+Now, how does the approval work in different recruiter scenarios:
+
+Case A – Recruiter is a User
+Upline generates referral link (left/right leg).
+
+New recruit registers.
+
+Admin approves final activation (not upline).
+
+After admin approval → recruit is placed in upline’s chosen leg.
+
+Recruit now contributes to upline’s BV and team counts.
+
+Case B – Recruiter is an Admin
+Admin generates referral link (left/right).
+
+New recruit registers.
+
+Since Admin created the link, no extra approval step needed (Admin already has authority).
+
+User is auto-placed and active after 1st purchase.
+
+Case C – Recruiter is a Founder
+Founder either:
+
+Creates ID directly (hidden or regular).
+
+Or generates referral link (left/right).
+
+New recruit registers (if link is used).
+
+Founder can override placement anytime.
+
+E.g., shift user from left → right to balance BV. Even add fake entries in the particular leg
+
+Activation = after 1st purchase (unless Founder overrides and manually activates).
+
+Admin cannot see hidden IDs.
+
+5. Scenario Handling
+If Upline is Admin:
+
+Workflow same as Case B.
+
+No approval needed (Admin placing is final).
+
+If Upline is Founder:
+
+Founder has full override.
+
+Hidden IDs can be inserted without following referral process.
+
+If Recruiter is a Regular User:
+
+Approval must come from Admin only (not upline).
+
+Placement is locked at the time of referral link generation (Left/Right).
+
+6. Key Safeguards
+No Duplicate Placements: Once referral link is used, that position (Left/Right) is locked.
+
+BV Calculation: BV counts only after activation (purchase).
+
+KYC Enforcement: User must upload KYC within X days. If not → account locked for withdrawals.
+
+Referral Link Expiry: Each generated link should expire in 24–48 hours to prevent misuse.
