@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema } from "@shared/schema";
+import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, users } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -9,6 +9,8 @@ import { sendSignupEmail, sendPasswordResetEmail, sendUserInvitationEmail } from
 import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import mlmRoutes from "./mlmRoutes";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment
@@ -1087,9 +1089,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const kycDeadline = new Date();
       kycDeadline.setDate(kycDeadline.getDate() + 7);
       
-      await storage.updateUser(newUser.id, {
-        kycDeadline
-      });
+      // Set KYC deadline separately since it's not in create schema
+      await db.update(users)
+        .set({ kycDeadline })
+        .where(eq(users.id, newUser.id));
       
       // Mark recruitment request as completed
       await storage.updateRecruitmentRequestStatus(id, 'completed', adminId);

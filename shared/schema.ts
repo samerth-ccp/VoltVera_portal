@@ -140,6 +140,7 @@ export const referralLinks = pgTable("referral_links", {
   generatedBy: varchar("generated_by").notNull(), // User ID who generated the link
   generatedByRole: varchar("generated_by_role").notNull(), // 'user', 'admin', 'founder'
   placementSide: varchar("placement_side").notNull(), // 'left' or 'right'
+  pendingRecruitId: varchar("pending_recruit_id"), // Link to pending recruit for upline-generated links
   isUsed: boolean("is_used").default(false),
   usedBy: varchar("used_by"), // User ID who used the link
   usedAt: timestamp("used_at"),

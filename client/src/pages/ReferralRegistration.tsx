@@ -37,10 +37,7 @@ export default function ReferralRegistration() {
 
   const submitRegistrationMutation = useMutation({
     mutationFn: async (data: { token: string; recruiteeName: string; recruiteeEmail: string }) => {
-      return apiRequest('/api/recruitment/register', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('/api/recruitment/register', 'POST', data);
     },
     onSuccess: () => {
       setIsSubmitted(true);
