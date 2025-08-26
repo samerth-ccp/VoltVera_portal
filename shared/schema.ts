@@ -25,8 +25,8 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User roles enum
-export const userRoleEnum = pgEnum('user_role', ['admin', 'user']);
+// User roles enum - Enhanced with founder and franchise types
+export const userRoleEnum = pgEnum('user_role', ['admin', 'user', 'founder', 'mini_franchise', 'basic_franchise']);
 
 // User status enum
 export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'pending']);
@@ -114,6 +114,11 @@ export const users = pgTable("users", {
   firstLogin: boolean("first_login").default(true),
   passwordChangedAt: timestamp("password_changed_at"),
   
+  // Founder special fields
+  isHiddenId: boolean("is_hidden_id").default(false), // For founder's hidden IDs
+  kycDeadline: timestamp("kyc_deadline"), // 7-day KYC deadline
+  kycLocked: boolean("kyc_locked").default(false), // Account locked due to KYC deadline
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -123,9 +128,39 @@ export const emailTokens = pgTable("email_tokens", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   email: varchar("email").notNull(),
   token: varchar("token").notNull().unique(),
-  type: varchar("type").notNull(), // 'signup' or 'password_reset'
+  type: varchar("type").notNull(), // 'signup', 'password_reset', 'invitation', 'referral'
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Referral links for recruitment system
+export const referralLinks = pgTable("referral_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  token: varchar("token").notNull().unique(),
+  generatedBy: varchar("generated_by").notNull(), // User ID who generated the link
+  generatedByRole: varchar("generated_by_role").notNull(), // 'user', 'admin', 'founder'
+  placementSide: varchar("placement_side").notNull(), // 'left' or 'right'
+  isUsed: boolean("is_used").default(false),
+  usedBy: varchar("used_by"), // User ID who used the link
+  usedAt: timestamp("used_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Recruitment tracking
+export const recruitmentRequests = pgTable("recruitment_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  referralLinkId: varchar("referral_link_id").notNull(),
+  recruiteeEmail: varchar("recruitee_email").notNull(),
+  recruiteeName: varchar("recruitee_name"),
+  recruiteeId: varchar("recruitee_id"), // Set after user registration
+  status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected', 'completed'
+  approvedBy: varchar("approved_by"), // Admin/Founder who approved
+  approvedAt: timestamp("approved_at"),
+  placementLocked: boolean("placement_locked").default(false),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 // Pending recruits table for upline position decision workflow
@@ -611,6 +646,26 @@ export type News = typeof news.$inferSelect;
 export type PendingRecruit = typeof pendingRecruits.$inferSelect;
 export type EmailToken = typeof emailTokens.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;
+export type ReferralLink = typeof referralLinks.$inferSelect;
+export type RecruitmentRequest = typeof recruitmentRequests.$inferSelect;
+
+// Referral link and recruitment schemas
+export const createReferralLinkSchema = createInsertSchema(referralLinks).pick({
+  generatedBy: true,
+  generatedByRole: true,
+  placementSide: true,
+  expiresAt: true,
+});
+
+export const createRecruitmentRequestSchema = createInsertSchema(recruitmentRequests).pick({
+  referralLinkId: true,
+  recruiteeEmail: true,
+  recruiteeName: true,
+  notes: true,
+});
+
+export type CreateReferralLink = z.infer<typeof createReferralLinkSchema>;
+export type CreateRecruitmentRequest = z.infer<typeof createRecruitmentRequestSchema>;
 
 // Enum types
 export type UserRole = typeof users.$inferSelect.role;

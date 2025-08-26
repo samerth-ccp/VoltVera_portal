@@ -7,6 +7,7 @@ import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { sendSignupEmail, sendPasswordResetEmail, sendUserInvitationEmail } from "./emailService";
 import { nanoid } from "nanoid";
+import bcrypt from "bcrypt";
 import mlmRoutes from "./mlmRoutes";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -885,6 +886,301 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
       res.status(500).json({ message: "Failed to mark all notifications as read" });
+    }
+  });
+
+  // Referral link endpoints
+  app.post('/api/referral/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { placementSide } = req.body;
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      
+      if (!placementSide || !['left', 'right'].includes(placementSide)) {
+        return res.status(400).json({ message: 'Valid placement side (left/right) is required' });
+      }
+      
+      const token = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
+      
+      const referralLink = await storage.createReferralLink({
+        token,
+        generatedBy: userId,
+        generatedByRole: userRole,
+        placementSide,
+        expiresAt
+      });
+      
+      const baseUrl = process.env.NODE_ENV === 'production' 
+        ? 'https://voltveratech.com' 
+        : `http://localhost:5000`;
+      const fullUrl = `${baseUrl}/recruit?ref=${token}`;
+      
+      res.json({
+        referralLink,
+        url: fullUrl,
+        expiresIn: '48 hours'
+      });
+    } catch (error) {
+      console.error('Error generating referral link:', error);
+      res.status(500).json({ message: 'Failed to generate referral link' });
+    }
+  });
+
+  app.get('/api/referral/validate/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const referralLink = await storage.getReferralLink(token);
+      if (!referralLink) {
+        return res.status(404).json({ message: 'Invalid referral link' });
+      }
+      
+      if (referralLink.isUsed) {
+        return res.status(400).json({ message: 'Referral link has already been used' });
+      }
+      
+      if (new Date() > referralLink.expiresAt) {
+        return res.status(400).json({ message: 'Referral link has expired' });
+      }
+      
+      res.json({
+        valid: true,
+        placementSide: referralLink.placementSide,
+        generatedBy: referralLink.generatedBy,
+        generatedByRole: referralLink.generatedByRole
+      });
+    } catch (error) {
+      console.error('Error validating referral link:', error);
+      res.status(500).json({ message: 'Failed to validate referral link' });
+    }
+  });
+
+  app.get('/api/referral/my-links', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const links = await storage.getUserReferralLinks(userId);
+      res.json(links);
+    } catch (error) {
+      console.error('Error fetching user referral links:', error);
+      res.status(500).json({ message: 'Failed to fetch referral links' });
+    }
+  });
+
+  // Recruitment request endpoints
+  app.post('/api/recruitment/register', async (req, res) => {
+    try {
+      const { referralToken, email, name, mobile } = req.body;
+      
+      if (!referralToken || !email || !name) {
+        return res.status(400).json({ message: 'Referral token, email, and name are required' });
+      }
+      
+      // Validate referral link
+      const referralLink = await storage.getReferralLink(referralToken);
+      if (!referralLink || referralLink.isUsed || new Date() > referralLink.expiresAt) {
+        return res.status(400).json({ message: 'Invalid or expired referral link' });
+      }
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: 'A user with this email already exists' });
+      }
+      
+      // Create recruitment request
+      const recruitmentRequest = await storage.createRecruitmentRequest({
+        referralLinkId: referralLink.id,
+        recruiteeEmail: email,
+        recruiteeName: name,
+        notes: mobile ? `Mobile: ${mobile}` : undefined
+      });
+      
+      res.json({
+        message: 'Registration request submitted successfully',
+        requestId: recruitmentRequest.id,
+        status: 'pending_approval'
+      });
+    } catch (error) {
+      console.error('Error processing recruitment registration:', error);
+      res.status(500).json({ message: 'Failed to process registration' });
+    }
+  });
+
+  app.get('/api/admin/recruitment-requests', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { status } = req.query;
+      const requests = await storage.getRecruitmentRequests({
+        status: status as string
+      });
+      res.json(requests);
+    } catch (error) {
+      console.error('Error fetching recruitment requests:', error);
+      res.status(500).json({ message: 'Failed to fetch recruitment requests' });
+    }
+  });
+
+  app.post('/api/admin/recruitment-requests/:id/approve', isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const adminId = req.user.id;
+      
+      const request = await storage.getRecruitmentRequest(id);
+      if (!request) {
+        return res.status(404).json({ message: 'Recruitment request not found' });
+      }
+      
+      // Auto-generate credentials and create user
+      const tempPassword = nanoid(12);
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      
+      // Create user account
+      const newUser = await storage.createUser({
+        email: request.recruiteeEmail,
+        password: hashedPassword,
+        firstName: request.recruiteeName?.split(' ')[0] || 'User',
+        lastName: request.recruiteeName?.split(' ').slice(1).join(' ') || '',
+        role: 'user',
+        status: 'pending' // Will be activated when they complete invitation
+      });
+      
+      // Set KYC deadline (7 days)
+      const kycDeadline = new Date();
+      kycDeadline.setDate(kycDeadline.getDate() + 7);
+      
+      await storage.updateUser(newUser.id, {
+        kycDeadline
+      });
+      
+      // Mark recruitment request as completed
+      await storage.updateRecruitmentRequestStatus(id, 'completed', adminId);
+      
+      // Mark referral link as used
+      const referralLink = await storage.getReferralLink(request.referralLinkId);
+      if (referralLink) {
+        await storage.markReferralLinkAsUsed(referralLink.token, newUser.id);
+      }
+      
+      // Generate invitation token and send email
+      const invitationToken = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
+      await storage.createEmailToken({
+        email: newUser.email!,
+        token: invitationToken,
+        type: 'invitation',
+        expiresAt
+      });
+      
+      // Send invitation email
+      const emailSent = await sendUserInvitationEmail(
+        newUser.email!, 
+        newUser.firstName || 'User', 
+        invitationToken
+      );
+      
+      res.json({
+        message: 'Recruitment approved and user account created',
+        user: newUser,
+        emailSent
+      });
+    } catch (error) {
+      console.error('Error approving recruitment request:', error);
+      res.status(500).json({ message: 'Failed to approve recruitment request' });
+    }
+  });
+
+  // Founder-only routes - Hidden IDs and override capabilities  
+  const isFounder = (req: any, res: any, next: any) => {
+    if (!req.user || req.user.role !== 'founder') {
+      return res.status(403).json({ message: 'Founder access required' });
+    }
+    next();
+  };
+
+  app.get('/api/founder/stats', isAuthenticated, isFounder, async (req: any, res) => {
+    try {
+      const stats = await storage.getFounderStats();
+      res.json(stats);
+    } catch (error) {
+      console.error('Error fetching founder stats:', error);
+      res.status(500).json({ message: 'Failed to fetch founder stats' });
+    }
+  });
+
+  app.get('/api/founder/hidden-ids', isAuthenticated, isFounder, async (req: any, res) => {
+    try {
+      const hiddenIds = await storage.getHiddenIds();
+      res.json(hiddenIds);
+    } catch (error) {
+      console.error('Error fetching hidden IDs:', error);
+      res.status(500).json({ message: 'Failed to fetch hidden IDs' });
+    }
+  });
+
+  app.post('/api/founder/create-hidden-id', isAuthenticated, isFounder, async (req: any, res) => {
+    try {
+      const { email, firstName, lastName, placementSide } = req.body;
+      
+      if (!email || !firstName || !lastName || !placementSide) {
+        return res.status(400).json({ message: 'All fields are required' });
+      }
+      
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(409).json({ message: 'Email already exists' });
+      }
+      
+      // Check hidden ID limit (20 max)
+      const currentHiddenIds = await storage.getHiddenIds();
+      if (currentHiddenIds.length >= 20) {
+        return res.status(400).json({ message: 'Maximum of 20 hidden IDs allowed' });
+      }
+      
+      // Create hidden ID
+      const tempPassword = nanoid(16);
+      const hashedPassword = await bcrypt.hash(tempPassword, 10);
+      
+      const hiddenUser = await storage.createUser({
+        email,
+        firstName,
+        lastName,
+        password: hashedPassword,
+        role: 'user',
+        status: 'active',
+        isHiddenId: true,
+        emailVerified: new Date()
+      });
+      
+      res.json({
+        message: 'Hidden ID created successfully',
+        hiddenId: hiddenUser
+      });
+    } catch (error) {
+      console.error('Error creating hidden ID:', error);
+      res.status(500).json({ message: 'Failed to create hidden ID' });
+    }
+  });
+
+  app.post('/api/founder/override-placement', isAuthenticated, isFounder, async (req: any, res) => {
+    try {
+      const { userId, newParentId, position } = req.body;
+      
+      if (!userId || !newParentId || !['left', 'right'].includes(position)) {
+        return res.status(400).json({ message: 'Valid userId, newParentId, and position are required' });
+      }
+      
+      await storage.overridePlacement(userId, newParentId, position);
+      
+      res.json({
+        message: 'Placement overridden successfully'
+      });
+    } catch (error) {
+      console.error('Error overriding placement:', error);
+      res.status(500).json({ message: 'Failed to override placement' });
     }
   });
 

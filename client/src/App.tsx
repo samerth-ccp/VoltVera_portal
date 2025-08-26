@@ -8,6 +8,9 @@ import NotFound from "@/pages/not-found";
 import Landing from "@/pages/Landing";
 import AdminDashboard from "@/pages/AdminDashboard";
 import UserDashboard from "@/pages/UserDashboard";
+import FounderDashboard from "@/pages/FounderDashboard";
+import FranchiseDashboard from "@/pages/FranchiseDashboard";
+import ReferralRegistration from "@/pages/ReferralRegistration";
 import ChangePassword from "@/pages/ChangePassword";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Signup from "@/pages/Signup";
@@ -30,6 +33,7 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/complete-invitation" component={CompleteInvitation} />
+      <Route path="/referral-register" component={ReferralRegistration} />
       
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (
@@ -45,8 +49,12 @@ function Router() {
           <Route path="/my-purchases" component={MyPurchases} />
           
           {/* Role-based routing for authenticated users */}
-          {user?.role === 'admin' ? (
+          {user?.role === 'founder' ? (
+            <Route path="/" component={FounderDashboard} />
+          ) : user?.role === 'admin' ? (
             <Route path="/" component={AdminDashboard} />
+          ) : ['mini_franchise', 'basic_franchise'].includes(user?.role || '') ? (
+            <Route path="/" component={FranchiseDashboard} />
           ) : (
             <Route path="/" component={UserDashboard} />
           )}

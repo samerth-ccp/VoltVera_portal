@@ -2,6 +2,8 @@ import {
   users,
   emailTokens,
   pendingRecruits,
+  referralLinks,
+  recruitmentRequests,
   products,
   purchases,
   walletBalances,
@@ -24,6 +26,10 @@ import {
   type EmailToken,
   type CreateToken,
   type PendingRecruit,
+  type ReferralLink,
+  type CreateReferralLink,
+  type RecruitmentRequest,
+  type CreateRecruitmentRequest,
   type Product,
   type CreateProduct,
   type Purchase,
@@ -189,6 +195,30 @@ export interface IStorage {
   // Financial operations for admin
   getAllWalletBalances(): Promise<WalletBalance[]>;
   getAllWithdrawalRequests(): Promise<WithdrawalRequest[]>;
+  
+  // Referral links and recruitment
+  createReferralLink(data: CreateReferralLink & { token: string }): Promise<ReferralLink>;
+  getReferralLink(token: string): Promise<ReferralLink | undefined>;
+  markReferralLinkAsUsed(token: string, usedBy: string): Promise<boolean>;
+  getUserReferralLinks(userId: string): Promise<ReferralLink[]>;
+  
+  // Recruitment requests
+  createRecruitmentRequest(data: CreateRecruitmentRequest): Promise<RecruitmentRequest>;
+  getRecruitmentRequest(id: string): Promise<RecruitmentRequest | undefined>;
+  updateRecruitmentRequestStatus(id: string, status: string, approvedBy?: string): Promise<boolean>;
+  getRecruitmentRequests(filters?: { status?: string; generatedBy?: string }): Promise<RecruitmentRequest[]>;
+  
+  // Founder-specific operations
+  getFounderStats(): Promise<{
+    totalUsers: number;
+    hiddenIds: number;
+    totalRevenue: string;
+    networkBalance: string;
+    leftLegUsers: number;
+    rightLegUsers: number;
+  }>;
+  getHiddenIds(): Promise<User[]>;
+  overridePlacement(userId: string, newParentId: string, position: string): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1586,6 +1616,162 @@ export class DatabaseStorage implements IStorage {
 
   async getAllWithdrawalRequests(): Promise<WithdrawalRequest[]> {
     return await db.select().from(withdrawalRequests).orderBy(desc(withdrawalRequests.createdAt));
+  }
+
+  // Referral links and recruitment
+  async createReferralLink(data: CreateReferralLink & { token: string }): Promise<ReferralLink> {
+    const [referralLink] = await db
+      .insert(referralLinks)
+      .values(data)
+      .returning();
+    return referralLink;
+  }
+
+  async getReferralLink(token: string): Promise<ReferralLink | undefined> {
+    const [referralLink] = await db
+      .select()
+      .from(referralLinks)
+      .where(eq(referralLinks.token, token));
+    return referralLink;
+  }
+
+  async markReferralLinkAsUsed(token: string, usedBy: string): Promise<boolean> {
+    try {
+      const [updated] = await db
+        .update(referralLinks)
+        .set({
+          isUsed: true,
+          usedBy,
+          usedAt: new Date()
+        })
+        .where(eq(referralLinks.token, token))
+        .returning();
+      return !!updated;
+    } catch (error) {
+      console.error('Error marking referral link as used:', error);
+      return false;
+    }
+  }
+
+  async getUserReferralLinks(userId: string): Promise<ReferralLink[]> {
+    return await db
+      .select()
+      .from(referralLinks)
+      .where(eq(referralLinks.generatedBy, userId))
+      .orderBy(desc(referralLinks.createdAt));
+  }
+
+  // Recruitment requests
+  async createRecruitmentRequest(data: CreateRecruitmentRequest): Promise<RecruitmentRequest> {
+    const [request] = await db
+      .insert(recruitmentRequests)
+      .values(data)
+      .returning();
+    return request;
+  }
+
+  async getRecruitmentRequest(id: string): Promise<RecruitmentRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(recruitmentRequests)
+      .where(eq(recruitmentRequests.id, id));
+    return request;
+  }
+
+  async updateRecruitmentRequestStatus(id: string, status: string, approvedBy?: string): Promise<boolean> {
+    try {
+      const updateData: any = {
+        status,
+        updatedAt: new Date()
+      };
+      
+      if (approvedBy) {
+        updateData.approvedBy = approvedBy;
+        updateData.approvedAt = new Date();
+      }
+
+      const [updated] = await db
+        .update(recruitmentRequests)
+        .set(updateData)
+        .where(eq(recruitmentRequests.id, id))
+        .returning();
+      return !!updated;
+    } catch (error) {
+      console.error('Error updating recruitment request status:', error);
+      return false;
+    }
+  }
+
+  async getRecruitmentRequests(filters?: { status?: string; generatedBy?: string }): Promise<RecruitmentRequest[]> {
+    let query = db.select().from(recruitmentRequests);
+    
+    if (filters?.status) {
+      query = query.where(eq(recruitmentRequests.status, filters.status)) as typeof query;
+    }
+    
+    return await query.orderBy(desc(recruitmentRequests.createdAt));
+  }
+
+  // Founder-specific operations
+  async getFounderStats(): Promise<{
+    totalUsers: number;
+    hiddenIds: number;
+    totalRevenue: string;
+    networkBalance: string;
+    leftLegUsers: number;
+    rightLegUsers: number;
+  }> {
+    try {
+      const totalUsers = await db.select().from(users);
+      const hiddenIds = await db.select().from(users).where(eq(users.isHiddenId, true));
+      
+      // Calculate basic stats
+      const stats = {
+        totalUsers: totalUsers.length,
+        hiddenIds: hiddenIds.length,
+        totalRevenue: '0.00', // Would be calculated from actual transactions
+        networkBalance: '0.00', // Would be calculated from wallet balances
+        leftLegUsers: 0, // Would be calculated from binary tree structure
+        rightLegUsers: 0, // Would be calculated from binary tree structure
+      };
+      
+      return stats;
+    } catch (error) {
+      console.error('Error getting founder stats:', error);
+      return {
+        totalUsers: 0,
+        hiddenIds: 0,
+        totalRevenue: '0.00',
+        networkBalance: '0.00',
+        leftLegUsers: 0,
+        rightLegUsers: 0,
+      };
+    }
+  }
+
+  async getHiddenIds(): Promise<User[]> {
+    try {
+      return await db
+        .select()
+        .from(users)
+        .where(eq(users.isHiddenId, true))
+        .orderBy(desc(users.createdAt));
+    } catch (error) {
+      console.error('Error getting hidden IDs:', error);
+      return [];
+    }
+  }
+
+  async overridePlacement(userId: string, newParentId: string, position: string): Promise<boolean> {
+    try {
+      // This would implement the actual placement override logic
+      // For now, just a placeholder
+      console.log(`Override placement: User ${userId} -> Parent ${newParentId} at ${position}`);
+      return true;
+    } catch (error) {
+      console.error('Error overriding placement:', error);
+      return false;
+    }
   }
 }
 
