@@ -103,8 +103,8 @@ export default function AdminDashboard() {
 
   // Fetch withdrawal data for all users
   const { data: withdrawalRequests = [] } = useQuery({
-    queryKey: ["/api/admin/withdrawal-requests"],
-    queryFn: () => apiRequest('/api/admin/withdrawal-requests'),
+    queryKey: ["/api/admin/withdrawals"],
+    queryFn: () => apiRequest('/api/admin/withdrawals'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
