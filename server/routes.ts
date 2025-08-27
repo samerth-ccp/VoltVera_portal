@@ -71,11 +71,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: 'lax'
     },
-    store: undefined // Use memory store to avoid DB connection issues
+    store: sessionStore // Use proper session store
   }));
 
   // Simple login - check email and password
-  app.post('/api/login', async (req, res) => {
+  app.post('/api/auth/login', async (req, res) => {
     const { email, password, rememberMe } = req.body;
     console.log('=== LOGIN DEBUG ===');
     console.log('Email:', email);

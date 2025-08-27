@@ -375,13 +375,13 @@ export class DatabaseStorage implements IStorage {
     // Add filter conditions
     const filterConditions: any[] = [];
     if (filters.status) {
-      filterConditions.push(eq(users.status, filters.status));
+      filterConditions.push(eq(users.status, filters.status as any));
     }
     if (filters.role) {
-      filterConditions.push(eq(users.role, filters.role));
+      filterConditions.push(eq(users.role, filters.role as any));
     }
     if (filters.kycStatus) {
-      filterConditions.push(eq(users.kycStatus, filters.kycStatus));
+      filterConditions.push(eq(users.kycStatus, filters.kycStatus as any));
     }
     
     // Combine all conditions
