@@ -1,0 +1,239 @@
+# MLM User Recruitment – Product & System Requirements (v1)
+
+## 1) Purpose & Goals
+
+Design a robust, auditable recruitment flow for an MLM platform that supports three initiators (Upline/Sponsor, Recruiter without upline, and Admin) with secure registration links, deterministic genealogy placement, and an approval-based activation process. Goals:
+
+* Deterministic, policy-compliant placement into the genealogy (binary/unilevel/matrix).
+* End-to-end auditability (who placed whom, when, where, and why).
+* Configurable approvals (admin gate prior to activation).
+* Secure invitations (scoped, expiring, single-use links).
+* Clear separation of roles & permissions.
+
+## 2) Roles & Definitions
+
+* **Admin**: Global privileges to configure plans, create/approve/suspend users, override placements.
+* **Upline/Sponsor**: An existing distributor who recruits and places new users in their downline.
+* **Recruit (Prospect)**: A person receiving a registration link to join the network.
+* **Recruiter**: The actor initiating the recruitment. Can be the Upline or the Admin. (When no upline exists, the recruiter chooses root or a target upline.)
+* **Genealogy**: The MLM network structure (Binary/Unilevel/Matrix/Hybrid).
+* **Placement**: Binding a recruit to a position under a sponsor per plan rules (e.g., left/right leg in binary).
+
+## 3) Supported Compensation Structures (must be selectable per tenant)
+
+* **Binary**: Two legs (Left/Right). Policies: enforced side selection, spillover rules (optional), leg balancing constraints.
+* **Unilevel**: Unlimited width under a sponsor. Policies: direct sponsor required.
+* **Matrix**: Fixed width/depth. Policies: auto-fill next open slot under a chosen sponsor, with overflow rules.
+
+## 4) High-Level Decision Tree (Source of Truth)
+
+1. **If the recruit has an Upline (sponsor exists)**
+
+   * Recruiter = Upline. Upline selects precise position according to plan (e.g., left/right in binary).
+   * System generates **scoped registration link** bound to that position.
+   * Recruit completes registration ⇢ system creates **Pending** user with **Awaiting\_Admin\_Approval** state (if approvals enabled).
+   * Admin can review/approve/deny.
+2. **If no Upline exists**
+
+   * Recruiter (could be an early distributor or staff) must **choose**: (a) make recruit a **Root** of a new lineage **or** (b) **place under an existing user**.
+   * System enforces structure-specific validation (binary/unilevel/matrix) and generates a scoped registration link.
+   * Same approval gate applies after registration.
+3. **If Admin is the recruiter**
+
+   * Admin chooses exact placement (root or under specific sponsor/position) and generates link.
+   * After recruit submits details, Admin verifies and **activates** (can auto-approve per policy).
+
+## 5) State Machine (User Lifecycle)
+
+States:
+
+* **INVITED** → user record exists minimally (email + token hash), not visible in tree yet.
+* **REGISTERED** → form submitted; identity/profile collected; KYC optional; **Awaiting\_Admin\_Approval** flag true.
+* **ACTIVE** → approved by Admin (or auto-approved per policy); visible in tree; commissions accrue.
+* **REJECTED** → registration denied; not in tree.
+* **SUSPENDED** → temporarily disabled; remains in tree but cannot transact.
+
+Allowed Transitions:
+
+* INVITED → REGISTERED (via valid link)
+* REGISTERED → ACTIVE (Admin approve or policy auto-approve)
+* REGISTERED → REJECTED (Admin deny)
+* ACTIVE → SUSPENDED / SUSPENDED → ACTIVE (Admin action)
+
+All transitions write an **AuditLog** entry.
+
+## 6) Registration Links (Security Requirements)
+
+* **Single-use, expiring** (default 7 days, configurable; enforce server-side TTL).
+* **Scoped** to: (a) Sponsor ID (upline), (b) Genealogy position/leg or matrix slot, (c) Compensation plan ID, (d) Optional country/market.
+* **Tokenization**: random 32+ byte token, hashed at rest. Store `invite_id`, `scope`, `expires_at`, `created_by`.
+* **Revocation**: Inviter or Admin can revoke un-used links; attempts after revocation return 410 Gone.
+* **Replay protection**: Once consumed, mark **consumed\_at** and lock placement record.
+
+## 7) Placement Rules (Determinism & Validation)
+
+* **Binary**: Require `sponsor_id` and `leg ∈ {LEFT, RIGHT}`; validate leg availability before link issuance; lock that node on invite consumption; if conflicting concurrent consumption, last-write wins **is not allowed** → use **optimistic locking** with version and unique index on `(sponsor_id, leg, depth, position)`.
+* **Unilevel**: Require `sponsor_id`; allow unlimited direct children; validate cycle prevention.
+* **Matrix (W×D)**: Require `sponsor_id`; auto-assign **next available slot** under sponsor using BFS search; pre-reserve slot at invite creation; release on expiration/revocation.
+* **Hybrid**: Combine above; a feature flag must select the effective rule set.
+
+## 8) Approval Workflow
+
+* Feature flag: `require_admin_approval` (default **on**).
+* On **REGISTERED**, create an **ApprovalRequest** with:
+
+  * applicant\_id, sponsor\_id, plan\_id, placement\_scope, form\_snapshot, KYC status, risk score.
+* Admin actions: **Approve**, **Reject** (with reason code), **Request Info**.
+* On Approve: activate user, finalize placement, emit events.
+* On Reject: mark user REJECTED, free reserved slot, record reason.
+
+## 9) Permissions Matrix (Key Actions)
+
+| Action                              | Admin             | Upline                           | Recruit       |
+| ----------------------------------- | ----------------- | -------------------------------- | ------------- |
+| Generate registration link          | ✅ (any placement) | ✅ (own downline positions only)  | ❌             |
+| Choose position/leg                 | ✅                 | ✅ (policy-limited)               | ❌             |
+| View pending approvals              | ✅                 | 🔶 (own invites only; read-only) | ❌             |
+| Approve/Reject                      | ✅                 | ❌                                | ❌             |
+| Revoke invite                       | ✅                 | ✅ (own invites)                  | ❌             |
+| Edit recruit details pre-activation | ✅                 | 🔶 (limited fields if allowed)   | ✅ (their own) |
+
+## 10) Data Model (Core Tables)
+
+* **Users**(id, email, phone, name, status, created\_at, …)
+* **Roles**(id, code: ADMIN/UPLINE/RECRUIT, …), **UserRoles**(user\_id, role\_id)
+* **GenealogyNodes**(id, user\_id, plan\_id, sponsor\_id, leg, depth, position, root\_id, created\_at)
+* **Invites**(id, token\_hash, scope\_json, plan\_id, sponsor\_id, reserved\_slot\_ref, status, expires\_at, created\_by, consumed\_at, revoked\_at)
+* **Approvals**(id, applicant\_id, sponsor\_id, plan\_id, snapshot\_json, kyc\_status, risk\_score, decision, decided\_by, decided\_at, reason\_code)
+* **KYC**(id, user\_id, doc\_type, doc\_hash, status, checked\_at, provider\_ref)
+* **AuditLogs**(id, actor\_id, action, entity\_type, entity\_id, before\_json, after\_json, reason, created\_at)
+* **Notifications**(id, recipient\_id, channel, template\_code, payload\_json, status, sent\_at)
+
+Indexes & Constraints:
+
+* Unique index on `Invites.token_hash`.
+* Unique composite constraints for binary placement (prevent double-occupy of a leg/node).
+* Foreign keys enforcing `sponsor_id` existence when required.
+* Soft-delete columns if needed.
+
+## 11) APIs (Minimal Contract)
+
+**POST /invites**
+
+* Auth: Admin or Upline.
+* Body: `{ planId, sponsorId?, placement: { type: 'binary'|'unilevel'|'matrix', leg?, root?: boolean }, expiresInDays? }`
+* Response: `{ inviteId, link, expiresAt }`
+* Validation: enforce plan/placement; pre-reserve slot for matrix; lock leg for binary (provisional state).
+
+**POST /registrations** (via link)
+
+* Body: `{ token, profile, contact, credentials, consents, kycData? }`
+* Result: user becomes **REGISTERED**; create **ApprovalRequest** if needed.
+
+**POST /approvals/{id}\:approve** (Admin)
+
+* Side-effects: finalize placement, set **ACTIVE**, emit events.
+
+**POST /approvals/{id}\:reject** (Admin)
+
+* Body: `{ reasonCode, notes? }`; free reserved slot; set **REJECTED**.
+
+**POST /invites/{id}\:revoke** (Admin/Upline)
+
+* Only when `consumed_at` is null; mark revoked; release holds.
+
+**GET /genealogy/{userId}** – tree node info for dashboards.
+
+## 12) UI/UX Requirements
+
+* **Invite Wizard** (Admin/Upline): select plan → choose sponsor/position (visual tree picker for binary/matrix; search for sponsor by name/ID) → set expiry → generate link.
+* **Invite Management**: list of invites with status (Active/Consumed/Revoked/Expired), quick revoke, copy link.
+* **Registration Form**: profile, contact, credentials, consents (TOS, policies), optional KYC upload.
+* **Post-Registration Screen**: “Submitted — awaiting admin approval”.
+* **Approvals Queue (Admin)**: sortable by risk score / date; expandable card with form snapshot and placement scope; Approve/Reject/Request Info.
+* **Genealogy View**: shows provisional placements for pending invites (ghost nodes) if enabled.
+
+## 13) Business Rules & Policies
+
+* **Auto-approve** flag per tenant/market; if true, move REGISTERED → ACTIVE immediately for low-risk.
+* **KYC**: optional/required per market; block approval if required and incomplete.
+* **Spillover** (binary): optional; if enabled, allow top sponsor to auto-place to weaker leg by rule; still generate scoped link per final decided leg.
+* **Concurrency**: hold/lock positions at invite time; timeout on lock equals invite expiry; release on revoke/expire/reject.
+
+## 14) Notifications
+
+* **To Recruit**: invite sent, registration received, approval/rejection.
+* **To Upline**: recruit submitted registration, final decision.
+* **To Admin**: new approval awaiting, risk escalations.
+
+## 15) Error Handling & Edge Cases
+
+* Link expired/revoked → show friendly error + “request a new link”.
+* Concurrent consumption on same slot → atomic transaction with unique constraint; the losing transaction returns 409 Conflict.
+* Sponsor changed or suspended before approval → force revalidation; if invalid, send back to invite stage.
+* Market/plan mismatch at submission → 400 with remediation.
+
+## 16) Compliance & Auditability
+
+* Log **every** state change; store pre/post snapshots for placements and approvals.
+* PII handling per locale (e.g., GDPR/PIPEDA): encryption at rest, rotation, least-privilege access.
+* Data retention policies for REJECTED/EXPIRED invites.
+
+## 17) Observability & Metrics
+
+* Funnel: Invites → Registrations → Approvals → Activations.
+* Time-to-approve, approval rate, rejection reasons.
+* Placement distribution (binary leg balance, matrix fill rate).
+
+## 18) Performance & Scale Targets
+
+* 99th percentile invite creation < 500ms; registration < 1s (excluding KYC upload & checks).
+* Support bursts of 100 registrations/min with strong consistency on placement locks.
+
+## 19) Acceptance Criteria (Samples)
+
+1. Given a binary plan, when an upline creates an invite for **Left** leg and the recruit completes registration, then the recruit appears under that upline’s Left leg after admin approval.
+2. Given no upline, when recruiter chooses **Root**, then recruit becomes a new root node after approval.
+3. Given matrix 3×5, when an invite is created, the next free slot is reserved and cannot be double-booked; expired invite frees the slot.
+4. Registration links are single-use and expire as configured; second use returns 410 Gone.
+5. All state transitions write AuditLogs with actor and reason.
+
+## 20) Reference Pseudocode (Placement & Activation)
+
+```pseudo
+POST /invites
+  validate(actor ∈ {ADMIN, UPLINE})
+  validate(plan & placement scope)
+  if plan == BINARY:
+    assert leg available
+    provisional_lock(sponsor_id, leg)
+  if plan == MATRIX:
+    slot = reserve_next_available_slot(sponsor_id)
+  token = secure_random()
+  save Invite{token_hash, scope, expires_at, created_by}
+  return invite_link(token)
+
+POST /registrations
+  invite = lookup_and_validate(token)
+  create User{status=REGISTERED}
+  create Approval{applicant_id, scope_snapshot}
+  mark invite consumed
+
+POST /approvals/{id}:approve
+  load Approval & applicant
+  within tx:
+    finalize_placement(scope)
+    set applicant.status = ACTIVE
+    write AuditLog("APPROVE")
+  emit events: USER.ACTIVATED, PLACEMENT.CREATED
+```
+
+## 21) Out of Scope (v1)
+
+* Commission calculation details.
+* Cross-plan migration of nodes post-activation.
+* Multi-tenant data export tooling (future work).
+
+---
+
+**Notes for AI Builder**: All steps above are deterministic, event-driven, and auditable. Enforce strict validation on placement scope at **invite time**, keep provisional locks, and finalize on approval. Ensure the state machine and APIs are used as the single source of truth.
