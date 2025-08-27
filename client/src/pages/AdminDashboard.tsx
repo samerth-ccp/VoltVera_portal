@@ -97,33 +97,33 @@ export default function AdminDashboard() {
   // Fetch wallet data for all users
   const { data: walletBalances = [] } = useQuery({
     queryKey: ["/api/admin/wallet-balances"],
-    queryFn: () => apiRequest('/api/admin/wallet-balances'),
+    queryFn: () => apiRequest('GET', '/api/admin/wallet-balances'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   // Fetch withdrawal data for all users
   const { data: withdrawalRequests = [] } = useQuery({
     queryKey: ["/api/admin/withdrawals"],
-    queryFn: () => apiRequest('/api/admin/withdrawals'),
+    queryFn: () => apiRequest('GET', '/api/admin/withdrawals'),
     enabled: isAuthenticated && user?.role === 'admin',
   });
 
   // Create data maps for efficient lookup
-  const walletDataMap = walletBalances.reduce((acc: any, wallet: any) => {
+  const walletDataMap = Array.isArray(walletBalances) ? walletBalances.reduce((acc: any, wallet: any) => {
     acc[wallet.userId] = {
       balance: wallet.balance,
       totalEarnings: wallet.totalEarnings,
       totalWithdrawals: wallet.totalWithdrawals,
     };
     return acc;
-  }, {});
+  }, {}) : {};
 
-  const withdrawalDataMap = withdrawalRequests.reduce((acc: any, withdrawal: any) => {
+  const withdrawalDataMap = Array.isArray(withdrawalRequests) ? withdrawalRequests.reduce((acc: any, withdrawal: any) => {
     acc[withdrawal.userId] = {
       status: withdrawal.status,
     };
     return acc;
-  }, {});
+  }, {}) : {};
 
   // Fetch enhanced admin stats
   const { data: adminStats } = useQuery<AdminStats>({
