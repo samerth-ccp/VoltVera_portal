@@ -474,6 +474,75 @@ export class DatabaseStorage implements IStorage {
     return tokenData;
   }
 
+  // Enhanced token validation with security checks
+  async validateToken(token: string, ipAddress?: string): Promise<{ valid: boolean; token?: EmailToken; reason?: string }> {
+    const tokenData = await this.getEmailToken(token);
+    
+    if (!tokenData) {
+      return { valid: false, reason: 'Token not found' };
+    }
+    
+    // Check if already consumed
+    if (tokenData.consumedAt) {
+      return { valid: false, reason: 'Token already used' };
+    }
+    
+    // Check if revoked
+    if (tokenData.revokedAt) {
+      return { valid: false, reason: 'Token revoked' };
+    }
+    
+    // Check expiration
+    if (tokenData.expiresAt < new Date()) {
+      // Auto-delete expired tokens
+      await this.deleteEmailToken(token);
+      return { valid: false, reason: 'Token expired' };
+    }
+    
+    return { valid: true, token: tokenData };
+  }
+
+  // Consume token (mark as used)
+  async consumeToken(token: string, ipAddress?: string): Promise<boolean> {
+    try {
+      const validation = await this.validateToken(token, ipAddress);
+      if (!validation.valid) {
+        return false;
+      }
+      
+      await db
+        .update(emailTokens)
+        .set({ 
+          consumedAt: new Date(),
+          ipAddress: ipAddress 
+        })
+        .where(eq(emailTokens.token, token));
+      
+      return true;
+    } catch (error) {
+      console.error('Error consuming token:', error);
+      return false;
+    }
+  }
+
+  // Revoke token
+  async revokeToken(token: string, revokedBy: string): Promise<boolean> {
+    try {
+      await db
+        .update(emailTokens)
+        .set({ 
+          revokedAt: new Date(),
+          revokedBy 
+        })
+        .where(eq(emailTokens.token, token));
+      
+      return true;
+    } catch (error) {
+      console.error('Error revoking token:', error);
+      return false;
+    }
+  }
+
   async deleteEmailToken(token: string): Promise<boolean> {
     try {
       await db
@@ -502,24 +571,48 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
-  async getUserByToken(token: string): Promise<{ user: User; tokenType: string } | undefined> {
-    const [tokenData] = await db
-      .select()
-      .from(emailTokens)
-      .where(eq(emailTokens.token, token));
+  // Enhanced getUserByToken with security validation
+  async getUserByToken(token: string, ipAddress?: string): Promise<{ user: User; tokenType: string } | undefined> {
+    const validation = await this.validateToken(token, ipAddress);
     
-    if (!tokenData) return undefined;
-    
-    // Check if token is expired  
-    if (tokenData.expiresAt < new Date()) {
-      await this.deleteEmailToken(token);
+    if (!validation.valid || !validation.token) {
       return undefined;
     }
     
-    const user = await this.getUserByEmail(tokenData.email);
+    const user = await this.getUserByEmail(validation.token.email);
     if (!user) return undefined;
     
-    return { user, tokenType: tokenData.type };
+    return { user, tokenType: validation.token.type };
+  }
+
+  // Audit logging functionality
+  async logAction(params: {
+    entityType: string;
+    entityId: string;
+    action: string;
+    actorId: string;
+    actorRole: string;
+    previousState?: any;
+    newState?: any;
+    changes?: any;
+    reason?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    sessionId?: string;
+  }): Promise<void> {
+    try {
+      // For now, just console log - can extend to database later
+      console.log('=== AUDIT LOG ===');
+      console.log('Entity:', params.entityType, params.entityId);
+      console.log('Action:', params.action);
+      console.log('Actor:', params.actorId, `(${params.actorRole})`);
+      console.log('Changes:', params.changes);
+      console.log('Reason:', params.reason);
+      console.log('Timestamp:', new Date().toISOString());
+      console.log('==================');
+    } catch (error) {
+      console.error('Audit logging failed:', error);
+    }
   }
 
   // Team management methods

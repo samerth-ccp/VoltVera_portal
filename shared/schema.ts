@@ -28,8 +28,8 @@ export const sessions = pgTable(
 // User roles enum - Enhanced with founder and franchise types
 export const userRoleEnum = pgEnum('user_role', ['admin', 'user', 'founder', 'mini_franchise', 'basic_franchise']);
 
-// User status enum
-export const userStatusEnum = pgEnum('user_status', ['active', 'inactive', 'pending']);
+// User status enum - Enhanced with formal state machine
+export const userStatusEnum = pgEnum('user_status', ['invited', 'registered', 'active', 'inactive', 'pending', 'rejected', 'suspended']);
 
 // Rank enum for MLM progression
 export const rankEnum = pgEnum('rank', ['Executive', 'Bronze Star', 'Gold Star', 'Emerald Star', 'Ruby Star', 'Diamond', 'Wise President', 'President', 'Ambassador', 'Deputy Director', 'Director', 'Founder']);
@@ -131,6 +131,17 @@ export const emailTokens = pgTable("email_tokens", {
   type: varchar("type").notNull(), // 'signup', 'password_reset', 'invitation', 'referral'
   expiresAt: timestamp("expires_at").notNull(),
   createdAt: timestamp("created_at").defaultNow(),
+  
+  // Enhanced security fields
+  consumedAt: timestamp("consumed_at"), // When token was used
+  revokedAt: timestamp("revoked_at"), // When token was revoked
+  revokedBy: varchar("revoked_by"), // Who revoked it
+  ipAddress: varchar("ip_address"), // IP that used the token
+  isConsumed: boolean("is_consumed").default(false),
+  isRevoked: boolean("is_revoked").default(false),
+  
+  // Scoped placement data
+  scopedData: jsonb("scoped_data"), // {sponsorId, position, planId, marketId}
 });
 
 // Referral links for recruitment system
@@ -182,6 +193,15 @@ export const pendingRecruits = pgTable("pending_recruits", {
   rejectionReason: varchar("rejection_reason"), // Why it was rejected
   rejectedBy: varchar("rejected_by"), // User ID who rejected it
   rejectedAt: timestamp("rejected_at"), // When it was rejected
+  
+  // Enhanced placement security
+  version: integer("version").default(1), // Optimistic locking
+  placementLocked: boolean("placement_locked").default(false), // Position lock
+  lockExpiresAt: timestamp("lock_expires_at"), // Lock expiration
+  
+  // Risk scoring
+  riskScore: integer("risk_score").default(0), // 0-100 risk assessment
+  kycStatus: varchar("kyc_status").default('pending'), // 'pending', 'required', 'submitted', 'verified'
 });
 
 // Notifications table for tracking system events
@@ -679,3 +699,60 @@ export type PurchaseType = typeof products.$inferSelect.purchaseType;
 export type FranchiseType = typeof franchiseRequests.$inferSelect.franchiseType;
 export type TicketStatus = typeof supportTickets.$inferSelect.status;
 export type TicketCategory = typeof supportTickets.$inferSelect.category;
+
+// Approval Requests - Formal approval workflow tracking
+export const approvalRequests = pgTable("approval_requests", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  applicantId: varchar("applicant_id"), // User being approved (nullable for pending recruits)
+  pendingRecruitId: varchar("pending_recruit_id"), // Link to pending recruit
+  sponsorId: varchar("sponsor_id").notNull(),
+  planId: varchar("plan_id").default('binary'), // Compensation plan
+  placementScope: jsonb("placement_scope"), // {position, leg, constraints}
+  formSnapshot: jsonb("form_snapshot"), // User data at approval time
+  kycStatus: varchar("kyc_status").default('pending'),
+  riskScore: integer("risk_score").default(0),
+  
+  // Approval workflow
+  status: varchar("status").default('pending'), // 'pending', 'approved', 'rejected', 'info_requested'
+  requestedBy: varchar("requested_by").notNull(),
+  reviewedBy: varchar("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at"),
+  rejectionReason: text("rejection_reason"),
+  approvalNotes: text("approval_notes"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Audit Log - Complete state change tracking
+export const auditLog = pgTable("audit_log", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Entity information
+  entityType: varchar("entity_type").notNull(), // 'user', 'pending_recruit', 'approval_request', 'placement'
+  entityId: varchar("entity_id").notNull(),
+  
+  // Action details
+  action: varchar("action").notNull(), // 'created', 'updated', 'approved', 'rejected', 'placed', 'activated'
+  actorId: varchar("actor_id").notNull(), // Who performed the action
+  actorRole: varchar("actor_role").notNull(), // Actor's role at time of action
+  
+  // State changes
+  previousState: jsonb("previous_state"), // Entity state before change
+  newState: jsonb("new_state"), // Entity state after change
+  changes: jsonb("changes"), // Specific field changes
+  
+  // Context
+  reason: text("reason"), // Why the action was taken
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  sessionId: varchar("session_id"),
+  
+  // Metadata
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Enhanced type exports
+export type ApprovalRequest = typeof approvalRequests.$inferSelect;
+export type AuditLogEntry = typeof auditLog.$inferSelect;
