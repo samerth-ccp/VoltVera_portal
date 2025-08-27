@@ -435,18 +435,19 @@ export const completeInvitationSchema = z.object({
 });
 
 // Schema for user signup (email verification required)
-export const signupUserSchema = createInsertSchema(users).pick({
-  email: true,
-  password: true,
-  firstName: true,
-  lastName: true,
-}).extend({
-  fullName: z.string().min(1, "Full name is required"),
+export const signupUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().optional(),
+  lastName: z.string().optional(),
+  fullName: z.string().optional(),
+}).refine(data => data.fullName || (data.firstName && data.lastName), {
+  message: "Either fullName or both firstName and lastName are required",
 }).transform(data => ({
   email: data.email,
   password: data.password,
-  firstName: data.fullName.split(' ')[0],
-  lastName: data.fullName.split(' ').slice(1).join(' ') || '',
+  firstName: data.fullName ? data.fullName.split(' ')[0] : data.firstName!,
+  lastName: data.fullName ? data.fullName.split(' ').slice(1).join(' ') || '' : data.lastName!,
 }));
 
 // Schema for email token operations

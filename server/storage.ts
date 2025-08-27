@@ -343,33 +343,36 @@ export class DatabaseStorage implements IStorage {
   }): Promise<User[]> {
     let searchConditions: any[] = [];
     
-    // Build search conditions based on search type
-    if (filters.searchType === 'id') {
-      searchConditions.push(ilike(users.id, `%${query}%`));
-    } else if (filters.searchType === 'name') {
-      searchConditions.push(
-        or(
-          ilike(users.firstName, `%${query}%`),
-          ilike(users.lastName, `%${query}%`),
-          ilike(sql`concat(${users.firstName}, ' ', ${users.lastName})`, `%${query}%`)
-        )
-      );
-    } else if (filters.searchType === 'bv') {
-      // Search by BV amount
-      searchConditions.push(ilike(users.totalBV, `%${query}%`));
-    } else if (filters.searchType === 'rank') {
-      searchConditions.push(ilike(users.currentRank, `%${query}%`));
-    } else {
-      // Default: search across multiple fields
-      searchConditions.push(
-        or(
-          ilike(users.id, `%${query}%`),
-          ilike(users.firstName, `%${query}%`),
-          ilike(users.lastName, `%${query}%`),
-          ilike(users.email, `%${query}%`),
-          ilike(users.currentRank, `%${query}%`)
-        )
-      );
+    // Only add search conditions if query is provided and not empty
+    if (query && query.trim()) {
+      // Build search conditions based on search type
+      if (filters.searchType === 'id') {
+        searchConditions.push(ilike(users.id, `%${query}%`));
+      } else if (filters.searchType === 'name') {
+        searchConditions.push(
+          or(
+            ilike(users.firstName, `%${query}%`),
+            ilike(users.lastName, `%${query}%`),
+            ilike(sql`concat(${users.firstName}, ' ', ${users.lastName})`, `%${query}%`)
+          )
+        );
+      } else if (filters.searchType === 'bv') {
+        // Search by BV amount - cast decimal to text
+        searchConditions.push(ilike(sql`${users.totalBV}::text`, `%${query}%`));
+      } else if (filters.searchType === 'rank') {
+        searchConditions.push(ilike(sql`${users.currentRank}::text`, `%${query}%`));
+      } else {
+        // Default: search across multiple fields
+        searchConditions.push(
+          or(
+            ilike(users.id, `%${query}%`),
+            ilike(users.firstName, `%${query}%`),
+            ilike(users.lastName, `%${query}%`),
+            ilike(users.email, `%${query}%`),
+            ilike(sql`${users.currentRank}::text`, `%${query}%`)
+          )
+        );
+      }
     }
     
     // Add filter conditions
