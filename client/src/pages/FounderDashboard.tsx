@@ -86,8 +86,11 @@ export default function FounderDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 flex items-center justify-center">
-        <div className="text-white text-xl">Loading...</div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <VoltverashopLogo />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
       </div>
     );
   }
@@ -130,50 +133,59 @@ export default function FounderDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-black/20 backdrop-blur-sm border-b border-white/10">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <button
-                onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                className="p-2 rounded-md text-white/80 hover:text-white hover:bg-white/10 lg:hidden"
-              >
-                <Menu className="h-6 w-6" />
-              </button>
-              <div className="flex items-center">
-                <VoltverashopLogo className="h-8 w-auto" />
-                <div className="ml-4 flex items-center space-x-2">
-                  <Crown className="h-5 w-5 text-yellow-400" />
-                  <span className="text-lg font-bold text-white">Founder Portal</span>
+      <header className="volt-gradient text-white">
+        <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
+          <div className="flex items-center space-x-4">
+            <VoltverashopLogo size="small" />
+            <div className="flex items-center space-x-2">
+              <Crown className="h-5 w-5 text-yellow-300" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-bold flex items-center space-x-2">
+                  <span>Founder Portal</span>
                   <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-300 border-yellow-400/30">
                     GOD MODE
                   </Badge>
-                </div>
+                </h1>
+                <p className="text-white/80 text-sm hidden sm:block">
+                  Welcome back, {user?.firstName || 'Founder'}
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-white/80">Welcome back,</span>
-              <span className="text-white font-semibold">{user?.firstName}</span>
-              <Link href="/api/logout">
-                <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
-                  Logout
-                </Button>
-              </Link>
-            </div>
+          </div>
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            <Button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              variant="ghost"
+              size="sm"
+              className="text-white/80 hover:text-white hover:bg-white/10 lg:hidden"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => {
+                fetch('/api/logout', { method: 'POST', credentials: 'include' })
+                  .then(() => window.location.href = '/');
+              }}
+            >
+              🚪
+            </Button>
           </div>
         </div>
       </header>
 
       <div className="flex">
         {/* Sidebar */}
-        <div className={`${isSidebarOpen ? 'block' : 'hidden'} lg:block fixed lg:relative inset-y-0 left-0 z-50 w-80 bg-black/30 backdrop-blur-sm border-r border-white/10`}>
-          <div className="flex items-center justify-between p-4 lg:hidden">
-            <span className="text-white font-semibold">Founder Menu</span>
+        <div className={`${isSidebarOpen ? 'block' : 'hidden'} lg:block fixed lg:relative inset-y-0 left-0 z-50 w-80 bg-white shadow-lg border-r border-gray-200`}>
+          <div className="flex items-center justify-between p-4 lg:hidden border-b border-gray-200">
+            <span className="text-gray-900 font-semibold">Founder Menu</span>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="text-white/80 hover:text-white"
+              className="text-gray-600 hover:text-gray-900"
             >
               <X className="h-6 w-6" />
             </button>
@@ -185,14 +197,16 @@ export default function FounderDashboard() {
                 onClick={() => setActiveSection(item.id)}
                 className={`flex items-center w-full p-4 text-left rounded-lg transition-all ${
                   activeSection === item.id 
-                    ? 'bg-gradient-to-r from-yellow-400/20 to-purple-400/20 text-white border border-yellow-400/30' 
-                    : 'hover:bg-white/10 text-white/90 border border-transparent'
+                    ? 'bg-gradient-to-r from-green-50 to-blue-50 text-gray-900 border border-green-200 shadow-sm' 
+                    : 'hover:bg-gray-50 text-gray-700 border border-transparent'
                 }`}
               >
-                <item.icon className="mr-3 h-5 w-5 text-yellow-400" />
+                <item.icon className={`mr-3 h-5 w-5 ${
+                  activeSection === item.id ? 'text-green-600' : 'text-gray-500'
+                }`} />
                 <div>
                   <div className="font-medium">{item.label}</div>
-                  <div className="text-xs text-white/60">{item.description}</div>
+                  <div className="text-xs text-gray-500">{item.description}</div>
                 </div>
               </button>
             ))}
@@ -204,71 +218,71 @@ export default function FounderDashboard() {
           {activeSection === 'dashboard' && (
             <div className="space-y-6">
               <div className="flex items-center space-x-3">
-                <Crown className="h-8 w-8 text-yellow-400" />
+                <Crown className="h-8 w-8 text-green-600" />
                 <div>
-                  <h1 className="text-3xl font-bold text-white">Founder Control Center</h1>
-                  <p className="text-white/70">Complete network oversight with invisible privileges</p>
+                  <h1 className="text-3xl font-bold text-gray-900">Founder Control Center</h1>
+                  <p className="text-gray-600">Complete network oversight with invisible privileges</p>
                 </div>
               </div>
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+                <Card className="bg-white shadow-lg border border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white/70 text-sm">Total Network</p>
-                        <p className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</p>
+                        <p className="text-gray-600 text-sm">Total Network</p>
+                        <p className="text-2xl font-bold text-gray-900">{stats?.totalUsers || 0}</p>
                       </div>
-                      <Users className="h-8 w-8 text-blue-400" />
+                      <Users className="h-8 w-8 text-blue-500" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+                <Card className="bg-white shadow-lg border border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white/70 text-sm">Hidden IDs</p>
-                        <p className="text-2xl font-bold text-yellow-400">{stats?.hiddenIds || 0}/20</p>
+                        <p className="text-gray-600 text-sm">Hidden IDs</p>
+                        <p className="text-2xl font-bold text-yellow-600">{stats?.hiddenIds || 0}/20</p>
                       </div>
-                      <Eye className="h-8 w-8 text-yellow-400" />
+                      <Eye className="h-8 w-8 text-yellow-500" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+                <Card className="bg-white shadow-lg border border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white/70 text-sm">Global Revenue</p>
-                        <p className="text-2xl font-bold text-green-400">${stats?.totalRevenue || '0'}</p>
+                        <p className="text-gray-600 text-sm">Global Revenue</p>
+                        <p className="text-2xl font-bold text-green-600">${stats?.totalRevenue || '0'}</p>
                       </div>
-                      <DollarSign className="h-8 w-8 text-green-400" />
+                      <DollarSign className="h-8 w-8 text-green-500" />
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+                <Card className="bg-white shadow-lg border border-gray-200">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-white/70 text-sm">Network Balance</p>
-                        <p className="text-lg font-bold text-white">
+                        <p className="text-gray-600 text-sm">Network Balance</p>
+                        <p className="text-lg font-bold text-gray-900">
                           L: {stats?.leftLegUsers || 0} | R: {stats?.rightLegUsers || 0}
                         </p>
                       </div>
-                      <TrendingUp className="h-8 w-8 text-purple-400" />
+                      <TrendingUp className="h-8 w-8 text-purple-500" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
               {/* Quick Actions */}
-              <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+              <Card className="bg-white shadow-lg border border-gray-200">
                 <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Zap className="mr-2 h-5 w-5 text-yellow-400" />
+                  <CardTitle className="text-gray-900 flex items-center">
+                    <Zap className="mr-2 h-5 w-5 text-yellow-500" />
                     Founder Quick Actions
                   </CardTitle>
                 </CardHeader>
@@ -305,17 +319,17 @@ export default function FounderDashboard() {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <Eye className="h-8 w-8 text-yellow-400" />
+                  <Eye className="h-8 w-8 text-yellow-500" />
                   <div>
-                    <h1 className="text-3xl font-bold text-white">Hidden IDs Management</h1>
-                    <p className="text-white/70">20 invisible accounts for network balancing</p>
+                    <h1 className="text-3xl font-bold text-gray-900">Hidden IDs Management</h1>
+                    <p className="text-gray-600">20 invisible accounts for network balancing</p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Button
                     onClick={() => setShowHiddenIds(!showHiddenIds)}
                     variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   >
                     {showHiddenIds ? <EyeOff className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
                     {showHiddenIds ? 'Hide IDs' : 'Show Hidden IDs'}
@@ -331,26 +345,26 @@ export default function FounderDashboard() {
               </div>
 
               {showHiddenIds && (
-                <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+                <Card className="bg-white shadow-lg border border-gray-200">
                   <CardHeader>
-                    <CardTitle className="text-white">Active Hidden IDs</CardTitle>
+                    <CardTitle className="text-gray-900">Active Hidden IDs</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {hiddenIdsLoading ? (
-                      <p className="text-white/70">Loading hidden IDs...</p>
+                      <p className="text-gray-600">Loading hidden IDs...</p>
                     ) : hiddenIds && hiddenIds.length > 0 ? (
                       <div className="space-y-3">
                         {hiddenIds.map((hiddenId) => (
-                          <div key={hiddenId.id} className="flex items-center justify-between p-4 bg-black/30 rounded-lg border border-yellow-400/20">
+                          <div key={hiddenId.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <div>
-                              <p className="text-white font-medium">{hiddenId.firstName} {hiddenId.lastName}</p>
-                              <p className="text-white/60 text-sm">{hiddenId.email}</p>
+                              <p className="text-gray-900 font-medium">{hiddenId.firstName} {hiddenId.lastName}</p>
+                              <p className="text-gray-600 text-sm">{hiddenId.email}</p>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <Badge variant="secondary" className="bg-yellow-400/20 text-yellow-300">
+                              <Badge variant="secondary" className="bg-yellow-100 text-yellow-700 border-yellow-200">
                                 Hidden
                               </Badge>
-                              <Button size="sm" variant="outline" className="border-white/20 text-white hover:bg-white/10">
+                              <Button size="sm" variant="outline" className="border-gray-300 text-gray-700 hover:bg-gray-50">
                                 Manage
                               </Button>
                             </div>
@@ -358,7 +372,7 @@ export default function FounderDashboard() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-white/70">No hidden IDs created yet.</p>
+                      <p className="text-gray-600">No hidden IDs created yet.</p>
                     )}
                   </CardContent>
                 </Card>
@@ -370,15 +384,15 @@ export default function FounderDashboard() {
           {activeSection === 'network-control' && (
             <div className="space-y-6">
               <div className="flex items-center space-x-3">
-                <ArrowLeftRight className="h-8 w-8 text-blue-400" />
+                <ArrowLeftRight className="h-8 w-8 text-blue-500" />
                 <div>
-                  <h1 className="text-3xl font-bold text-white">Network Override Control</h1>
-                  <p className="text-white/70">Manual BV and placement control</p>
+                  <h1 className="text-3xl font-bold text-gray-900">Network Override Control</h1>
+                  <p className="text-gray-600">Manual BV and placement control</p>
                 </div>
               </div>
-              <Card className="bg-black/20 backdrop-blur-sm border-white/10">
+              <Card className="bg-white shadow-lg border border-gray-200">
                 <CardContent className="p-6">
-                  <p className="text-white/70">Network override features coming soon...</p>
+                  <p className="text-gray-600">Network override features coming soon...</p>
                 </CardContent>
               </Card>
             </div>
@@ -388,10 +402,10 @@ export default function FounderDashboard() {
 
       {/* Create Hidden ID Dialog */}
       <Dialog open={isCreateHiddenIdOpen} onOpenChange={setIsCreateHiddenIdOpen}>
-        <DialogContent className="bg-black/90 backdrop-blur-sm border-white/20 text-white">
+        <DialogContent className="bg-white border border-gray-200 text-gray-900">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center">
-              <Eye className="mr-2 h-5 w-5 text-yellow-400" />
+            <DialogTitle className="text-gray-900 flex items-center">
+              <Eye className="mr-2 h-5 w-5 text-yellow-500" />
               Create New Hidden ID
             </DialogTitle>
           </DialogHeader>
@@ -406,39 +420,39 @@ export default function FounderDashboard() {
             });
           }} className="space-y-4">
             <div>
-              <Label htmlFor="email" className="text-white">Email</Label>
+              <Label htmlFor="email" className="text-gray-900">Email</Label>
               <Input 
                 id="email" 
                 name="email" 
                 type="email" 
                 required 
-                className="bg-black/50 border-white/20 text-white"
+                className="bg-white border-gray-300 text-gray-900"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName" className="text-white">First Name</Label>
+                <Label htmlFor="firstName" className="text-gray-900">First Name</Label>
                 <Input 
                   id="firstName" 
                   name="firstName" 
                   required 
-                  className="bg-black/50 border-white/20 text-white"
+                  className="bg-white border-gray-300 text-gray-900"
                 />
               </div>
               <div>
-                <Label htmlFor="lastName" className="text-white">Last Name</Label>
+                <Label htmlFor="lastName" className="text-gray-900">Last Name</Label>
                 <Input 
                   id="lastName" 
                   name="lastName" 
                   required 
-                  className="bg-black/50 border-white/20 text-white"
+                  className="bg-white border-gray-300 text-gray-900"
                 />
               </div>
             </div>
             <div>
-              <Label htmlFor="placementSide" className="text-white">Placement Side</Label>
+              <Label htmlFor="placementSide" className="text-gray-900">Placement Side</Label>
               <Select name="placementSide" required>
-                <SelectTrigger className="bg-black/50 border-white/20 text-white">
+                <SelectTrigger className="bg-white border-gray-300 text-gray-900">
                   <SelectValue placeholder="Select placement side" />
                 </SelectTrigger>
                 <SelectContent>
@@ -452,7 +466,7 @@ export default function FounderDashboard() {
                 type="button" 
                 variant="outline" 
                 onClick={() => setIsCreateHiddenIdOpen(false)}
-                className="border-white/20 text-white hover:bg-white/10"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </Button>
