@@ -74,8 +74,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     store: sessionStore // Use proper session store
   }));
 
-  // Simple login - check email and password
-  app.post('/api/auth/login', async (req, res) => {
+  // Simple login - check email and password (support both endpoints)
+  const handleLogin = async (req: any, res: any) => {
     const { email, password, rememberMe } = req.body;
     console.log('=== LOGIN DEBUG ===');
     console.log('Email:', email);
@@ -119,7 +119,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
-  });
+  };
+  
+  app.post('/api/login', handleLogin);
+  app.post('/api/auth/login', handleLogin);
 
   // Logout (support both GET and POST)
   const handleLogout = (req: any, res: any) => {
