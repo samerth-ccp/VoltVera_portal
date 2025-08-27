@@ -1631,11 +1631,16 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getReferralLink(token: string): Promise<ReferralLink | undefined> {
-    const [referralLink] = await db
-      .select()
-      .from(referralLinks)
-      .where(eq(referralLinks.token, token));
-    return referralLink;
+    try {
+      const [referralLink] = await db
+        .select()
+        .from(referralLinks)
+        .where(eq(referralLinks.token, token));
+      return referralLink;
+    } catch (error) {
+      console.error('Error getting referral link:', error);
+      return undefined;
+    }
   }
 
   async markReferralLinkAsUsed(token: string, usedBy: string): Promise<boolean> {
