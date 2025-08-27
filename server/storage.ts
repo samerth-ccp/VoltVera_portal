@@ -569,39 +569,23 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Pending recruits operations (upline decision workflow)
+  // Pending recruits operations (simplified - recruiter handles own approvals)
   async createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit> {
-    // Find the upline (parent) of the recruiter
+    // Find the recruiter
     const recruiter = await this.getUser(recruiterId);
     if (!recruiter) {
       throw new Error('Recruiter not found');
     }
 
-    // EDGE CASE: Admin-created users have no parent_id
-    // They become their own upline for position decisions
-    let uplineId = recruiterId; // Default: recruiter is upline
-    
-    // Check if recruiter has available positions
-    const recruiterAvailability = await this.getAvailablePositions(recruiterId);
-    if (!recruiterAvailability.left && !recruiterAvailability.right) {
-      // If recruiter is full, spillover logic
-      if (recruiter.parentId) {
-        // Normal case: use parent as upline for spillover
-        uplineId = recruiter.parentId;
-      } else {
-        // EDGE CASE: No parent (admin-created user) 
-        // Keep recruiter as upline, they'll handle spillover placement
-        uplineId = recruiterId;
-      }
-    }
+    // SIMPLIFIED: Recruiter is always the upline for their own recruits
+    // This eliminates the need for founder approval - recruiter decides positions directly
+    const uplineId = recruiterId;
 
-    console.log('=== RECRUIT CREATION ===');
+    console.log('=== RECRUIT CREATION (SIMPLIFIED) ===');
     console.log('Recruiter:', recruiter.email);
-    console.log('Recruiter parent:', recruiter.parentId);
-    console.log('Upline chosen:', uplineId);
-    console.log('Recruiter positions available:', recruiterAvailability);
+    console.log('Upline (same as recruiter):', uplineId);
 
-    // Always require upline decision - no auto-assignment
+    // Recruiter handles their own position decisions
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
