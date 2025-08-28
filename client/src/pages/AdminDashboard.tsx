@@ -788,9 +788,13 @@ export default function AdminDashboard() {
           )}
           
           {activeSection === 'all-members' && (
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h3 className="text-lg font-medium text-gray-800 mb-6">All Members Management</h3>
-              {/* Enhanced User Search */}
+            <div className="space-y-6">
+              {/* Pending Recruits Section - Show at top */}
+              <AdminPendingRecruits />
+              
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <h3 className="text-lg font-medium text-gray-800 mb-6">All Members Management</h3>
+                {/* Enhanced User Search */}
               <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
                 <h4 className="text-md font-medium text-gray-800 mb-4">Advanced User Search</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
@@ -882,6 +886,7 @@ export default function AdminDashboard() {
                 walletData={walletDataMap}
                 withdrawalData={withdrawalDataMap}
               />
+              </div>
             </div>
           )}
 
