@@ -1308,11 +1308,23 @@ function ReferralLinkForm({ onClose }: { onClose: () => void }) {
         generatedByRole: user.role
       });
 
-      setGeneratedLink(response.url);
-      toast({
-        title: "Success",
-        description: "Referral link generated successfully",
-      });
+      console.log('API Response:', response);
+      console.log('URL from response:', response.url);
+      
+      if (response.url) {
+        setGeneratedLink(response.url);
+        toast({
+          title: "Success",
+          description: "Referral link generated successfully",
+        });
+      } else {
+        console.error('No URL in response:', response);
+        toast({
+          title: "Error",
+          description: "No URL received from server",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error('Error generating referral link:', error);
       toast({
