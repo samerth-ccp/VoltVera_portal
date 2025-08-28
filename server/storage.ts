@@ -665,9 +665,11 @@ export class DatabaseStorage implements IStorage {
   // Pending recruits operations (simplified - recruiter handles own approvals)
   async createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit> {
     // Find the recruiter
+    console.log('Looking for recruiter with ID:', recruiterId);
     const recruiter = await this.getUser(recruiterId);
+    console.log('Recruiter found:', !!recruiter, recruiter?.email);
     if (!recruiter) {
-      throw new Error('Recruiter not found');
+      throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
     // SIMPLIFIED: Recruiter is always the upline for their own recruits

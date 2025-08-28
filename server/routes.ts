@@ -1042,13 +1042,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Create new pending recruit record for direct referral link registration
         const pendingRecruit = await storage.createPendingRecruit({
-          recruiterUserId: referralLink.generatedBy,
           fullName: recruiteeName,
           email: recruiteeEmail,
-          sponsorId: referralLink.generatedBy,
-          placementSide: referralLink.placementSide,
-          status: 'awaiting_admin'
-        });
+          mobile: null
+        }, referralLink.generatedBy);
         pendingRecruitId = pendingRecruit.id;
       }
       
