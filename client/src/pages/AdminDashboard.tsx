@@ -361,6 +361,14 @@ export default function AdminDashboard() {
                 >
                   Users Activities
                 </button>
+                <button 
+                  onClick={() => setActiveSection('pending-recruits')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'pending-recruits' ? 'text-yellow-300' : 'text-white/80'
+                  }`}
+                >
+                  Pending Recruits
+                </button>
               </div>
             )}
           </div>
@@ -875,6 +883,10 @@ export default function AdminDashboard() {
                 withdrawalData={withdrawalDataMap}
               />
             </div>
+          )}
+
+          {activeSection === 'pending-recruits' && (
+            <AdminPendingRecruits />
           )}
 
           {/* Withdrawal Management Sections */}
