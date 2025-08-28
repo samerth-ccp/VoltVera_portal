@@ -1309,8 +1309,6 @@ function ReferralLinkForm({ onClose }: { onClose: () => void }) {
       });
 
       const data = await response.json();
-      console.log('API Response:', data);
-      console.log('URL from response:', data.url);
       
       if (data.url) {
         setGeneratedLink(data.url);
