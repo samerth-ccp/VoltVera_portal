@@ -1028,18 +1028,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: 'A user with this email already exists' });
       }
       
-      // Update the pending recruit with the user's details (this was already approved by upline)
+      // Create or update pending recruit record
+      let pendingRecruitId;
+      
       if (referralLink.pendingRecruitId) {
-        // Update pending recruit status to awaiting admin (final approval)
+        // Update existing pending recruit
         await storage.updatePendingRecruitDetails(referralLink.pendingRecruitId, {
           fullName: recruiteeName,
           email: recruiteeEmail,
           status: 'awaiting_admin'
         });
-        
-        // Mark referral link as used
-        await storage.markReferralLinkAsUsed(token, referralLink.pendingRecruitId);
+        pendingRecruitId = referralLink.pendingRecruitId;
+      } else {
+        // Create new pending recruit record for direct referral link registration
+        const pendingRecruit = await storage.createPendingRecruit({
+          recruiterUserId: referralLink.generatedBy,
+          fullName: recruiteeName,
+          email: recruiteeEmail,
+          sponsorId: referralLink.generatedBy,
+          placementSide: referralLink.placementSide,
+          status: 'awaiting_admin'
+        });
+        pendingRecruitId = pendingRecruit.id;
       }
+      
+      // Mark referral link as used
+      await storage.markReferralLinkAsUsed(token, pendingRecruitId);
       
       res.json({
         message: 'Registration completed successfully! Your information has been submitted for final admin approval.',
