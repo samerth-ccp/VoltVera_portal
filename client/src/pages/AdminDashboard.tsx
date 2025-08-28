@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter, ChevronDown, ChevronRight, Wallet, TrendingUp, Activity, Mail, RefreshCw, CheckCircle, XCircle } from "lucide-react";
+import { Users, UserCheck, Crown, Clock, Plus, Menu, X, Settings, Lock, BarChart3, FileText, Shield, DollarSign, Award, Search, Filter, ChevronDown, ChevronRight, Wallet, TrendingUp, Activity, Mail, RefreshCw, CheckCircle, XCircle, Link2, Copy } from "lucide-react";
 import { Link } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -360,6 +360,41 @@ export default function AdminDashboard() {
                   }`}
                 >
                   Users Activities
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Referral Management Menu */}
+          <div className="space-y-1">
+            <button 
+              onClick={() => toggleMenu('referral')}
+              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
+            >
+              <Link2 className="mr-3 h-5 w-5" />
+              <span className="font-medium flex-1">Referral Management</span>
+              {expandedMenus.includes('referral') ? 
+                <ChevronDown className="h-4 w-4" /> : 
+                <ChevronRight className="h-4 w-4" />
+              }
+            </button>
+            {expandedMenus.includes('referral') && (
+              <div className="ml-8 space-y-1">
+                <button 
+                  onClick={() => setActiveSection('generate-referral')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'generate-referral' ? 'text-yellow-300' : 'text-white/80'
+                  }`}
+                >
+                  Generate Referral Links
+                </button>
+                <button 
+                  onClick={() => setActiveSection('active-links')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'active-links' ? 'text-yellow-300' : 'text-white/80'
+                  }`}
+                >
+                  Active Links
                 </button>
               </div>
             )}
