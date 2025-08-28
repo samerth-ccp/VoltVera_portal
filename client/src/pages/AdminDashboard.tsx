@@ -365,40 +365,6 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          {/* Referral Management Menu */}
-          <div className="space-y-1">
-            <button 
-              onClick={() => toggleMenu('referral')}
-              className="flex items-center w-full px-4 py-3 text-left rounded-lg hover:bg-white/10 transition-colors group text-white/90"
-            >
-              <Link2 className="mr-3 h-5 w-5" />
-              <span className="font-medium flex-1">Referral Management</span>
-              {expandedMenus.includes('referral') ? 
-                <ChevronDown className="h-4 w-4" /> : 
-                <ChevronRight className="h-4 w-4" />
-              }
-            </button>
-            {expandedMenus.includes('referral') && (
-              <div className="ml-8 space-y-1">
-                <button 
-                  onClick={() => setActiveSection('generate-referral')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
-                    activeSection === 'generate-referral' ? 'text-yellow-300' : 'text-white/80'
-                  }`}
-                >
-                  Generate Referral Links
-                </button>
-                <button 
-                  onClick={() => setActiveSection('active-links')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
-                    activeSection === 'active-links' ? 'text-yellow-300' : 'text-white/80'
-                  }`}
-                >
-                  Active Links
-                </button>
-              </div>
-            )}
-          </div>
 
           {/* Income Reports Menu */}
           <div className="space-y-1">
@@ -1180,45 +1146,82 @@ export default function AdminDashboard() {
 
       {/* Add User Dialog */}
       <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Invite New User</DialogTitle>
+            <DialogTitle>Add New User</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleCreateUser} className="space-y-4">
+          <div className="space-y-6">
+            {/* User Creation Method Selection */}
             <div>
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input name="fullName" placeholder="Enter full name" required />
-            </div>
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input name="email" type="email" placeholder="Enter email address" required />
+              <Label className="text-base font-medium">How would you like to add this user?</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                <Card 
+                  className="cursor-pointer hover:bg-gray-50 border-2 hover:border-volt-light transition-colors"
+                  onClick={() => setActiveSection('create-direct')}
+                >
+                  <CardContent className="p-4 text-center">
+                    <Mail className="h-8 w-8 mx-auto mb-2 text-volt-light" />
+                    <h3 className="font-medium">Send Invitation</h3>
+                    <p className="text-sm text-gray-600">Email invitation with login details</p>
+                  </CardContent>
+                </Card>
+                
+                <Card 
+                  className="cursor-pointer hover:bg-gray-50 border-2 hover:border-volt-light transition-colors"
+                  onClick={() => setActiveSection('create-referral')}
+                >
+                  <CardContent className="p-4 text-center">
+                    <Link2 className="h-8 w-8 mx-auto mb-2 text-volt-light" />
+                    <h3 className="font-medium">Generate Referral Link</h3>
+                    <p className="text-sm text-gray-600">Let them register via referral link</p>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
 
-            <div>
-              <Label htmlFor="role">Role</Label>
-              <Select name="role" defaultValue="user" required>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="user">User</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex space-x-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                className="volt-gradient text-white"
-                disabled={createUserMutation.isPending}
-              >
-                {createUserMutation.isPending ? "Sending Invitation..." : "Send Invitation"}
-              </Button>
-            </div>
-          </form>
+            {/* Direct Invitation Form */}
+            {activeSection === 'create-direct' && (
+              <form onSubmit={handleCreateUser} className="space-y-4">
+                <div>
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input name="fullName" placeholder="Enter full name" required />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input name="email" type="email" placeholder="Enter email address" required />
+                </div>
+                <div>
+                  <Label htmlFor="role">Role</Label>
+                  <Select name="role" defaultValue="user" required>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex space-x-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="volt-gradient text-white flex-1"
+                    disabled={createUserMutation.isPending}
+                  >
+                    {createUserMutation.isPending ? "Sending..." : "Send Invitation"}
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {/* Referral Link Generation */}
+            {activeSection === 'create-referral' && (
+              <ReferralLinkForm onClose={() => setIsAddUserOpen(false)} />
+            )}
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -1283,6 +1286,131 @@ export default function AdminDashboard() {
           )}
         </DialogContent>
       </Dialog>
+    </div>
+  );
+}
+
+// Referral Link Form Component for Admin
+function ReferralLinkForm({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string>('');
+  const [placementSide, setPlacementSide] = useState<'left' | 'right'>('left');
+
+  const generateReferralLink = async () => {
+    if (!user) return;
+
+    setIsGenerating(true);
+    try {
+      const response = await apiRequest('POST', '/api/referral/generate', {
+        placementSide,
+        generatedByRole: user.role
+      });
+
+      setGeneratedLink(response.url);
+      toast({
+        title: "Success",
+        description: "Referral link generated successfully",
+      });
+    } catch (error) {
+      console.error('Error generating referral link:', error);
+      toast({
+        title: "Error",
+        description: "Failed to generate referral link",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(generatedLink);
+    toast({
+      title: "Copied",
+      description: "Referral link copied to clipboard",
+    });
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <Label htmlFor="placement">Placement Side</Label>
+        <Select value={placementSide} onValueChange={(value: 'left' | 'right') => setPlacementSide(value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select placement side" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="left">Left Side</SelectItem>
+            <SelectItem value="right">Right Side</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-gray-500 mt-1">
+          Choose which side of your binary tree the new recruit will be placed on.
+        </p>
+      </div>
+
+      <Button 
+        onClick={generateReferralLink} 
+        disabled={isGenerating}
+        className="w-full volt-gradient text-white"
+      >
+        {isGenerating ? (
+          <>
+            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+            Generating...
+          </>
+        ) : (
+          <>
+            <Link2 className="mr-2 h-4 w-4" />
+            Generate Referral Link
+          </>
+        )}
+      </Button>
+
+      {generatedLink && (
+        <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
+          <Label>Generated Referral Link</Label>
+          <div className="flex space-x-2">
+            <Input 
+              value={generatedLink} 
+              readOnly 
+              className="flex-1 font-mono text-sm"
+            />
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={copyToClipboard}
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="text-xs text-gray-500">
+            ⏰ Link expires in 48 hours. Share this with potential recruits.
+          </p>
+          <p className="text-xs text-gray-600">
+            📧 The recruit will fill out the registration form and you'll need to approve them from "Pending Recruits".
+          </p>
+        </div>
+      )}
+
+      <div className="flex space-x-3 pt-4">
+        <Button type="button" variant="outline" onClick={onClose}>
+          {generatedLink ? 'Done' : 'Cancel'}
+        </Button>
+        {generatedLink && (
+          <Button 
+            onClick={() => {
+              copyToClipboard();
+              onClose();
+            }}
+            className="volt-gradient text-white flex-1"
+          >
+            Copy & Close
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
