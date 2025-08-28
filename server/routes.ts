@@ -945,7 +945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const baseUrl = process.env.NODE_ENV === 'production' 
         ? 'https://voltveratech.com' 
-        : `http://localhost:5000`;
+        : 'https://82cb1a2c-57cc-475d-a833-5b12dbae1ec5-00-174fj7lyv1rn5.kirk.replit.dev';
       const fullUrl = `${baseUrl}/recruit?ref=${token}`;
       
       res.json({

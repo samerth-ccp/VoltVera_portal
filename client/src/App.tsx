@@ -34,6 +34,7 @@ function Router() {
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/complete-invitation" component={CompleteInvitation} />
       <Route path="/referral-register" component={ReferralRegistration} />
+      <Route path="/recruit" component={ReferralRegistration} />
       
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (

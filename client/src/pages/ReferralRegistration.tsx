@@ -20,9 +20,9 @@ export default function ReferralRegistration() {
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
-    // Extract token from URL
+    // Extract token from URL - check both 'ref' and 'token' parameters
     const urlParams = new URLSearchParams(window.location.search);
-    const referralToken = urlParams.get('token');
+    const referralToken = urlParams.get('ref') || urlParams.get('token');
     if (referralToken) {
       setToken(referralToken);
     } else {
