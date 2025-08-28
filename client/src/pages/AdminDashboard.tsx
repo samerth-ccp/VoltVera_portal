@@ -1308,17 +1308,18 @@ function ReferralLinkForm({ onClose }: { onClose: () => void }) {
         generatedByRole: user.role
       });
 
-      console.log('API Response:', response);
-      console.log('URL from response:', response.url);
+      const data = await response.json();
+      console.log('API Response:', data);
+      console.log('URL from response:', data.url);
       
-      if (response.url) {
-        setGeneratedLink(response.url);
+      if (data.url) {
+        setGeneratedLink(data.url);
         toast({
           title: "Success",
           description: "Referral link generated successfully",
         });
       } else {
-        console.error('No URL in response:', response);
+        console.error('No URL in response:', data);
         toast({
           title: "Error",
           description: "No URL received from server",
