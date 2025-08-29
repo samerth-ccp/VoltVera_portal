@@ -101,7 +101,8 @@ export default function CompleteReferralRegistration() {
   // Registration mutation
   const submitRegistrationMutation = useMutation({
     mutationFn: async (data: RegistrationFormData) => {
-      return apiRequest('POST', '/api/referral/complete-registration', data);
+      const response = await apiRequest('POST', '/api/referral/complete-registration', data);
+      return response.json();
     },
     onSuccess: (data: any) => {
       setIsSubmitted(true);
@@ -170,14 +171,8 @@ export default function CompleteReferralRegistration() {
   }, [form.setValue, toast]);
 
   const onSubmit = useCallback((data: RegistrationFormData) => {
-    console.log('🔥 Form submission triggered');
-    console.log('📊 Form data:', data);
-    console.log('📁 Documents:', uploadedDocuments);
-    console.log('🔄 Mutation pending:', submitRegistrationMutation.isPending);
-    
     // Check if mutation is already in progress
     if (submitRegistrationMutation.isPending) {
-      console.log('⏳ Submission blocked - already in progress');
       return;
     }
     
@@ -187,16 +182,7 @@ export default function CompleteReferralRegistration() {
                           uploadedDocuments.bankStatementUrl && 
                           uploadedDocuments.photoUrl;
     
-    console.log('📋 Document validation:', {
-      panCard: !!uploadedDocuments.panCardUrl,
-      aadhaar: !!uploadedDocuments.aadhaarCardUrl,
-      bankStatement: !!uploadedDocuments.bankStatementUrl,
-      photo: !!uploadedDocuments.photoUrl,
-      hasAll: hasAllDocuments
-    });
-    
     if (!hasAllDocuments) {
-      console.log('❌ Submission blocked - missing documents');
       toast({
         title: "Documents Required", 
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -205,7 +191,6 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
-    console.log('✅ Starting mutation...');
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
@@ -779,19 +764,8 @@ export default function CompleteReferralRegistration() {
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
                 onClick={(e) => {
-                  console.log('🖱️ Submit button clicked');
-                  console.log('📋 Form errors:', form.formState.errors);
-                  console.log('✅ Form valid:', form.formState.isValid);
-                  console.log('📁 Documents available:', {
-                    panCard: !!uploadedDocuments.panCardUrl,
-                    aadhaar: !!uploadedDocuments.aadhaarCardUrl,
-                    bankStatement: !!uploadedDocuments.bankStatementUrl,
-                    photo: !!uploadedDocuments.photoUrl
-                  });
-                  
                   // If form validation fails, try manual submission
                   if (!form.formState.isValid) {
-                    console.log('⚠️ Form invalid, attempting manual submission');
                     e.preventDefault();
                     const formData = form.getValues();
                     onSubmit(formData);
