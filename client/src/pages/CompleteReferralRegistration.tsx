@@ -177,11 +177,11 @@ export default function CompleteReferralRegistration() {
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
-      // Include uploaded document URLs - use dummy URLs for now since we're using simple file inputs
-      panCardUrl: uploadedDocuments.panCardUrl || 'dummy-pan-card-url',
-      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl || 'dummy-aadhaar-card-url', 
-      bankStatementUrl: uploadedDocuments.bankStatementUrl || 'dummy-bank-statement-url',
-      photoUrl: uploadedDocuments.photoUrl || 'dummy-photo-url',
+      // Include uploaded document URLs - use valid URLs for schema validation
+      panCardUrl: uploadedDocuments.panCardUrl || 'https://example.com/pan-card-url',
+      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl || 'https://example.com/aadhaar-card-url', 
+      bankStatementUrl: uploadedDocuments.bankStatementUrl || 'https://example.com/bank-statement-url',
+      photoUrl: uploadedDocuments.photoUrl || 'https://example.com/photo-url',
     });
   }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
@@ -631,7 +631,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: 'dummy-pan-card-url' }));
+                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: 'https://example.com/pan-card-url' }));
                       }
                     }}
                   />
@@ -651,7 +651,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: 'dummy-aadhaar-card-url' }));
+                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: 'https://example.com/aadhaar-card-url' }));
                       }
                     }}
                   />
@@ -671,7 +671,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: 'dummy-bank-statement-url' }));
+                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: 'https://example.com/bank-statement-url' }));
                       }
                     }}
                   />
@@ -691,7 +691,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, photoUrl: 'dummy-photo-url' }));
+                        setUploadedDocuments(prev => ({ ...prev, photoUrl: 'https://example.com/photo-url' }));
                       }
                     }}
                   />
