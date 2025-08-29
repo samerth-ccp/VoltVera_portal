@@ -47,7 +47,7 @@ export default function CompleteReferralRegistration() {
       });
       setTimeout(() => setLocation('/'), 2000);
     }
-  }, [toast, setLocation]);
+  }, []);
 
   // Validate referral token
   const { data: tokenValidation, isLoading: isValidatingToken } = useQuery({
@@ -84,9 +84,16 @@ export default function CompleteReferralRegistration() {
       aadhaarCardUrl: "",
       bankStatementUrl: "",
       photoUrl: "",
-      referralToken: token || "",
+      referralToken: "",
     },
   });
+
+  // Update referral token when it's loaded
+  useEffect(() => {
+    if (token) {
+      form.setValue('referralToken', token);
+    }
+  }, [token, form]);
 
   // Registration mutation
   const submitRegistrationMutation = useMutation({
