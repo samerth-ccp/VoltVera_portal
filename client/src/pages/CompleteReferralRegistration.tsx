@@ -173,10 +173,19 @@ export default function CompleteReferralRegistration() {
     console.log('🔥 FORM SUBMITTED!', data);
     console.log('📁 Documents state:', uploadedDocuments);
     
-    // Check if all documents are uploaded
-    console.log('📁 Documents state:', uploadedDocuments);
+    // Check if mutation is already in progress
+    if (submitRegistrationMutation.isPending) {
+      console.log('⏳ Already submitting, ignoring duplicate submission');
+      return;
+    }
     
-    if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
+    // Check if all documents are uploaded
+    const hasAllDocuments = uploadedDocuments.panCardUrl && 
+                          uploadedDocuments.aadhaarCardUrl && 
+                          uploadedDocuments.bankStatementUrl && 
+                          uploadedDocuments.photoUrl;
+    
+    if (!hasAllDocuments) {
       console.log('❌ Missing documents!');
       toast({
         title: "Documents Required", 
@@ -190,11 +199,11 @@ export default function CompleteReferralRegistration() {
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
-      // Include uploaded document URLs - use valid URLs for schema validation
-      panCardUrl: uploadedDocuments.panCardUrl || 'https://example.com/pan-card-url',
-      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl || 'https://example.com/aadhaar-card-url', 
-      bankStatementUrl: uploadedDocuments.bankStatementUrl || 'https://example.com/bank-statement-url',
-      photoUrl: uploadedDocuments.photoUrl || 'https://example.com/photo-url',
+      // Include uploaded document URLs from state
+      panCardUrl: uploadedDocuments.panCardUrl,
+      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl, 
+      bankStatementUrl: uploadedDocuments.bankStatementUrl,
+      photoUrl: uploadedDocuments.photoUrl,
     });
   }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
@@ -744,20 +753,6 @@ export default function CompleteReferralRegistration() {
                 disabled={submitRegistrationMutation.isPending}
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
-                onClick={() => {
-                  console.log('🖱️ BUTTON CLICKED!');
-                  console.log('📋 Form errors:', form.formState.errors);
-                  console.log('🔍 Form values:', form.getValues());
-                  console.log('✅ Form valid:', form.formState.isValid);
-                  
-                  // Manual trigger if form validation is blocking
-                  const formData = form.getValues();
-                  console.log('🚀 Manual trigger with data:', formData);
-                  if (Object.keys(form.formState.errors).length > 0) {
-                    console.log('⚠️ Form has errors, triggering manual submit...');
-                    onSubmit(formData);
-                  }
-                }}
               >
                 {submitRegistrationMutation.isPending ? 'Creating Account...' : 'Complete Registration'}
               </Button>

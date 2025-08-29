@@ -1555,19 +1555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const parentUserId = referralLink.generatedBy;
       await binaryTreeService.placeUserInTree(newUser.id, parentUserId, referralLink.placementSide as 'left' | 'right', parentUserId);
       
-      // Send welcome email with login credentials
-      try {
-        const { sendUserInvitationEmail } = await import('./emailService');
-        await sendUserInvitationEmail(
-          data.email, 
-          data.firstName, 
-          data.password,  // Send the original password, not hashed
-          `Welcome to Voltvera! Your account has been created successfully.`
-        );
-      } catch (emailError) {
-        console.error('Error sending welcome email:', emailError);
-        // Don't fail the registration if email fails
-      }
+      // No email sending - credentials shown on screen
 
       res.status(201).json({
         message: 'Registration completed successfully',
