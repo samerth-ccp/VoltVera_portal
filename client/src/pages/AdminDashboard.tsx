@@ -18,6 +18,7 @@ import DataTable from "@/components/ui/data-table";
 import UserManagementTable from "@/components/UserManagementTable";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import AdminPendingUsers from "@/components/AdminPendingUsers";
+import UserManagement from "@/components/UserManagement";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 interface UserStats {
@@ -363,20 +364,12 @@ export default function AdminDashboard() {
                   Users Activities
                 </button>
                 <button 
-                  onClick={() => setActiveSection('pending-recruits')}
+                  onClick={() => setActiveSection('user-management')}
                   className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
-                    activeSection === 'pending-recruits' ? 'text-yellow-300' : 'text-white/80'
+                    activeSection === 'user-management' ? 'text-yellow-300' : 'text-white/80'
                   }`}
                 >
-                  Pending Recruits
-                </button>
-                <button 
-                  onClick={() => setActiveSection('pending-users')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
-                    activeSection === 'pending-users' ? 'text-yellow-300' : 'text-white/80'
-                  }`}
-                >
-                  Pending Users
+                  User Management
                 </button>
               </div>
             )}
@@ -899,12 +892,8 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {activeSection === 'pending-recruits' && (
-            <AdminPendingRecruits />
-          )}
-
-          {activeSection === 'pending-users' && (
-            <AdminPendingUsers />
+          {activeSection === 'user-management' && (
+            <UserManagement />
           )}
 
           {/* Withdrawal Management Sections */}

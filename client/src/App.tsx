@@ -56,17 +56,25 @@ function Router() {
             </>
           )}
           
+          {/* Pending user routes */}
+          {user?.status === 'pending' && (
+            <>
+              <Route path="/" component={PendingUserDashboard} />
+              <Route path="/pending-dashboard" component={PendingUserDashboard} />
+            </>
+          )}
+          
           {/* Status and role-based routing for authenticated users */}
-          {user?.status === 'pending' ? (
-            <Route path="/" component={PendingUserDashboard} />
-          ) : user?.role === 'founder' ? (
+          {user?.status !== 'pending' && (
+            user?.role === 'founder' ? (
             <Route path="/" component={FounderDashboard} />
-          ) : user?.role === 'admin' ? (
-            <Route path="/" component={AdminDashboard} />
-          ) : ['mini_franchise', 'basic_franchise'].includes(user?.role || '') ? (
-            <Route path="/" component={FranchiseDashboard} />
-          ) : (
-            <Route path="/" component={UserDashboard} />
+            ) : user?.role === 'admin' ? (
+              <Route path="/" component={AdminDashboard} />
+            ) : ['mini_franchise', 'basic_franchise'].includes(user?.role || '') ? (
+              <Route path="/" component={FranchiseDashboard} />
+            ) : (
+              <Route path="/" component={UserDashboard} />
+            )
           )}
         </>
       )}
