@@ -1551,9 +1551,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markReferralLinkAsUsed(data.referralToken, newUser.id);
       
       // Add to binary tree
-      const { findBestPlacement } = await import('./binaryTreeService');
+      const { binaryTreeService } = await import('./binaryTreeService');
       const parentUserId = referralLink.generatedBy;
-      await findBestPlacement(parentUserId, referralLink.placementSide, newUser.id);
+      await binaryTreeService.placeUserInTree(newUser.id, parentUserId, referralLink.placementSide as 'left' | 'right', parentUserId);
       
       // Send welcome email with login credentials
       try {
