@@ -55,7 +55,8 @@ export default function CompleteReferralRegistration() {
     queryFn: async () => {
       if (!token) return null;
       const response = await apiRequest('GET', `/api/referral/validate?token=${encodeURIComponent(token)}`);
-      return response as unknown as { valid: boolean; placementSide: string; generatedBy: string };
+      const data = await response.json();
+      return data as { valid: boolean; placementSide: string; generatedBy: string };
     },
     enabled: !!token,
   });
@@ -93,7 +94,7 @@ export default function CompleteReferralRegistration() {
   const handleDocumentUpload = async (documentType: keyof typeof uploadedDocuments) => {
     try {
       const response = await apiRequest('POST', '/api/objects/upload');
-      const data = response as unknown as { uploadURL: string };
+      const data = await response.json();
       return { method: 'PUT' as const, url: data.uploadURL };
     } catch (error) {
       toast({
