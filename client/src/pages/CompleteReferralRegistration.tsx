@@ -64,8 +64,27 @@ export default function CompleteReferralRegistration() {
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(completeUserRegistrationSchema),
     defaultValues: {
-      referralToken: token,
-      packageAmount: "5000", // Default package
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      mobile: "",
+      dateOfBirth: "",
+      address: "",
+      city: "",
+      state: "",
+      pincode: "",
+      panNumber: "",
+      aadhaarNumber: "",
+      bankAccountNumber: "",
+      bankIFSC: "",
+      bankName: "",
+      packageAmount: "5000",
+      panCardUrl: "",
+      aadhaarCardUrl: "",
+      bankStatementUrl: "",
+      photoUrl: "",
+      referralToken: token || "",
     },
   });
 
@@ -130,7 +149,7 @@ export default function CompleteReferralRegistration() {
         !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
       toast({
         title: "Documents Required",
-        description: "Please upload all required documents before submitting",
+        description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
         variant: "destructive",
       });
       return;
@@ -567,59 +586,85 @@ export default function CompleteReferralRegistration() {
                   <Upload className="mr-2 h-5 w-5 text-green-400" />
                   Document Upload
                 </CardTitle>
+                <p className="text-white/70 text-sm mt-2">
+                  Upload clear, readable images of your documents. All 4 documents are mandatory for account verification.
+                </p>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-white mb-2 block">PAN Card</Label>
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-white font-medium flex items-center">
+                    <FileText className="mr-2 h-4 w-4 text-blue-400" />
+                    PAN Card
+                    {uploadedDocuments.panCardUrl && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                  </Label>
                   <ObjectUploader
                     maxNumberOfFiles={1}
                     maxFileSize={5242880} // 5MB
                     onGetUploadParameters={() => handleDocumentUpload('panCardUrl')}
                     onComplete={(result) => onDocumentComplete('panCardUrl', result)}
-                    buttonClassName="w-full"
+                    buttonClassName={`w-full ${uploadedDocuments.panCardUrl ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    {uploadedDocuments.panCardUrl ? 'PAN Card Uploaded' : 'Upload PAN Card'}
+                    {uploadedDocuments.panCardUrl ? '✓ PAN Card Uploaded' : 'Upload PAN Card'}
                   </ObjectUploader>
+                  <p className="text-xs text-white/50">Upload clear image of PAN card (Max 5MB)</p>
                 </div>
-                <div>
-                  <Label className="text-white mb-2 block">Aadhaar Card</Label>
+
+                <div className="space-y-2">
+                  <Label className="text-white font-medium flex items-center">
+                    <FileText className="mr-2 h-4 w-4 text-orange-400" />
+                    Aadhaar Card
+                    {uploadedDocuments.aadhaarCardUrl && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                  </Label>
                   <ObjectUploader
                     maxNumberOfFiles={1}
                     maxFileSize={5242880} // 5MB
                     onGetUploadParameters={() => handleDocumentUpload('aadhaarCardUrl')}
                     onComplete={(result) => onDocumentComplete('aadhaarCardUrl', result)}
-                    buttonClassName="w-full"
+                    buttonClassName={`w-full ${uploadedDocuments.aadhaarCardUrl ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   >
                     <FileText className="mr-2 h-4 w-4" />
-                    {uploadedDocuments.aadhaarCardUrl ? 'Aadhaar Card Uploaded' : 'Upload Aadhaar Card'}
+                    {uploadedDocuments.aadhaarCardUrl ? '✓ Aadhaar Card Uploaded' : 'Upload Aadhaar Card'}
                   </ObjectUploader>
+                  <p className="text-xs text-white/50">Upload clear image of Aadhaar card (Max 5MB)</p>
                 </div>
-                <div>
-                  <Label className="text-white mb-2 block">Bank Statement</Label>
+
+                <div className="space-y-2">
+                  <Label className="text-white font-medium flex items-center">
+                    <CreditCard className="mr-2 h-4 w-4 text-purple-400" />
+                    Bank Statement
+                    {uploadedDocuments.bankStatementUrl && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                  </Label>
                   <ObjectUploader
                     maxNumberOfFiles={1}
                     maxFileSize={5242880} // 5MB
                     onGetUploadParameters={() => handleDocumentUpload('bankStatementUrl')}
                     onComplete={(result) => onDocumentComplete('bankStatementUrl', result)}
-                    buttonClassName="w-full"
+                    buttonClassName={`w-full ${uploadedDocuments.bankStatementUrl ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   >
                     <CreditCard className="mr-2 h-4 w-4" />
-                    {uploadedDocuments.bankStatementUrl ? 'Bank Statement Uploaded' : 'Upload Bank Statement'}
+                    {uploadedDocuments.bankStatementUrl ? '✓ Bank Statement Uploaded' : 'Upload Bank Statement'}
                   </ObjectUploader>
+                  <p className="text-xs text-white/50">Recent bank statement (Max 5MB)</p>
                 </div>
-                <div>
-                  <Label className="text-white mb-2 block">Profile Photo</Label>
+
+                <div className="space-y-2">
+                  <Label className="text-white font-medium flex items-center">
+                    <Camera className="mr-2 h-4 w-4 text-pink-400" />
+                    Profile Photo
+                    {uploadedDocuments.photoUrl && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                  </Label>
                   <ObjectUploader
                     maxNumberOfFiles={1}
                     maxFileSize={2097152} // 2MB
                     onGetUploadParameters={() => handleDocumentUpload('photoUrl')}
                     onComplete={(result) => onDocumentComplete('photoUrl', result)}
-                    buttonClassName="w-full"
+                    buttonClassName={`w-full ${uploadedDocuments.photoUrl ? 'bg-green-600 hover:bg-green-700' : ''}`}
                   >
                     <Camera className="mr-2 h-4 w-4" />
-                    {uploadedDocuments.photoUrl ? 'Photo Uploaded' : 'Upload Photo'}
+                    {uploadedDocuments.photoUrl ? '✓ Photo Uploaded' : 'Upload Photo'}
                   </ObjectUploader>
+                  <p className="text-xs text-white/50">Clear passport-style photo (Max 2MB)</p>
                 </div>
               </CardContent>
             </Card>
