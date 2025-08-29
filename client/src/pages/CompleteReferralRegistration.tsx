@@ -157,8 +157,8 @@ export default function CompleteReferralRegistration() {
   }, [form.setValue, toast]);
 
   const onSubmit = useCallback((data: RegistrationFormData) => {
-    // Check if all documents are uploaded - use form data which should have the URLs
-    if (!data.panCardUrl || !data.aadhaarCardUrl || !data.bankStatementUrl || !data.photoUrl) {
+    // Check if all documents are uploaded - use uploaded documents state
+    if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
       toast({
         title: "Documents Required",
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -171,8 +171,13 @@ export default function CompleteReferralRegistration() {
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
+      // Include uploaded document URLs
+      panCardUrl: uploadedDocuments.panCardUrl,
+      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl, 
+      bankStatementUrl: uploadedDocuments.bankStatementUrl,
+      photoUrl: uploadedDocuments.photoUrl,
     });
-  }, [token, toast, submitRegistrationMutation]);
+  }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
   if (isValidatingToken) {
     return (
@@ -336,7 +341,8 @@ export default function CompleteReferralRegistration() {
                         <Input 
                           {...field} 
                           type="date"
-                          className="bg-black/50 border-white/20 text-white"
+                          max={new Date(new Date().getFullYear() - 18, 11, 31).toISOString().split('T')[0]}
+                          className="bg-black/50 border-white/20 text-white [color-scheme:dark]"
                           data-testid="input-dateOfBirth"
                         />
                       </FormControl>
