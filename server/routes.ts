@@ -77,16 +77,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Simple login - check email and password (support both endpoints)
   const handleLogin = async (req: any, res: any) => {
     const { email, password, rememberMe } = req.body;
-    console.log('=== LOGIN DEBUG ===');
-    console.log('Email:', email);
-    console.log('Production:', isProduction);
-    console.log('Session ID before login:', req.sessionID);
-    console.log('Database URL exists:', !!process.env.DATABASE_URL);
     
     try {
-      console.log('Attempting login for:', email);
       const user = await storage.getUserByEmailAndPassword(email, password);
-      console.log('User found:', !!user);
       if (user) {
         // Update last active timestamp
         await storage.updateUser(user.id, { lastActiveAt: new Date() });
@@ -103,13 +96,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
         }
         
-        // Store user in session with debugging
+        // Store user in session
         (req.session as any).userId = user.id;
         (req.session as any).user = user;
-        
-        console.log('Session after login:', req.sessionID);
-        console.log('User stored in session:', (req.session as any).userId);
-        console.log('Cookie settings:', req.session.cookie);
         
         res.json({ success: true, user });
       } else {
