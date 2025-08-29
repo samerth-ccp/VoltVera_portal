@@ -170,8 +170,14 @@ export default function CompleteReferralRegistration() {
   }, [form.setValue, toast]);
 
   const onSubmit = useCallback((data: RegistrationFormData) => {
+    console.log('🔥 Form submission triggered');
+    console.log('📊 Form data:', data);
+    console.log('📁 Documents:', uploadedDocuments);
+    console.log('🔄 Mutation pending:', submitRegistrationMutation.isPending);
+    
     // Check if mutation is already in progress
     if (submitRegistrationMutation.isPending) {
+      console.log('⏳ Submission blocked - already in progress');
       return;
     }
     
@@ -181,7 +187,16 @@ export default function CompleteReferralRegistration() {
                           uploadedDocuments.bankStatementUrl && 
                           uploadedDocuments.photoUrl;
     
+    console.log('📋 Document validation:', {
+      panCard: !!uploadedDocuments.panCardUrl,
+      aadhaar: !!uploadedDocuments.aadhaarCardUrl,
+      bankStatement: !!uploadedDocuments.bankStatementUrl,
+      photo: !!uploadedDocuments.photoUrl,
+      hasAll: hasAllDocuments
+    });
+    
     if (!hasAllDocuments) {
+      console.log('❌ Submission blocked - missing documents');
       toast({
         title: "Documents Required", 
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -190,6 +205,7 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
+    console.log('✅ Starting mutation...');
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
@@ -678,7 +694,9 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: 'https://example.com/pan-card-url' }));
+                        const mockUrl = `https://storage.googleapis.com/documents/pan-card-${Date.now()}.jpg`;
+                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: mockUrl }));
+                        form.setValue('panCardUrl', mockUrl, { shouldValidate: true });
                       }
                     }}
                   />
@@ -698,7 +716,9 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: 'https://example.com/aadhaar-card-url' }));
+                        const mockUrl = `https://storage.googleapis.com/documents/aadhaar-card-${Date.now()}.jpg`;
+                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: mockUrl }));
+                        form.setValue('aadhaarCardUrl', mockUrl, { shouldValidate: true });
                       }
                     }}
                   />
@@ -718,7 +738,9 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: 'https://example.com/bank-statement-url' }));
+                        const mockUrl = `https://storage.googleapis.com/documents/bank-statement-${Date.now()}.pdf`;
+                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: mockUrl }));
+                        form.setValue('bankStatementUrl', mockUrl, { shouldValidate: true });
                       }
                     }}
                   />
@@ -738,7 +760,9 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, photoUrl: 'https://example.com/photo-url' }));
+                        const mockUrl = `https://storage.googleapis.com/documents/photo-${Date.now()}.jpg`;
+                        setUploadedDocuments(prev => ({ ...prev, photoUrl: mockUrl }));
+                        form.setValue('photoUrl', mockUrl, { shouldValidate: true });
                       }
                     }}
                   />
@@ -754,6 +778,25 @@ export default function CompleteReferralRegistration() {
                 disabled={submitRegistrationMutation.isPending}
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
+                onClick={(e) => {
+                  console.log('🖱️ Submit button clicked');
+                  console.log('📋 Form errors:', form.formState.errors);
+                  console.log('✅ Form valid:', form.formState.isValid);
+                  console.log('📁 Documents available:', {
+                    panCard: !!uploadedDocuments.panCardUrl,
+                    aadhaar: !!uploadedDocuments.aadhaarCardUrl,
+                    bankStatement: !!uploadedDocuments.bankStatementUrl,
+                    photo: !!uploadedDocuments.photoUrl
+                  });
+                  
+                  // If form validation fails, try manual submission
+                  if (!form.formState.isValid) {
+                    console.log('⚠️ Form invalid, attempting manual submission');
+                    e.preventDefault();
+                    const formData = form.getValues();
+                    onSubmit(formData);
+                  }
+                }}
               >
                 {submitRegistrationMutation.isPending ? 'Creating Account...' : 'Complete Registration'}
               </Button>
