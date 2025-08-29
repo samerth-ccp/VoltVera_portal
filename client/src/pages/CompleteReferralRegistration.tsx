@@ -298,6 +298,7 @@ export default function CompleteReferralRegistration() {
                         <Input 
                           {...field} 
                           type="email"
+                          autoComplete="email"
                           className="bg-black/50 border-white/20 text-white"
                           data-testid="input-email"
                         />
@@ -316,6 +317,7 @@ export default function CompleteReferralRegistration() {
                         <Input 
                           {...field} 
                           type="tel"
+                          autoComplete="tel"
                           className="bg-black/50 border-white/20 text-white"
                           data-testid="input-mobile"
                         />
@@ -352,6 +354,7 @@ export default function CompleteReferralRegistration() {
                         <Input 
                           {...field} 
                           type="password"
+                          autoComplete="new-password"
                           className="bg-black/50 border-white/20 text-white"
                           data-testid="input-password"
                         />
