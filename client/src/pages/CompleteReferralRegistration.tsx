@@ -172,6 +172,8 @@ export default function CompleteReferralRegistration() {
   const onSubmit = useCallback((data: RegistrationFormData) => {
     console.log('🔥 FORM SUBMITTED!', data);
     console.log('📁 Documents state:', uploadedDocuments);
+    console.log('🎯 Token:', token);
+    console.log('📋 Form errors:', form.formState.errors);
     
     // Check if mutation is already in progress
     if (submitRegistrationMutation.isPending) {
@@ -184,6 +186,14 @@ export default function CompleteReferralRegistration() {
                           uploadedDocuments.aadhaarCardUrl && 
                           uploadedDocuments.bankStatementUrl && 
                           uploadedDocuments.photoUrl;
+    
+    console.log('📋 Document check:', {
+      panCard: !!uploadedDocuments.panCardUrl,
+      aadhaar: !!uploadedDocuments.aadhaarCardUrl,
+      bankStatement: !!uploadedDocuments.bankStatementUrl,
+      photo: !!uploadedDocuments.photoUrl,
+      hasAll: hasAllDocuments
+    });
     
     if (!hasAllDocuments) {
       console.log('❌ Missing documents!');
@@ -205,7 +215,7 @@ export default function CompleteReferralRegistration() {
       bankStatementUrl: uploadedDocuments.bankStatementUrl!,
       photoUrl: uploadedDocuments.photoUrl!,
     });
-  }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
+  }, [token, toast, submitRegistrationMutation, uploadedDocuments, form.formState.errors]);
 
   if (isValidatingToken) {
     return (
@@ -753,6 +763,20 @@ export default function CompleteReferralRegistration() {
                 disabled={submitRegistrationMutation.isPending}
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
+                onClick={(e) => {
+                  console.log('🖱️ SUBMIT BUTTON CLICKED!');
+                  console.log('📋 Form valid:', form.formState.isValid);
+                  console.log('📁 Document URLs:', uploadedDocuments);
+                  console.log('⚙️ Is pending:', submitRegistrationMutation.isPending);
+                  
+                  // If form has validation errors, try manual submission
+                  if (!form.formState.isValid) {
+                    console.log('❌ Form invalid, trying manual submission...');
+                    e.preventDefault();
+                    const formData = form.getValues();
+                    onSubmit(formData);
+                  }
+                }}
               >
                 {submitRegistrationMutation.isPending ? 'Creating Account...' : 'Complete Registration'}
               </Button>
