@@ -52,6 +52,10 @@ export default function CompleteReferralRegistration() {
   // Validate referral token
   const { data: tokenValidation, isLoading: isValidatingToken } = useQuery({
     queryKey: ['/api/referral/validate', token],
+    queryFn: async () => {
+      if (!token) return null;
+      return apiRequest('GET', `/api/referral/validate?token=${encodeURIComponent(token)}`);
+    },
     enabled: !!token,
   });
 
