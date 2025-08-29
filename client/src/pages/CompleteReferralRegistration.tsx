@@ -160,29 +160,28 @@ export default function CompleteReferralRegistration() {
     console.log('🔥 FORM SUBMITTED!', data);
     console.log('📁 Documents state:', uploadedDocuments);
     
-    // Temporarily bypass document validation for testing
+    // Check if all documents are uploaded
     console.log('📁 Documents state:', uploadedDocuments);
     
-    // For now, allow submission without all documents to test the flow
-    // if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
-    //   console.log('❌ Missing documents!');
-    //   toast({
-    //     title: "Documents Required", 
-    //     description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
+    if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
+      console.log('❌ Missing documents!');
+      toast({
+        title: "Documents Required", 
+        description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     console.log('✅ All documents present, submitting...', data);
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
-      // Include uploaded document URLs
-      panCardUrl: uploadedDocuments.panCardUrl,
-      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl, 
-      bankStatementUrl: uploadedDocuments.bankStatementUrl,
-      photoUrl: uploadedDocuments.photoUrl,
+      // Include uploaded document URLs - use dummy URLs for now since we're using simple file inputs
+      panCardUrl: uploadedDocuments.panCardUrl || 'dummy-pan-card-url',
+      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl || 'dummy-aadhaar-card-url', 
+      bankStatementUrl: uploadedDocuments.bankStatementUrl || 'dummy-bank-statement-url',
+      photoUrl: uploadedDocuments.photoUrl || 'dummy-photo-url',
     });
   }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
@@ -632,8 +631,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        // For now, just mark as uploaded for demo purposes
-                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: 'uploaded' }));
+                        setUploadedDocuments(prev => ({ ...prev, panCardUrl: 'dummy-pan-card-url' }));
                       }
                     }}
                   />
@@ -653,7 +651,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: 'uploaded' }));
+                        setUploadedDocuments(prev => ({ ...prev, aadhaarCardUrl: 'dummy-aadhaar-card-url' }));
                       }
                     }}
                   />
@@ -673,7 +671,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: 'uploaded' }));
+                        setUploadedDocuments(prev => ({ ...prev, bankStatementUrl: 'dummy-bank-statement-url' }));
                       }
                     }}
                   />
@@ -693,7 +691,7 @@ export default function CompleteReferralRegistration() {
                     onChange={(e) => {
                       const file = e.target.files?.[0];
                       if (file) {
-                        setUploadedDocuments(prev => ({ ...prev, photoUrl: 'uploaded' }));
+                        setUploadedDocuments(prev => ({ ...prev, photoUrl: 'dummy-photo-url' }));
                       }
                     }}
                   />
