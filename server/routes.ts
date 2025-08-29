@@ -1496,13 +1496,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Create user account with all the provided information
-      const hashedPassword = await bcrypt.hash(data.password, 10);
       const userId = nanoid();
       
       const userData = {
         id: userId,
         email: data.email,
-        password: hashedPassword,
+        password: data.password, // createUser will hash this
         firstName: data.firstName,
         lastName: data.lastName,
         mobile: data.mobile,

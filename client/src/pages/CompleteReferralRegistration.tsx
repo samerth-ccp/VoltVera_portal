@@ -26,7 +26,7 @@ export default function CompleteReferralRegistration() {
   const { toast } = useToast();
   const [token, setToken] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [loginCredentials, setLoginCredentials] = useState<{email: string, password: string} | null>(null);
+  const [loginCredentials, setLoginCredentials] = useState<{userId: string, password: string} | null>(null);
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     panCardUrl?: string;
     aadhaarCardUrl?: string;
