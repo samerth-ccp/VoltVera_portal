@@ -200,10 +200,10 @@ export default function CompleteReferralRegistration() {
       ...data,
       referralToken: token,
       // Include uploaded document URLs from state
-      panCardUrl: uploadedDocuments.panCardUrl,
-      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl, 
-      bankStatementUrl: uploadedDocuments.bankStatementUrl,
-      photoUrl: uploadedDocuments.photoUrl,
+      panCardUrl: uploadedDocuments.panCardUrl!,
+      aadhaarCardUrl: uploadedDocuments.aadhaarCardUrl!, 
+      bankStatementUrl: uploadedDocuments.bankStatementUrl!,
+      photoUrl: uploadedDocuments.photoUrl!,
     });
   }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
