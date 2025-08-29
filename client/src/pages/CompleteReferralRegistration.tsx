@@ -26,6 +26,7 @@ export default function CompleteReferralRegistration() {
   const { toast } = useToast();
   const [token, setToken] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [loginCredentials, setLoginCredentials] = useState<{email: string, password: string} | null>(null);
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     panCardUrl?: string;
     aadhaarCardUrl?: string;
@@ -102,11 +103,14 @@ export default function CompleteReferralRegistration() {
     mutationFn: async (data: RegistrationFormData) => {
       return apiRequest('POST', '/api/referral/complete-registration', data);
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       setIsSubmitted(true);
+      if (data.loginCredentials) {
+        setLoginCredentials(data.loginCredentials);
+      }
       toast({
         title: "Registration Complete!",
-        description: "Your account has been created. Check your email for login credentials.",
+        description: "Your account has been created. Your login credentials are shown below.",
       });
     },
     onError: (error: any) => {
@@ -232,19 +236,43 @@ export default function CompleteReferralRegistration() {
   if (isSubmitted) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md bg-black/20 backdrop-blur-sm border-white/10">
+        <Card className="w-full max-w-lg bg-black/20 backdrop-blur-sm border-white/10">
           <CardContent className="p-8 text-center">
             <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-white mb-4">Registration Complete!</h2>
             <p className="text-white/70 mb-6">
-              Your account has been created successfully. You'll receive an email 
-              with your login credentials shortly. You can now log in to your account.
+              Your account has been created successfully. Here are your login credentials:
             </p>
+            
+            {loginCredentials && (
+              <div className="bg-green-900/30 border border-green-400/30 rounded-lg p-6 mb-6 text-left">
+                <h3 className="text-lg font-semibold text-green-300 mb-4 text-center">Your Login Details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm text-white/60 block mb-1">Email:</label>
+                    <div className="bg-black/30 rounded p-3 text-white font-mono text-sm break-all">
+                      {loginCredentials.email}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-white/60 block mb-1">Password:</label>
+                    <div className="bg-black/30 rounded p-3 text-white font-mono text-sm">
+                      {loginCredentials.password}
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-green-300/70 mt-4 text-center">
+                  ⚠️ Please save these credentials securely. You'll need them to log in.
+                </p>
+              </div>
+            )}
+            
             <Button
               onClick={() => setLocation('/')}
-              className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
+              className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 w-full"
+              data-testid="button-login"
             >
-              Go to Login
+              Login Now
             </Button>
           </CardContent>
         </Card>

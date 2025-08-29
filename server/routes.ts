@@ -1572,6 +1572,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json({
         message: 'Registration completed successfully',
         userId: newUser.id,
+        loginCredentials: {
+          email: data.email,
+          password: data.password
+        },
         loginCredentialsSent: true
       });
     } catch (error: any) {
