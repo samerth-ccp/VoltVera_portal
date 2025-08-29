@@ -21,13 +21,26 @@ export default function Landing() {
 
   // Load saved email and remember me preference on component mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('voltverashop_email');
-    const savedRememberMe = localStorage.getItem('voltverashop_remember_me') === 'true';
+    // Check for prefilled credentials from registration first
+    const prefillEmail = sessionStorage.getItem('prefillEmail');
+    const prefillPassword = sessionStorage.getItem('prefillPassword');
     
-    if (savedEmail) {
-      setEmail(savedEmail);
+    if (prefillEmail && prefillPassword) {
+      setEmail(prefillEmail);
+      setPassword(prefillPassword);
+      // Clear the session storage after use
+      sessionStorage.removeItem('prefillEmail');
+      sessionStorage.removeItem('prefillPassword');
+    } else {
+      // Fall back to saved credentials
+      const savedEmail = localStorage.getItem('voltverashop_email');
+      const savedRememberMe = localStorage.getItem('voltverashop_remember_me') === 'true';
+      
+      if (savedEmail) {
+        setEmail(savedEmail);
+      }
+      setRememberMe(savedRememberMe);
     }
-    setRememberMe(savedRememberMe);
   }, []);
 
   // Login mutation

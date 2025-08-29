@@ -170,14 +170,8 @@ export default function CompleteReferralRegistration() {
   }, [form.setValue, toast]);
 
   const onSubmit = useCallback((data: RegistrationFormData) => {
-    console.log('🔥 FORM SUBMITTED!', data);
-    console.log('📁 Documents state:', uploadedDocuments);
-    console.log('🎯 Token:', token);
-    console.log('📋 Form errors:', form.formState.errors);
-    
     // Check if mutation is already in progress
     if (submitRegistrationMutation.isPending) {
-      console.log('⏳ Already submitting, ignoring duplicate submission');
       return;
     }
     
@@ -187,16 +181,7 @@ export default function CompleteReferralRegistration() {
                           uploadedDocuments.bankStatementUrl && 
                           uploadedDocuments.photoUrl;
     
-    console.log('📋 Document check:', {
-      panCard: !!uploadedDocuments.panCardUrl,
-      aadhaar: !!uploadedDocuments.aadhaarCardUrl,
-      bankStatement: !!uploadedDocuments.bankStatementUrl,
-      photo: !!uploadedDocuments.photoUrl,
-      hasAll: hasAllDocuments
-    });
-    
     if (!hasAllDocuments) {
-      console.log('❌ Missing documents!');
       toast({
         title: "Documents Required", 
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -205,7 +190,6 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
-    console.log('✅ All documents present, submitting...', data);
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
@@ -215,7 +199,7 @@ export default function CompleteReferralRegistration() {
       bankStatementUrl: uploadedDocuments.bankStatementUrl!,
       photoUrl: uploadedDocuments.photoUrl!,
     });
-  }, [token, toast, submitRegistrationMutation, uploadedDocuments, form.formState.errors]);
+  }, [token, toast, submitRegistrationMutation, uploadedDocuments]);
 
   if (isValidatingToken) {
     return (
@@ -287,7 +271,14 @@ export default function CompleteReferralRegistration() {
             )}
             
             <Button
-              onClick={() => setLocation('/')}
+              onClick={() => {
+                if (loginCredentials) {
+                  // Store credentials in sessionStorage for prefilling login form
+                  sessionStorage.setItem('prefillEmail', loginCredentials.email);
+                  sessionStorage.setItem('prefillPassword', loginCredentials.password);
+                }
+                setLocation('/');
+              }}
               className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 w-full"
               data-testid="button-login"
             >
@@ -763,20 +754,6 @@ export default function CompleteReferralRegistration() {
                 disabled={submitRegistrationMutation.isPending}
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
-                onClick={(e) => {
-                  console.log('🖱️ SUBMIT BUTTON CLICKED!');
-                  console.log('📋 Form valid:', form.formState.isValid);
-                  console.log('📁 Document URLs:', uploadedDocuments);
-                  console.log('⚙️ Is pending:', submitRegistrationMutation.isPending);
-                  
-                  // If form has validation errors, try manual submission
-                  if (!form.formState.isValid) {
-                    console.log('❌ Form invalid, trying manual submission...');
-                    e.preventDefault();
-                    const formData = form.getValues();
-                    onSubmit(formData);
-                  }
-                }}
               >
                 {submitRegistrationMutation.isPending ? 'Creating Account...' : 'Complete Registration'}
               </Button>
