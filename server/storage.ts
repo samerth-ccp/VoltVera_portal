@@ -61,6 +61,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserById(id: string): Promise<User | undefined>;
   getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined>;
+  getUserByUserIdAndPassword(userId: string, password: string): Promise<User | undefined>;
   updateUserStatus(userId: string, status: string): Promise<User | undefined>;
   
   // User management operations
@@ -245,6 +246,17 @@ export class DatabaseStorage implements IStorage {
     return undefined;
   }
 
+  async getUserByUserIdAndPassword(userId: string, password: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.userId, userId));
+    if (user) {
+      const passwordMatch = await bcrypt.compare(password, user.password);
+      if (passwordMatch) {
+        return user;
+      }
+    }
+    return undefined;
+  }
+
   // Additional user management operations
   async getAllUsers(search?: string): Promise<User[]> {
     let query = db.select().from(users).orderBy(desc(users.createdAt));
@@ -262,13 +274,39 @@ export class DatabaseStorage implements IStorage {
     return await query;
   }
 
+  // Generate next sequential user ID like VV0001, VV0002, etc.
+  async generateNextUserId(): Promise<string> {
+    const result = await db.select({ userId: users.userId })
+      .from(users)
+      .where(sql`${users.userId} LIKE 'VV%'`)
+      .orderBy(sql`${users.userId} DESC`)
+      .limit(1);
+    
+    if (result.length === 0) {
+      return 'VV0001'; // First user
+    }
+    
+    const lastUserId = result[0].userId;
+    if (lastUserId) {
+      const numPart = parseInt(lastUserId.substring(2));
+      const nextNum = numPart + 1;
+      return `VV${nextNum.toString().padStart(4, '0')}`;
+    }
+    
+    return 'VV0001';
+  }
+
   async createUser(userData: CreateUser): Promise<User> {
+    // Generate sequential user ID
+    const userId = await this.generateNextUserId();
+    
     // Hash password before storing (use nanoid if not provided)
     const hashedPassword = await bcrypt.hash(userData.password || "defaultpass123", 10);
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
+        userId,
         password: hashedPassword,
         status: 'active', // Admin-created users are immediately active
         emailVerified: new Date(),

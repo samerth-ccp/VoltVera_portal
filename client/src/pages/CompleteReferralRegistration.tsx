@@ -253,9 +253,9 @@ export default function CompleteReferralRegistration() {
                 <h3 className="text-lg font-semibold text-green-300 mb-4 text-center">Your Login Details</h3>
                 <div className="space-y-3">
                   <div>
-                    <label className="text-sm text-white/60 block mb-1">Email:</label>
+                    <label className="text-sm text-white/60 block mb-1">User ID:</label>
                     <div className="bg-black/30 rounded p-3 text-white font-mono text-sm break-all">
-                      {loginCredentials.email}
+                      {loginCredentials.userId}
                     </div>
                   </div>
                   <div>
@@ -275,7 +275,7 @@ export default function CompleteReferralRegistration() {
               onClick={() => {
                 if (loginCredentials) {
                   // Store credentials in sessionStorage for prefilling login form
-                  sessionStorage.setItem('prefillEmail', loginCredentials.email);
+                  sessionStorage.setItem('prefillUserId', loginCredentials.userId);
                   sessionStorage.setItem('prefillPassword', loginCredentials.password);
                 }
                 setLocation('/');

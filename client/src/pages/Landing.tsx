@@ -13,31 +13,31 @@ import { Link, useLocation } from "wouter";
 export default function Landing() {
   const [, setLocation] = useLocation();
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('');
+  const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Load saved email and remember me preference on component mount
+  // Load saved userId and remember me preference on component mount
   useEffect(() => {
     // Check for prefilled credentials from registration first
-    const prefillEmail = sessionStorage.getItem('prefillEmail');
+    const prefillUserId = sessionStorage.getItem('prefillUserId');
     const prefillPassword = sessionStorage.getItem('prefillPassword');
     
-    if (prefillEmail && prefillPassword) {
-      setEmail(prefillEmail);
+    if (prefillUserId && prefillPassword) {
+      setUserId(prefillUserId);
       setPassword(prefillPassword);
       // Clear the session storage after use
-      sessionStorage.removeItem('prefillEmail');
+      sessionStorage.removeItem('prefillUserId');
       sessionStorage.removeItem('prefillPassword');
     } else {
       // Fall back to saved credentials
-      const savedEmail = localStorage.getItem('voltverashop_email');
+      const savedUserId = localStorage.getItem('voltverashop_userId');
       const savedRememberMe = localStorage.getItem('voltverashop_remember_me') === 'true';
       
-      if (savedEmail) {
-        setEmail(savedEmail);
+      if (savedUserId) {
+        setUserId(savedUserId);
       }
       setRememberMe(savedRememberMe);
     }
@@ -45,17 +45,17 @@ export default function Landing() {
 
   // Login mutation
   const loginMutation = useMutation({
-    mutationFn: async (credentials: { email: string; password: string; rememberMe: boolean }) => {
+    mutationFn: async (credentials: { userId: string; password: string; rememberMe: boolean }) => {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
     onSuccess: (data: any) => {
-      // Save email and remember me preference if rememberMe is checked
+      // Save userId and remember me preference if rememberMe is checked
       if (rememberMe) {
-        localStorage.setItem('voltverashop_email', email);
+        localStorage.setItem('voltverashop_userId', userId);
         localStorage.setItem('voltverashop_remember_me', 'true');
       } else {
-        localStorage.removeItem('voltverashop_email');
+        localStorage.removeItem('voltverashop_userId');
         localStorage.setItem('voltverashop_remember_me', 'false');
       }
       
@@ -80,7 +80,7 @@ export default function Landing() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    loginMutation.mutate({ email, password, rememberMe });
+    loginMutation.mutate({ userId, password, rememberMe });
   };
 
   const handleReplitLogin = () => {
@@ -99,17 +99,17 @@ export default function Landing() {
           <div className="text-white text-2xl sm:text-3xl font-light mb-3">
             Welcome to <span className="font-semibold">Voltverashop</span>
           </div>
-          <div className="text-white/90 text-sm mb-6">Enter your email and password to continue.</div>
+          <div className="text-white/90 text-sm mb-6">Enter your user ID and password to continue.</div>
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <Label className="block text-white font-medium mb-2 text-sm">Email</Label>
+              <Label className="block text-white font-medium mb-2 text-sm">User ID</Label>
               <Input 
-                type="email" 
+                type="text" 
                 className="w-full p-5 border-none rounded-lg text-base bg-white/95 focus:bg-white focus:ring-4 focus:ring-white/30 transition-all duration-300"
-                placeholder="admin@voltverashop.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                placeholder="VV0001"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
                 required
               />
             </div>

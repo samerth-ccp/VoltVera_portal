@@ -55,6 +55,7 @@ export const ticketCategoryEnum = pgEnum('ticket_category', ['Payment', 'Product
 // User storage table with Binary MLM structure
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").unique(), // Display ID like VV0001, VV0002, etc.
   email: varchar("email").unique(),
   password: varchar("password").notNull(),
   firstName: varchar("first_name"),

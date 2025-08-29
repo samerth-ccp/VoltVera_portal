@@ -74,12 +74,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     store: sessionStore // Use proper session store
   }));
 
-  // Simple login - check email and password (support both endpoints)
+  // Simple login - check userId and password (support both endpoints)
   const handleLogin = async (req: any, res: any) => {
-    const { email, password, rememberMe } = req.body;
+    const { userId, password, rememberMe } = req.body;
     
     try {
-      const user = await storage.getUserByEmailAndPassword(email, password);
+      const user = await storage.getUserByUserIdAndPassword(userId, password);
       if (user) {
         // Update last active timestamp
         await storage.updateUser(user.id, { lastActiveAt: new Date() });
@@ -102,7 +102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         res.json({ success: true, user });
       } else {
-        res.status(401).json({ message: "Invalid email or password" });
+        res.status(401).json({ message: "Invalid user ID or password" });
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -1550,7 +1550,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         message: 'Registration completed successfully',
         userId: newUser.id,
         loginCredentials: {
-          email: data.email,
+          userId: newUser.userId,
           password: data.password
         },
         loginCredentialsSent: true
