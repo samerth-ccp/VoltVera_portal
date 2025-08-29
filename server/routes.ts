@@ -1522,7 +1522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: data.photoUrl,
         sponsorId: referralLink.generatedBy,
         position: referralLink.placementSide,
-        status: 'active' as const,
+        status: 'pending' as const,
         emailVerified: new Date(),
         kycStatus: 'pending' as const,
         kycSubmittedAt: new Date(),
@@ -1566,6 +1566,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(500).json({ message: 'Failed to complete registration' });
+    }
+  });
+
+  // User profile update endpoint for pending users
+  app.put('/api/user/profile', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Allow pending users to update their profile
+      if (user.status !== 'pending' && user.status !== 'active') {
+        return res.status(403).json({ message: 'Profile updates not allowed for your account status' });
+      }
+
+      const updatedUser = await storage.updateUser(userId, req.body);
+      res.json({ message: 'Profile updated successfully', user: updatedUser });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      res.status(500).json({ message: 'Failed to update profile' });
+    }
+  });
+
+  // Get pending users for admin approval
+  app.get('/api/admin/pending-users', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const pendingUsers = await storage.getPendingUsers();
+      res.json(pendingUsers);
+    } catch (error) {
+      console.error('Error fetching pending users:', error);
+      res.status(500).json({ message: 'Failed to fetch pending users' });
+    }
+  });
+
+  // Admin approve pending user
+  app.patch('/api/admin/users/:userId/approve', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (user.status !== 'pending') {
+        return res.status(400).json({ message: 'User is not in pending status' });
+      }
+
+      // Activate the user
+      const updatedUser = await storage.updateUser(userId, { 
+        status: 'active',
+        activationDate: new Date()
+      });
+
+      res.json({ 
+        message: 'User approved successfully', 
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error('Error approving user:', error);
+      res.status(500).json({ message: 'Failed to approve user' });
+    }
+  });
+
+  // Admin reject pending user
+  app.patch('/api/admin/users/:userId/reject', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      
+      const user = await storage.getUserById(userId);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+
+      if (user.status !== 'pending') {
+        return res.status(400).json({ message: 'User is not in pending status' });
+      }
+
+      // Reject the user (set status to rejected)
+      const updatedUser = await storage.updateUser(userId, { 
+        status: 'rejected'
+      });
+
+      res.json({ 
+        message: 'User rejected successfully', 
+        user: updatedUser 
+      });
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      res.status(500).json({ message: 'Failed to reject user' });
     }
   });
 

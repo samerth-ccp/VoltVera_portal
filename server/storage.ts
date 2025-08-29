@@ -83,6 +83,7 @@ export interface IStorage {
     adminUsers: number;
     pendingUsers: number;
   }>;
+  getPendingUsers(): Promise<User[]>;
   getAdminStats(): Promise<{
     totalUsers: number;
     activeUsers: number;
@@ -308,7 +309,7 @@ export class DatabaseStorage implements IStorage {
         ...userData,
         userId,
         password: hashedPassword,
-        status: 'active', // Admin-created users are immediately active
+        status: userData.status || 'active', // Use provided status or default to active for admin-created users
         emailVerified: new Date(),
         lastActiveAt: new Date()
       })
@@ -371,6 +372,15 @@ export class DatabaseStorage implements IStorage {
       adminUsers: allUsers.filter(u => u.role === 'admin').length,
       pendingUsers: allUsers.filter(u => u.status === 'pending').length,
     };
+  }
+
+  async getPendingUsers(): Promise<User[]> {
+    const pendingUsers = await db.select()
+      .from(users)
+      .where(eq(users.status, 'pending'))
+      .orderBy(desc(users.registrationDate));
+    
+    return pendingUsers;
   }
 
   async searchUsers(query: string, filters: {

@@ -21,6 +21,7 @@ import CompleteInvitation from "@/pages/CompleteInvitation";
 import MyTeam from "@/pages/MyTeam";
 import ProductCatalog from "@/pages/ProductCatalog";
 import MyPurchases from "@/pages/MyPurchases";
+import PendingUserDashboard from "@/pages/PendingUserDashboard";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
@@ -43,14 +44,22 @@ function Router() {
         <>
           {/* Protected routes for authenticated users */}
           <Route path="/change-password" component={ChangePassword} />
-          <Route path="/dashboard" component={UserDashboard} />
-          <Route path="/kyc-upload" component={KYCUpload} />
-          <Route path="/my-team" component={MyTeam} />
-          <Route path="/products" component={ProductCatalog} />
-          <Route path="/my-purchases" component={MyPurchases} />
           
-          {/* Role-based routing for authenticated users */}
-          {user?.role === 'founder' ? (
+          {/* Only allow access to full features for non-pending users */}
+          {user?.status !== 'pending' && (
+            <>
+              <Route path="/dashboard" component={UserDashboard} />
+              <Route path="/kyc-upload" component={KYCUpload} />
+              <Route path="/my-team" component={MyTeam} />
+              <Route path="/products" component={ProductCatalog} />
+              <Route path="/my-purchases" component={MyPurchases} />
+            </>
+          )}
+          
+          {/* Status and role-based routing for authenticated users */}
+          {user?.status === 'pending' ? (
+            <Route path="/" component={PendingUserDashboard} />
+          ) : user?.role === 'founder' ? (
             <Route path="/" component={FounderDashboard} />
           ) : user?.role === 'admin' ? (
             <Route path="/" component={AdminDashboard} />

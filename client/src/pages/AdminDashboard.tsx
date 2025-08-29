@@ -17,6 +17,7 @@ import VoltverashopLogo from "@/components/VoltverashopLogo";
 import DataTable from "@/components/ui/data-table";
 import UserManagementTable from "@/components/UserManagementTable";
 import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
+import AdminPendingUsers from "@/components/AdminPendingUsers";
 import { NotificationCenter } from "@/components/NotificationCenter";
 
 interface UserStats {
@@ -368,6 +369,14 @@ export default function AdminDashboard() {
                   }`}
                 >
                   Pending Recruits
+                </button>
+                <button 
+                  onClick={() => setActiveSection('pending-users')}
+                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
+                    activeSection === 'pending-users' ? 'text-yellow-300' : 'text-white/80'
+                  }`}
+                >
+                  Pending Users
                 </button>
               </div>
             )}
@@ -892,6 +901,10 @@ export default function AdminDashboard() {
 
           {activeSection === 'pending-recruits' && (
             <AdminPendingRecruits />
+          )}
+
+          {activeSection === 'pending-users' && (
+            <AdminPendingUsers />
           )}
 
           {/* Withdrawal Management Sections */}
