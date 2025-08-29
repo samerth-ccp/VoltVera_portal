@@ -882,7 +882,7 @@ export default function AdminDashboard() {
               
               {/* Complete User Management Table */}
               <UserManagementTable 
-                users={users}
+                users={users as any}
                 walletData={walletDataMap}
                 withdrawalData={withdrawalDataMap}
               />

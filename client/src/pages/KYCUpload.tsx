@@ -60,7 +60,10 @@ export default function KYCUpload() {
   // Fetch existing KYC documents
   const { data: kycDocuments = [], isLoading } = useQuery<KYCDocument[]>({
     queryKey: ['/api/kyc'],
-    queryFn: () => apiRequest('/api/kyc'),
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/kyc');
+      return await response.json();
+    },
   });
 
   // Upload file mutation

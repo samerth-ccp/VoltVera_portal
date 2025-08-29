@@ -206,7 +206,7 @@ router.post('/withdrawals', requireAuth, async (req, res) => {
     res.status(201).json(withdrawal);
   } catch (error) {
     console.error('Error creating withdrawal:', error);
-    res.status(500).json({ message: error.message || 'Failed to create withdrawal request' });
+    res.status(500).json({ message: (error as any).message || 'Failed to create withdrawal request' });
   }
 });
 

@@ -41,13 +41,13 @@ export default function TeamTree({ userId }: TeamTreeProps) {
       const node = userMap.get(user.id);
       if (!node) return;
 
-      if (user.referredBy && userMap.has(user.referredBy)) {
-        const parent = userMap.get(user.referredBy);
+      if (user.sponsorId && userMap.has(user.sponsorId)) {
+        const parent = userMap.get(user.sponsorId);
         if (parent) {
           parent.children = parent.children || [];
           parent.children.push(node);
         }
-      } else if (user.referredBy === userId) {
+      } else if (user.sponsorId === userId) {
         roots.push(node);
       }
     });

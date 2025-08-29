@@ -62,10 +62,7 @@ export default function FounderDashboard() {
   // Create hidden ID mutation
   const createHiddenIdMutation = useMutation({
     mutationFn: async (data: { email: string; firstName: string; lastName: string; placementSide: string }) => {
-      return apiRequest('/api/founder/create-hidden-id', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      });
+      return apiRequest('POST', '/api/founder/create-hidden-id', data);
     },
     onSuccess: () => {
       toast({
