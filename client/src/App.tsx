@@ -10,7 +10,7 @@ import AdminDashboard from "@/pages/AdminDashboard";
 import UserDashboard from "@/pages/UserDashboard";
 import FounderDashboard from "@/pages/FounderDashboard";
 import FranchiseDashboard from "@/pages/FranchiseDashboard";
-import ReferralRegistration from "@/pages/ReferralRegistration";
+import CompleteReferralRegistration from "@/pages/CompleteReferralRegistration";
 import ChangePassword from "@/pages/ChangePassword";
 import ForgotPassword from "@/pages/ForgotPassword";
 import Signup from "@/pages/Signup";
@@ -33,8 +33,8 @@ function Router() {
       <Route path="/verify-email" component={VerifyEmail} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/complete-invitation" component={CompleteInvitation} />
-      <Route path="/referral-register" component={ReferralRegistration} />
-      <Route path="/recruit" component={ReferralRegistration} />
+      <Route path="/referral-register" component={CompleteReferralRegistration} />
+      <Route path="/recruit" component={CompleteReferralRegistration} />
       
       {/* Show landing page if not authenticated or still loading */}
       {isLoading || !isAuthenticated ? (

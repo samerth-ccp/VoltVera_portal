@@ -222,6 +222,9 @@ export interface IStorage {
   
   // Update pending recruit details after user fills registration form
   updatePendingRecruitDetails(recruitId: string, details: { fullName: string; email: string; status: string }): Promise<boolean>;
+  
+  // Get all referral links
+  getReferralLinks(): Promise<ReferralLink[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1879,6 +1882,19 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error updating pending recruit details:', error);
       return false;
+    }
+  }
+  
+  // Get all referral links
+  async getReferralLinks(): Promise<ReferralLink[]> {
+    try {
+      return await db
+        .select()
+        .from(referralLinks)
+        .orderBy(desc(referralLinks.createdAt));
+    } catch (error) {
+      console.error('Error getting referral links:', error);
+      return [];
     }
   }
 }

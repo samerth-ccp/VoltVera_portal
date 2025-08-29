@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, users } from "@shared/schema";
+import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, completeUserRegistrationSchema, users } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -1330,6 +1330,244 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error updating user:', error);
       res.status(500).json({ message: 'Failed to update user' });
+    }
+  });
+
+  // Admin referral link generation
+  app.post('/api/admin/generate-referral-link', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { parentUserId, position, expirationHours = 168 } = req.body; // Default 7 days
+      
+      if (!parentUserId || !position) {
+        return res.status(400).json({ message: 'Parent user ID and position are required' });
+      }
+      
+      if (!['left', 'right'].includes(position)) {
+        return res.status(400).json({ message: 'Position must be "left" or "right"' });
+      }
+      
+      // Verify parent user exists
+      const parentUser = await storage.getUserById(parentUserId);
+      if (!parentUser) {
+        return res.status(404).json({ message: 'Parent user not found' });
+      }
+      
+      // Generate unique token
+      const token = nanoid(32);
+      const expiresAt = new Date(Date.now() + expirationHours * 60 * 60 * 1000);
+      
+      // Create referral link
+      const referralLink = await storage.createReferralLink({
+        token,
+        generatedBy: req.session.userId!,
+        generatedByRole: 'admin',
+        placementSide: position,
+        expiresAt
+      });
+      
+      const registrationUrl = `${req.protocol}://${req.get('host')}/referral-register?token=${token}`;
+      
+      res.json({
+        message: 'Referral link generated successfully',
+        referralLink: {
+          ...referralLink,
+          registrationUrl,
+          parentUser: {
+            id: parentUser.id,
+            name: `${parentUser.firstName} ${parentUser.lastName}`,
+            email: parentUser.email
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error generating referral link:', error);
+      res.status(500).json({ message: 'Failed to generate referral link' });
+    }
+  });
+  
+  // Get all referral links (admin)
+  app.get('/api/admin/referral-links', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const links = await storage.getReferralLinks();
+      res.json(links);
+    } catch (error) {
+      console.error('Error fetching referral links:', error);
+      res.status(500).json({ message: 'Failed to fetch referral links' });
+    }
+  });
+  
+  // Validate referral token (public endpoint) - with query parameter support
+  app.get('/api/referral/validate', async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).json({ message: 'Token parameter is required' });
+      }
+      
+      const referralLink = await storage.getReferralLink(token);
+      if (!referralLink) {
+        return res.status(404).json({ message: 'Invalid referral link', valid: false });
+      }
+      
+      if (referralLink.isUsed) {
+        return res.status(400).json({ message: 'Referral link has already been used', valid: false });
+      }
+      
+      if (referralLink.expiresAt < new Date()) {
+        return res.status(400).json({ message: 'Referral link has expired', valid: false });
+      }
+      
+      res.json({
+        valid: true,
+        placementSide: referralLink.placementSide,
+        generatedBy: referralLink.generatedBy
+      });
+    } catch (error) {
+      console.error('Error validating referral token:', error);
+      res.status(500).json({ message: 'Failed to validate referral token', valid: false });
+    }
+  });
+
+  // Validate referral token (public endpoint) - original with path parameter
+  app.get('/api/referral/validate/:token', async (req, res) => {
+    try {
+      const { token } = req.params;
+      
+      const referralLink = await storage.getReferralLink(token);
+      if (!referralLink) {
+        return res.status(404).json({ message: 'Invalid referral link' });
+      }
+      
+      if (referralLink.isUsed) {
+        return res.status(400).json({ message: 'Referral link has already been used' });
+      }
+      
+      if (referralLink.expiresAt < new Date()) {
+        return res.status(400).json({ message: 'Referral link has expired' });
+      }
+      
+      res.json({
+        valid: true,
+        placementSide: referralLink.placementSide,
+        generatedBy: referralLink.generatedBy
+      });
+    } catch (error) {
+      console.error('Error validating referral token:', error);
+      res.status(500).json({ message: 'Failed to validate referral token' });
+    }
+  });
+
+  // Object Storage routes
+  app.post('/api/objects/upload', async (req, res) => {
+    try {
+      const { ObjectStorageService } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error('Error getting upload URL:', error);
+      res.status(500).json({ error: 'Failed to get upload URL' });
+    }
+  });
+
+  // Complete registration endpoint
+  app.post('/api/referral/complete-registration', async (req, res) => {
+    try {
+      const validationResult = completeUserRegistrationSchema.safeParse(req.body);
+      if (!validationResult.success) {
+        return res.status(400).json({ 
+          message: 'Validation failed', 
+          errors: validationResult.error.flatten() 
+        });
+      }
+
+      const data = validationResult.data;
+      
+      // Validate referral token
+      const referralLink = await storage.getReferralLink(data.referralToken);
+      if (!referralLink) {
+        return res.status(404).json({ message: 'Invalid referral link' });
+      }
+      
+      if (referralLink.isUsed) {
+        return res.status(400).json({ message: 'Referral link has already been used' });
+      }
+      
+      if (referralLink.expiresAt < new Date()) {
+        return res.status(400).json({ message: 'Referral link has expired' });
+      }
+
+      // Create user account with all the provided information
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const userId = nanoid();
+      
+      const userData = {
+        id: userId,
+        email: data.email,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        mobile: data.mobile,
+        dateOfBirth: new Date(data.dateOfBirth),
+        address: data.address,
+        city: data.city,
+        state: data.state,
+        pincode: data.pincode,
+        panNumber: data.panNumber,
+        aadhaarNumber: data.aadhaarNumber,
+        bankAccountNumber: data.bankAccountNumber,
+        bankIFSC: data.bankIFSC,
+        bankName: data.bankName,
+        packageAmount: data.packageAmount,
+        panCardUrl: data.panCardUrl,
+        aadhaarCardUrl: data.aadhaarCardUrl,
+        bankStatementUrl: data.bankStatementUrl,
+        profileImageUrl: data.photoUrl,
+        sponsorId: referralLink.generatedBy,
+        position: referralLink.placementSide,
+        status: 'active' as const,
+        emailVerified: new Date(),
+        kycStatus: 'pending' as const,
+        kycSubmittedAt: new Date(),
+        registrationDate: new Date(),
+        role: 'user' as const,
+        currentRank: 'Executive' as const,
+        level: '1'
+      };
+
+      // Create the user
+      const newUser = await storage.createUser(userData);
+      
+      // Mark referral link as used
+      await storage.markReferralLinkUsed(data.referralToken, userId);
+      
+      // Add to binary tree
+      const { findBestPlacement } = await import('./binaryTreeService');
+      const parentUserId = referralLink.generatedBy;
+      await findBestPlacement(parentUserId, referralLink.placementSide, userId);
+      
+      // Send welcome email with login credentials
+      try {
+        const { sendUserInvitationEmail } = await import('./emailService');
+        await sendUserInvitationEmail(
+          data.email, 
+          data.firstName, 
+          data.password,  // Send the original password, not hashed
+          `Welcome to Voltvera! Your account has been created successfully.`
+        );
+      } catch (emailError) {
+        console.error('Error sending welcome email:', emailError);
+        // Don't fail the registration if email fails
+      }
+
+      res.status(201).json({
+        message: 'Registration completed successfully',
+        userId: newUser.id,
+        loginCredentialsSent: true
+      });
+    } catch (error) {
+      console.error('Error completing registration:', error);
+      res.status(500).json({ message: 'Failed to complete registration' });
     }
   });
 

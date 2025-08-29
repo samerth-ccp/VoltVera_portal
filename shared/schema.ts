@@ -489,6 +489,44 @@ export const rejectRecruitSchema = z.object({
   reason: z.string().min(1, "Rejection reason is required"),
 });
 
+// Schema for complete user registration via referral link
+export const completeUserRegistrationSchema = z.object({
+  // Basic info
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  email: z.string().email("Valid email is required"),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  mobile: z.string().min(10, "Valid mobile number is required"),
+  dateOfBirth: z.string().refine((date) => !isNaN(Date.parse(date)), "Valid date of birth is required"),
+  
+  // Address details
+  address: z.string().min(10, "Complete address is required"),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  pincode: z.string().min(6, "Valid pincode is required"),
+  
+  // KYC details
+  panNumber: z.string().min(10, "Valid PAN number is required"),
+  aadhaarNumber: z.string().min(12, "Valid Aadhaar number is required"),
+  
+  // Bank details
+  bankAccountNumber: z.string().min(9, "Valid bank account number is required"),
+  bankIFSC: z.string().min(11, "Valid IFSC code is required"),
+  bankName: z.string().min(1, "Bank name is required"),
+  
+  // Package selection
+  packageAmount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid package amount is required"),
+  
+  // Document URLs (uploaded via object storage)
+  panCardUrl: z.string().url("PAN card document is required"),
+  aadhaarCardUrl: z.string().url("Aadhaar card document is required"),
+  bankStatementUrl: z.string().url("Bank statement document is required"),
+  photoUrl: z.string().url("Profile photo is required"),
+  
+  // Referral token
+  referralToken: z.string().min(1, "Valid referral token is required"),
+});
+
 // Schema for notifications
 export const createNotificationSchema = createInsertSchema(notifications).pick({
   userId: true,
