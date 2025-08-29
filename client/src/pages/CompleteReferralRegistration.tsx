@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -61,31 +61,33 @@ export default function CompleteReferralRegistration() {
     enabled: !!token,
   });
 
+  const defaultValues = useMemo(() => ({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    mobile: "",
+    dateOfBirth: "",
+    address: "",
+    city: "",
+    state: "",
+    pincode: "",
+    panNumber: "",
+    aadhaarNumber: "",
+    bankAccountNumber: "",
+    bankIFSC: "",
+    bankName: "",
+    packageAmount: "5000",
+    panCardUrl: "",
+    aadhaarCardUrl: "",
+    bankStatementUrl: "",
+    photoUrl: "",
+    referralToken: "",
+  }), []);
+
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(completeUserRegistrationSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      password: "",
-      mobile: "",
-      dateOfBirth: "",
-      address: "",
-      city: "",
-      state: "",
-      pincode: "",
-      panNumber: "",
-      aadhaarNumber: "",
-      bankAccountNumber: "",
-      bankIFSC: "",
-      bankName: "",
-      packageAmount: "5000",
-      panCardUrl: "",
-      aadhaarCardUrl: "",
-      bankStatementUrl: "",
-      photoUrl: "",
-      referralToken: "",
-    },
+    defaultValues,
   });
 
   // Update referral token when it's loaded
@@ -93,7 +95,7 @@ export default function CompleteReferralRegistration() {
     if (token) {
       form.setValue('referralToken', token);
     }
-  }, [token, form]);
+  }, [token]);
 
   // Registration mutation
   const submitRegistrationMutation = useMutation({
@@ -132,7 +134,7 @@ export default function CompleteReferralRegistration() {
     }
   };
 
-  const onDocumentComplete = (documentType: keyof typeof uploadedDocuments, result: any) => {
+  const onDocumentComplete = useCallback((documentType: keyof typeof uploadedDocuments, result: any) => {
     if (result.successful && result.successful[0]) {
       const uploadURL = result.successful[0].uploadURL;
       
@@ -152,9 +154,9 @@ export default function CompleteReferralRegistration() {
         description: `${documentType.replace(/([A-Z])/g, ' $1').trim()} uploaded successfully`,
       });
     }
-  };
+  }, [form.setValue, toast]);
 
-  const onSubmit = (data: RegistrationFormData) => {
+  const onSubmit = useCallback((data: RegistrationFormData) => {
     // Check if all documents are uploaded - use form data which should have the URLs
     if (!data.panCardUrl || !data.aadhaarCardUrl || !data.bankStatementUrl || !data.photoUrl) {
       toast({
@@ -170,7 +172,7 @@ export default function CompleteReferralRegistration() {
       ...data,
       referralToken: token,
     });
-  };
+  }, [token, toast, submitRegistrationMutation]);
 
   if (isValidatingToken) {
     return (
