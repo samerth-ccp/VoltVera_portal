@@ -157,8 +157,12 @@ export default function CompleteReferralRegistration() {
   }, [form.setValue, toast]);
 
   const onSubmit = useCallback((data: RegistrationFormData) => {
+    console.log('🔥 FORM SUBMITTED!', data);
+    console.log('📁 Documents state:', uploadedDocuments);
+    
     // Check if all documents are uploaded - use uploaded documents state
     if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
+      console.log('❌ Missing documents!');
       toast({
         title: "Documents Required",
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -167,7 +171,7 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
-    console.log('Submitting registration data:', data);
+    console.log('✅ All documents present, submitting...', data);
     submitRegistrationMutation.mutate({
       ...data,
       referralToken: token,
@@ -702,6 +706,7 @@ export default function CompleteReferralRegistration() {
                 disabled={submitRegistrationMutation.isPending}
                 className="w-full max-w-md bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600"
                 data-testid="button-submit"
+                onClick={() => console.log('🖱️ BUTTON CLICKED!')}
               >
                 {submitRegistrationMutation.isPending ? 'Creating Account...' : 'Complete Registration'}
               </Button>
