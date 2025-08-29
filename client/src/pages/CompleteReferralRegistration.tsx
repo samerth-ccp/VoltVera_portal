@@ -110,11 +110,20 @@ export default function CompleteReferralRegistration() {
       });
     },
     onError: (error: any) => {
-      toast({
-        title: "Registration Failed",
-        description: error.message || "Failed to complete registration",
-        variant: "destructive",
-      });
+      // Handle specific error types
+      if (error.message?.includes('already exists') || error.error === 'DUPLICATE_EMAIL') {
+        toast({
+          title: "Email Already Registered",
+          description: "An account with this email already exists. Please use a different email address or try logging in instead.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Registration Failed",
+          description: error.message || "Failed to complete registration",
+          variant: "destructive",
+        });
+      }
     },
   });
 

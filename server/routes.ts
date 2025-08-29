@@ -1497,6 +1497,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Referral link has expired' });
       }
 
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(data.email);
+      if (existingUser) {
+        return res.status(409).json({ 
+          message: 'An account with this email already exists. Please use a different email address or try logging in.',
+          error: 'DUPLICATE_EMAIL'
+        });
+      }
+
       // Create user account with all the provided information
       const hashedPassword = await bcrypt.hash(data.password, 10);
       const userId = nanoid();
@@ -1565,8 +1574,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: newUser.id,
         loginCredentialsSent: true
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error completing registration:', error);
+      
+      // Handle duplicate email error
+      if (error.code === '23505' && error.constraint === 'users_email_unique') {
+        return res.status(409).json({ 
+          message: 'An account with this email already exists. Please use a different email address or try logging in.',
+          error: 'DUPLICATE_EMAIL'
+        });
+      }
+      
       res.status(500).json({ message: 'Failed to complete registration' });
     }
   });
