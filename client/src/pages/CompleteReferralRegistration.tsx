@@ -135,13 +135,17 @@ export default function CompleteReferralRegistration() {
   const onDocumentComplete = (documentType: keyof typeof uploadedDocuments, result: any) => {
     if (result.successful && result.successful[0]) {
       const uploadURL = result.successful[0].uploadURL;
+      
+      // Update both state and form without causing re-render
       setUploadedDocuments(prev => ({
         ...prev,
         [documentType]: uploadURL
       }));
       
-      // Update form with the uploaded document URL
-      form.setValue(documentType, uploadURL);
+      // Update form silently to prevent re-renders during user input
+      setTimeout(() => {
+        form.setValue(documentType, uploadURL, { shouldValidate: false, shouldDirty: false });
+      }, 0);
       
       toast({
         title: "Document Uploaded",
@@ -151,9 +155,8 @@ export default function CompleteReferralRegistration() {
   };
 
   const onSubmit = (data: RegistrationFormData) => {
-    // Check if all documents are uploaded
-    if (!uploadedDocuments.panCardUrl || !uploadedDocuments.aadhaarCardUrl || 
-        !uploadedDocuments.bankStatementUrl || !uploadedDocuments.photoUrl) {
+    // Check if all documents are uploaded - use form data which should have the URLs
+    if (!data.panCardUrl || !data.aadhaarCardUrl || !data.bankStatementUrl || !data.photoUrl) {
       toast({
         title: "Documents Required",
         description: "Please upload all required documents before submitting. All 4 documents (PAN Card, Aadhaar Card, Bank Statement, and Photo) are mandatory.",
@@ -162,9 +165,9 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
+    console.log('Submitting registration data:', data);
     submitRegistrationMutation.mutate({
       ...data,
-      ...uploadedDocuments,
       referralToken: token,
     });
   };
