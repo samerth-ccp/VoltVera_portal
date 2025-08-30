@@ -49,11 +49,8 @@ export default function Landing() {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       console.log('Login successful for user:', data.user?.userId, 'User ID:', data.user?.id);
-      
-      // Clear ALL cached queries to prevent data leakage between users
-      queryClient.clear();
       
       // Save userId and remember me preference if rememberMe is checked
       if (rememberMe) {
@@ -64,19 +61,23 @@ export default function Landing() {
         localStorage.setItem('voltverashop_remember_me', 'false');
       }
       
-      // Invalidate auth queries to trigger re-authentication check
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/kyc"] });
-
-      // Navigate immediately without toast to avoid persistence issues
-      // Route users based on both role and status
-      if (data.user?.role === 'admin') {
-        setLocation('/');
-      } else if (data.user?.status === 'pending') {
-        setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard
-      } else {
-        setLocation('/dashboard');
-      }
+      // Clear cached queries to prevent data leakage between users
+      queryClient.clear();
+      
+      // Pre-populate the auth cache with the login response data to avoid 401 issues
+      queryClient.setQueryData(["/api/auth/user"], data.user);
+      
+      // Small delay to ensure the cache is updated before navigation
+      setTimeout(() => {
+        // Route users based on both role and status
+        if (data.user?.role === 'admin') {
+          setLocation('/');
+        } else if (data.user?.status === 'pending') {
+          setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard
+        } else {
+          setLocation('/dashboard');
+        }
+      }, 50);
     },
     onError: (error: Error) => {
       toast({
