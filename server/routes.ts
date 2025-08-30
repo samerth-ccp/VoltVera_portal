@@ -1504,14 +1504,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const userProfile = await storage.getUserById(requestingUserId);
         
         // Check if the document matches the user's profile image
-        if (userProfile?.profileImageUrl?.includes(documentPath)) {
+        // Handle both full URLs and path-only formats
+        if (userProfile?.profileImageUrl?.includes(documentPath) || 
+            userProfile?.profileImageUrl?.endsWith(documentPath)) {
           hasPermission = true;
+          console.log(`Document access granted: ${documentPath} matches user profile image for ${requestingUser?.userId}`);
         }
         
         // Check if the document is in the user's KYC documents
+        // Handle both full URLs and path-only formats
         for (const doc of userKycDocs) {
-          if (doc.documentUrl.includes(documentPath)) {
+          if (doc.documentUrl.includes(documentPath) || 
+              doc.documentUrl.endsWith(documentPath)) {
             hasPermission = true;
+            console.log(`Document access granted: ${documentPath} matches KYC document for ${requestingUser?.userId}`);
+            break;
+          }
+        }
+        
+        // Also check if the document path matches the filename pattern
+        // This handles cases where documents are accessed by filename only
+        const filename = documentPath.split('/').pop();
+        if (filename && userProfile?.profileImageUrl?.includes(filename)) {
+          hasPermission = true;
+          console.log(`Document access granted: ${filename} matches user profile image filename for ${requestingUser?.userId}`);
+        }
+        
+        for (const doc of userKycDocs) {
+          const docFilename = doc.documentUrl.split('/').pop();
+          if (filename && docFilename === filename) {
+            hasPermission = true;
+            console.log(`Document access granted: ${filename} matches KYC document filename for ${requestingUser?.userId}`);
             break;
           }
         }
