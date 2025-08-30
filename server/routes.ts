@@ -1462,6 +1462,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve documents with legacy URL support and placeholder
+  app.get('/api/documents/*', isAuthenticated, async (req, res) => {
+    try {
+      // Extract document path and construct legacy URL
+      const documentPath = req.path.replace('/api/documents/', '');
+      const legacyUrl = `https://storage.googleapis.com/documents/${documentPath}`;
+      
+      // Try to proxy the request to the legacy storage
+      try {
+        const response = await fetch(legacyUrl);
+        
+        if (response.ok) {
+          // Set appropriate headers
+          const contentType = response.headers.get('content-type') || 'application/octet-stream';
+          const contentLength = response.headers.get('content-length');
+          
+          res.set({
+            'Content-Type': contentType,
+            'Cache-Control': 'private, max-age=3600',
+          });
+          
+          if (contentLength) {
+            res.set('Content-Length', contentLength);
+          }
+          
+          // Stream the response
+          return response.body?.pipe(res);
+        }
+      } catch (fetchError) {
+        console.log('Legacy document not accessible, serving placeholder');
+      }
+      
+      // If legacy document is not accessible, serve a placeholder
+      const isImage = documentPath.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/);
+      const isPdf = documentPath.toLowerCase().endsWith('.pdf');
+      
+      if (isImage) {
+        // Serve a placeholder image
+        res.set({
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'private, max-age=3600',
+        });
+        
+        const placeholderSvg = `
+          <svg width="400" height="300" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100%" height="100%" fill="#f3f4f6"/>
+            <text x="50%" y="40%" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#6b7280">
+              Document: ${documentPath}
+            </text>
+            <text x="50%" y="60%" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#9ca3af">
+              (Placeholder - Original not available)
+            </text>
+          </svg>
+        `;
+        
+        return res.send(placeholderSvg);
+      } else if (isPdf) {
+        // Serve a placeholder PDF indicator
+        res.set({
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'private, max-age=3600',
+        });
+        
+        return res.send(`PDF Document: ${documentPath}\n\nThis is a placeholder for the original document which is not currently available.`);
+      } else {
+        // Generic placeholder
+        res.set({
+          'Content-Type': 'text/plain',
+          'Cache-Control': 'private, max-age=3600',
+        });
+        
+        return res.send(`Document: ${documentPath}\n\nThis is a placeholder for the original document which is not currently available.`);
+      }
+      
+    } catch (error) {
+      console.error('Error serving legacy document:', error);
+      res.status(500).json({ error: 'Failed to serve document' });
+    }
+  });
+
   // Serve private documents to authenticated users
   app.get('/api/objects/*', isAuthenticated, async (req, res) => {
     try {

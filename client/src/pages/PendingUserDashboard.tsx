@@ -36,9 +36,9 @@ export default function PendingUserDashboard() {
     enabled: !!user
   });
 
-  // Fetch admin feedback/messages (if any)
-  const { data: adminMessages = [] } = useQuery({
-    queryKey: ['/api/admin/messages'],
+  // Fetch user notifications/messages
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['/api/notifications'],
     enabled: !!user
   });
 
@@ -528,7 +528,17 @@ export default function PendingUserDashboard() {
                             size="sm"
                             variant="outline"
                             className="bg-white/10 border-white/20 text-white hover:bg-white/20"
-                            onClick={() => window.open(doc.documentUrl, '_blank')}
+                            onClick={() => {
+                              // Convert document URL to proper API endpoint
+                              let viewUrl = doc.documentUrl;
+                              if (viewUrl.startsWith('https://storage.googleapis.com/documents/')) {
+                                const filename = viewUrl.split('/').pop();
+                                viewUrl = `/api/documents/${filename}`;
+                              } else if (!viewUrl.startsWith('/api/')) {
+                                viewUrl = doc.documentUrl; // Keep as-is for other formats
+                              }
+                              window.open(viewUrl, '_blank');
+                            }}
                           >
                             <Eye className="h-4 w-4 mr-1" />
                             View
@@ -538,8 +548,17 @@ export default function PendingUserDashboard() {
                             variant="outline"
                             className="bg-white/10 border-white/20 text-white hover:bg-white/20"
                             onClick={() => {
+                              // Convert document URL to proper API endpoint
+                              let downloadUrl = doc.documentUrl;
+                              if (downloadUrl.startsWith('https://storage.googleapis.com/documents/')) {
+                                const filename = downloadUrl.split('/').pop();
+                                downloadUrl = `/api/documents/${filename}`;
+                              } else if (!downloadUrl.startsWith('/api/')) {
+                                downloadUrl = doc.documentUrl; // Keep as-is for other formats
+                              }
+                              
                               const link = document.createElement('a');
-                              link.href = doc.documentUrl;
+                              link.href = downloadUrl;
                               link.download = `${getDocumentLabel(doc.documentType)}_${doc.documentNumber || 'document'}`;
                               link.click();
                             }}
@@ -581,33 +600,33 @@ export default function PendingUserDashboard() {
           </CardContent>
         </Card>
 
-        {/* Admin Messages Section */}
-        {adminMessages.length > 0 && (
+        {/* Notifications Section */}
+        {notifications.length > 0 && (
           <Card className="bg-black/20 backdrop-blur-sm border-white/10 mt-8">
             <CardHeader>
               <CardTitle className="text-white flex items-center">
                 <MessageSquare className="mr-2 h-5 w-5 text-purple-400" />
-                Messages from Admin
+                Notifications
               </CardTitle>
               <CardDescription className="text-white/60">
-                Important updates and requests from our admin team
+                Important updates and notifications
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {adminMessages.map((message: any) => (
-                  <div key={message.id} className="border border-white/10 rounded-lg p-4">
+                {notifications.map((notification: any) => (
+                  <div key={notification.id} className="border border-white/10 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <MessageSquare className="h-6 w-6 text-purple-400 mt-1 flex-shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-semibold text-white">{message.subject}</h3>
+                          <h3 className="font-semibold text-white">{notification.subject}</h3>
                           <Badge variant="outline" className="text-xs">
-                            {new Date(message.createdAt).toLocaleDateString()}
+                            {new Date(notification.createdAt).toLocaleDateString()}
                           </Badge>
                         </div>
-                        <p className="text-white/80">{message.content}</p>
-                        {message.priority === 'high' && (
+                        <p className="text-white/80">{notification.content}</p>
+                        {notification.priority === 'high' && (
                           <div className="flex items-center space-x-2 mt-2">
                             <AlertCircle className="h-4 w-4 text-red-400" />
                             <span className="text-red-300 text-sm font-medium">High Priority</span>

@@ -139,6 +139,13 @@ export class ObjectStorageService {
     const url = new URL(rawPath);
     const rawObjectPath = url.pathname;
   
+    // Handle legacy 'documents' bucket format
+    if (rawObjectPath.startsWith("/documents/")) {
+      // Extract filename from legacy path (e.g., "/documents/photo-1756574261850.jpg" -> "photo-1756574261850.jpg")
+      const filename = rawObjectPath.slice("/documents/".length);
+      return `/objects/uploads/${filename}`;
+    }
+  
     let objectEntityDir = this.getPrivateObjectDir();
     if (!objectEntityDir.endsWith("/")) {
       objectEntityDir = `${objectEntityDir}/`;
