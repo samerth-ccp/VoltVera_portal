@@ -27,16 +27,16 @@ export function useAuth() {
       localStorage.removeItem('voltverashop_userId');
       localStorage.removeItem('voltverashop_remember_me');
       
-      console.log('Logout successful, redirecting to login');
-      // Navigate to login page
-      setLocation('/login');
+      console.log('Logout successful, redirecting to landing page');
+      // Navigate to landing page
+      setLocation('/');
     } catch (error) {
       console.error('Logout failed:', error);
       // Even if server logout fails, clear local data and redirect
       queryClient.clear();
       localStorage.removeItem('voltverashop_userId');
       localStorage.removeItem('voltverashop_remember_me');
-      setLocation('/login');
+      setLocation('/');
     }
   };
 
