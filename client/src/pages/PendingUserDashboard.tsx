@@ -717,11 +717,11 @@ export default function PendingUserDashboard() {
                 </Button>
                 <Button
                   onClick={handleReplaceDocument}
-                  disabled={!selectedFile || uploadMutation.isPending || replaceDocumentMutation.isPending}
+                  disabled={!selectedFile || replaceDocumentMutation.isPending}
                   className="bg-green-600 hover:bg-green-700"
                   data-testid="button-confirm-replace"
                 >
-                  {uploadMutation.isPending || replaceDocumentMutation.isPending ? 'Replacing...' : 'Replace Document'}
+                  {replaceDocumentMutation.isPending ? 'Replacing...' : 'Replace Document'}
                 </Button>
               </div>
             </div>
