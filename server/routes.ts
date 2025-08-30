@@ -1535,6 +1535,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create the user
       const newUser = await storage.createUser(userData);
       
+      // Create KYC documents for uploaded files
+      if (data.panCardUrl) {
+        await storage.createKYCDocument(newUser.id, {
+          documentType: 'pan',
+          documentUrl: data.panCardUrl,
+          documentNumber: data.panNumber
+        });
+      }
+      
+      if (data.aadhaarCardUrl) {
+        await storage.createKYCDocument(newUser.id, {
+          documentType: 'aadhaar',
+          documentUrl: data.aadhaarCardUrl,
+          documentNumber: data.aadhaarNumber
+        });
+      }
+      
+      if (data.bankStatementUrl) {
+        await storage.createKYCDocument(newUser.id, {
+          documentType: 'bank_statement',
+          documentUrl: data.bankStatementUrl,
+          documentNumber: data.bankAccountNumber
+        });
+      }
+      
+      if (data.photoUrl) {
+        await storage.createKYCDocument(newUser.id, {
+          documentType: 'photo',
+          documentUrl: data.photoUrl
+        });
+      }
+      
       // Mark referral link as used
       await storage.markReferralLinkAsUsed(data.referralToken, newUser.id);
       
