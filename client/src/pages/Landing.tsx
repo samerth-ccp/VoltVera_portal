@@ -50,6 +50,11 @@ export default function Landing() {
       return response.json();
     },
     onSuccess: (data: any) => {
+      console.log('Login successful for user:', data.user?.userId, 'User ID:', data.user?.id);
+      
+      // Clear ALL cached queries to prevent data leakage between users
+      queryClient.clear();
+      
       // Save userId and remember me preference if rememberMe is checked
       if (rememberMe) {
         localStorage.setItem('voltverashop_userId', userId);
@@ -61,6 +66,7 @@ export default function Landing() {
       
       // Invalidate auth queries to trigger re-authentication check
       queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/kyc"] });
 
       // Navigate immediately without toast to avoid persistence issues
       if (data.user?.role === 'admin') {

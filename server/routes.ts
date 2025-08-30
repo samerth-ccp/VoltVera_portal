@@ -81,40 +81,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUserByUserIdAndPassword(userId, password);
       if (user) {
-        // Clear any existing session data first
-        req.session.regenerate((err: any) => {
-          if (err) {
-            console.error('Session regeneration error:', err);
-          }
-          
-          // Update last active timestamp
-          storage.updateUser(user.id, { lastActiveAt: new Date() });
-          
-          // Set session expiration based on remember me
-          if (rememberMe) {
-            // Remember me: 30 days
-            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-          } else {
-            // Regular session: 24 hours
-            req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
-          }
-          
-          // Store user in session (only store userId and user data)
+        console.log('Login attempt for user:', userId, 'Found user ID:', user.id);
+        
+        // Destroy existing session completely and create a new one
+        if (req.session) {
+          req.session.destroy((destroyErr: any) => {
+            if (destroyErr) {
+              console.error('Session destroy error during login:', destroyErr);
+            }
+            
+            // Clear the cookie manually
+            res.clearCookie('voltverashop.sid');
+            
+            // Create completely new session
+            req.session = {};
+            req.session.regenerate = req.session.regenerate || function(cb: any) { cb(); };
+            
+            // Set session expiration based on remember me
+            const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+            
+            // Update last active timestamp
+            storage.updateUser(user.id, { lastActiveAt: new Date() });
+            
+            // Store user in session
+            (req.session as any).userId = user.id;
+            (req.session as any).user = user;
+            
+            // Force session to save
+            if (req.session.save) {
+              req.session.save((saveErr: any) => {
+                if (saveErr) {
+                  console.error('Session save error:', saveErr);
+                  return res.status(500).json({ message: "Session save failed" });
+                }
+                
+                console.log('NEW SESSION CREATED FOR USER:', user.id, user.userId, 'Session ID:', req.sessionID);
+                res.json({ success: true, user });
+              });
+            } else {
+              console.log('NEW SESSION CREATED FOR USER:', user.id, user.userId, 'Session ID:', req.sessionID);
+              res.json({ success: true, user });
+            }
+          });
+        } else {
+          // No existing session, create new one
           (req.session as any).userId = user.id;
           (req.session as any).user = user;
           
-          // Save session and respond
-          req.session.save((saveErr: any) => {
-            if (saveErr) {
-              console.error('Session save error:', saveErr);
-              return res.status(500).json({ message: "Session save failed" });
-            }
-            
-            console.log('New session created for user:', user.id, 'Session ID:', req.sessionID);
-            res.json({ success: true, user });
-          });
-        });
+          console.log('NEW SESSION CREATED FOR USER:', user.id, user.userId, 'Session ID:', req.sessionID);
+          res.json({ success: true, user });
+        }
       } else {
+        console.log('Login failed for user:', userId, '- Invalid credentials');
         res.status(401).json({ message: "Invalid user ID or password" });
       }
     } catch (error) {
