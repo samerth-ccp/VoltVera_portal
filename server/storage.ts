@@ -1362,6 +1362,34 @@ export class DatabaseStorage implements IStorage {
     return kyc;
   }
 
+  async createKYCDocumentBinary(userId: string, data: {
+    documentType: string;
+    documentData: string;
+    documentContentType: string;
+    documentFilename: string;
+    documentSize: number;
+    documentNumber?: string;
+  }): Promise<KYCDocument> {
+    const [kyc] = await db.insert(kycDocuments).values({
+      userId,
+      documentType: data.documentType,
+      documentData: data.documentData,
+      documentContentType: data.documentContentType,
+      documentFilename: data.documentFilename,
+      documentSize: data.documentSize,
+      documentNumber: data.documentNumber,
+      // Keep documentUrl null for new binary storage
+      documentUrl: null,
+    }).returning();
+    
+    // Update user KYC submission timestamp
+    await db.update(users)
+      .set({ kycSubmittedAt: new Date() })
+      .where(eq(users.id, userId));
+    
+    return kyc;
+  }
+
   async getKYCDocumentById(id: string): Promise<KYCDocument | null> {
     const [document] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
     return document || null;

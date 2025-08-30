@@ -66,60 +66,31 @@ export default function KYCUpload() {
     },
   });
 
-  // Upload file mutation
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      // Step 1: Get presigned upload URL from backend
-      const uploadResponse = await apiRequest('POST', '/api/objects/upload');
-      const { uploadURL } = await uploadResponse.json();
+  // Convert file to Base64
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        // Remove the data:image/jpeg;base64, prefix to get pure base64
+        const base64Data = base64.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
 
-      // Step 2: Upload file directly to object storage using presigned URL
-      const uploadRequest = new XMLHttpRequest();
-      
-      return new Promise<string>((resolve, reject) => {
-        uploadRequest.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const progress = Math.round((e.loaded / e.total) * 100);
-            setUploadProgress(progress);
-          }
-        };
-
-        uploadRequest.onload = () => {
-          if (uploadRequest.status >= 200 && uploadRequest.status < 300) {
-            // Return the upload URL for storage in database
-            resolve(uploadURL);
-          } else {
-            reject(new Error(`Upload failed with status ${uploadRequest.status}`));
-          }
-        };
-
-        uploadRequest.onerror = () => {
-          reject(new Error('Upload failed'));
-        };
-
-        // Upload to the presigned URL
-        uploadRequest.open('PUT', uploadURL);
-        uploadRequest.setRequestHeader('Content-Type', file.type);
-        uploadRequest.send(file);
-      });
-    },
-    onSuccess: () => {
-      setUploadProgress(100);
-    },
-    onError: () => {
-      setUploadProgress(0);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload document. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Submit KYC document mutation
+  // Submit KYC document with binary data
   const submitKycMutation = useMutation({
-    mutationFn: async (data: { documentType: string; documentUrl: string; documentNumber?: string }) => {
-      return apiRequest('/api/kyc', 'POST', data);
+    mutationFn: async (data: { 
+      documentType: string; 
+      documentData: string; 
+      documentContentType: string;
+      documentFilename: string;
+      documentNumber?: string;
+    }) => {
+      return apiRequest('/api/kyc/upload', 'POST', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/kyc'] });
@@ -127,14 +98,14 @@ export default function KYCUpload() {
       setSelectedFile(null);
       setUploadProgress(0);
       toast({
-        title: "Document Submitted",
-        description: "Your KYC document has been submitted for review.",
+        title: "Document Uploaded",
+        description: "Your KYC document has been uploaded successfully and is under review.",
       });
     },
     onError: (error: any) => {
       toast({
-        title: "Submission Failed",
-        description: error.message || "Failed to submit document. Please try again.",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload document. Please try again.",
         variant: "destructive",
       });
     },
@@ -151,30 +122,30 @@ export default function KYCUpload() {
     }
 
     try {
-      // Upload file first
-      const rawUploadUrl = await uploadMutation.mutateAsync(selectedFile);
+      setUploadProgress(25); // Start progress indication
       
-      // Convert the upload URL to object storage path format
-      // The upload URL is a presigned URL, we need to normalize it to /objects/uploads/... format
-      let documentUrl = rawUploadUrl;
-      if (rawUploadUrl.startsWith('https://storage.googleapis.com/')) {
-        const url = new URL(rawUploadUrl);
-        const pathParts = url.pathname.split('/');
-        if (pathParts.length >= 4) {
-          // Extract the object path from the full URL
-          const objectPath = pathParts.slice(3).join('/'); // Skip /bucket-name and get the rest
-          documentUrl = `/objects/${objectPath}`;
-        }
-      }
+      // Convert file to Base64
+      const documentData = await convertFileToBase64(selectedFile);
+      setUploadProgress(75); // File conversion complete
       
-      // Then submit KYC document
+      // Submit KYC document with binary data
       await submitKycMutation.mutateAsync({
         documentType: data.documentType,
-        documentUrl,
+        documentData,
+        documentContentType: selectedFile.type,
+        documentFilename: selectedFile.name,
         documentNumber: data.documentNumber,
       });
+      
+      setUploadProgress(100); // Complete
     } catch (error) {
+      setUploadProgress(0); // Reset on error
       console.error('KYC submission error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process document. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

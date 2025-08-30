@@ -298,7 +298,11 @@ export const kycDocuments = pgTable("kyc_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   documentType: varchar("document_type").notNull(), // 'pan', 'aadhaar', 'bank_statement', 'photo'
-  documentUrl: varchar("document_url").notNull(),
+  documentUrl: varchar("document_url"), // Legacy URL field - now optional
+  documentData: text("document_data"), // Base64 encoded document data
+  documentContentType: varchar("document_content_type"), // MIME type like 'image/jpeg', 'application/pdf'
+  documentFilename: varchar("document_filename"), // Original filename
+  documentSize: integer("document_size"), // File size in bytes
   documentNumber: varchar("document_number"),
   status: kycStatusEnum("status").default('pending'),
   rejectionReason: text("rejection_reason"),

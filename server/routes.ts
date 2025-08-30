@@ -548,6 +548,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit KYC document
+  // Legacy KYC document upload with URL
   app.post("/api/kyc", async (req, res) => {
     if (!req.session.userId) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -582,6 +583,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error submitting KYC document:", error);
       res.status(500).json({ message: "Failed to submit KYC document" });
+    }
+  });
+
+  // New KYC document upload with Base64 binary data
+  app.post("/api/kyc/upload", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    try {
+      const { documentType, documentData, documentContentType, documentFilename, documentNumber } = req.body;
+      
+      if (!documentType || !documentData || !documentContentType || !documentFilename) {
+        return res.status(400).json({ 
+          message: "Document type, data, content type, and filename are required" 
+        });
+      }
+      
+      // Check if user already has a pending or approved document of this type
+      const existingDocs = await storage.getUserKYCDocuments(req.session.userId!);
+      const existingDoc = existingDocs.find(doc => 
+        doc.documentType === documentType && (doc.status === 'pending' || doc.status === 'approved')
+      );
+      
+      if (existingDoc) {
+        return res.status(400).json({ 
+          message: "You already have a document of this type submitted or approved" 
+        });
+      }
+
+      // Validate Base64 data
+      const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Pattern.test(documentData)) {
+        return res.status(400).json({ 
+          message: "Invalid document data format" 
+        });
+      }
+
+      // Calculate file size from Base64 data
+      const documentSize = Math.round((documentData.length * 3) / 4);
+
+      // Limit file size to 10MB
+      if (documentSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ 
+          message: "Document size exceeds 10MB limit" 
+        });
+      }
+      
+      const kycData = {
+        documentType,
+        documentData,
+        documentContentType,
+        documentFilename,
+        documentSize,
+        documentNumber: documentNumber || undefined,
+      };
+      
+      const document = await storage.createKYCDocumentBinary(req.session.userId!, kycData);
+      res.status(201).json(document);
+    } catch (error) {
+      console.error("Error uploading KYC document:", error);
+      res.status(500).json({ message: "Failed to upload KYC document" });
     }
   });
 
@@ -1547,6 +1609,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // If user has permission, try to serve the document
       try {
+        // First check if this is a binary document stored in the database
+        // Try to find by filename in binary KYC documents
+        const userKycDocs = await storage.getUserKYCDocuments(requestingUserId);
+        const filename = documentPath.split('/').pop();
+        
+        for (const doc of userKycDocs) {
+          // Check if this document has binary data and matches the requested path/filename
+          if (doc.documentData && doc.documentFilename && 
+              (doc.documentFilename === filename || 
+               documentPath.includes(doc.documentFilename) ||
+               (doc.documentUrl && (doc.documentUrl.includes(documentPath) || doc.documentUrl.endsWith(documentPath))))) {
+            
+            console.log(`Serving binary document from database: ${doc.documentFilename} for user ${requestingUser?.userId}`);
+            
+            // Serve the binary document from database
+            const binaryData = Buffer.from(doc.documentData, 'base64');
+            
+            res.set({
+              'Content-Type': doc.documentContentType || 'application/octet-stream',
+              'Content-Length': binaryData.length.toString(),
+              'Cache-Control': 'private, max-age=3600',
+              'Content-Disposition': `inline; filename="${doc.documentFilename}"`,
+            });
+            
+            return res.send(binaryData);
+          }
+        }
+        
+        // If not found in database, try object storage
         const { ObjectStorageService } = await import('./objectStorage');
         const objectStorageService = new ObjectStorageService();
         
