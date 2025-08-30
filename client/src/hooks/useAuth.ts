@@ -18,22 +18,28 @@ export function useAuth() {
   const logout = async () => {
     try {
       console.log('Logout initiated');
-      await apiRequest('POST', '/api/logout');
       
-      // Clear all cached data
-      queryClient.clear();
+      // Clear user data from cache immediately to trigger UI update
+      queryClient.setQueryData(["/api/auth/user"], null);
       
       // Remove any stored credentials
       localStorage.removeItem('voltverashop_userId');
       localStorage.removeItem('voltverashop_remember_me');
       
-      console.log('Logout successful, redirecting to landing page');
-      // Navigate to landing page
+      // Navigate to landing page immediately (user state is already cleared)
       setLocation('/');
+      
+      // Call logout API in background
+      await apiRequest('POST', '/api/logout');
+      
+      // Clear all cached data after logout
+      queryClient.clear();
+      
+      console.log('Logout successful, redirecting to landing page');
     } catch (error) {
       console.error('Logout failed:', error);
-      // Even if server logout fails, clear local data and redirect
-      queryClient.clear();
+      // Even if server logout fails, ensure user is logged out locally
+      queryClient.setQueryData(["/api/auth/user"], null);
       localStorage.removeItem('voltverashop_userId');
       localStorage.removeItem('voltverashop_remember_me');
       setLocation('/');
