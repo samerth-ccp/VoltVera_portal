@@ -24,6 +24,7 @@ import {
 
 interface User {
   id: string;
+  userId?: string; // Login ID (e.g., VV0007)
   firstName: string;
   lastName: string;
   email: string;
@@ -32,6 +33,7 @@ interface User {
   packageAmount: string;
   cryptoWalletAddress?: string;
   txnPin?: string;
+  password?: string; // Hashed password from backend
   status: 'active' | 'inactive' | 'pending';
   registrationDate: string;
   // Derived fields from other tables
@@ -125,6 +127,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
       user.firstName?.toLowerCase().includes(search.toLowerCase()) ||
       user.lastName?.toLowerCase().includes(search.toLowerCase()) ||
       user.email?.toLowerCase().includes(search.toLowerCase()) ||
+      user.userId?.toLowerCase().includes(search.toLowerCase()) ||
       user.id?.toLowerCase().includes(search.toLowerCase()) ||
       user.mobile?.toLowerCase().includes(search.toLowerCase());
     
@@ -310,11 +313,11 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       {/* User ID */}
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono text-sm">{user.id}</span>
+                          <span className="font-mono text-sm">{user.userId || user.id}</span>
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => copyToClipboard(user.id)}
+                            onClick={() => copyToClipboard(user.userId || user.id)}
                           >
                             <Copy className="h-3 w-3" />
                           </Button>
@@ -347,7 +350,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <span className="font-mono text-sm">
-                            {showPasswords[user.id] ? '***shown***' : '••••••••'}
+                            {showPasswords[user.id] ? 'voltveratech123' : '••••••••••••••'}
                           </span>
                           <Button
                             size="sm"
