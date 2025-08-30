@@ -1395,17 +1395,42 @@ export class DatabaseStorage implements IStorage {
     return document || null;
   }
 
-  async updateKYCDocument(id: string, data: CreateKYC): Promise<KYCDocument> {
-    const updateData = {
-      documentType: data.documentType,
-      documentUrl: data.documentUrl,
-      documentNumber: data.documentNumber,
+  async updateKYCDocument(id: string, data: any): Promise<KYCDocument> {
+    const updateData: any = {
       status: 'pending' as const, // Reset status to pending when updated
       rejectionReason: null,
       reviewedBy: null,
       reviewedAt: null,
       updatedAt: new Date(),
     };
+
+    // Handle binary data update
+    if (data.documentData) {
+      updateData.documentData = data.documentData;
+      updateData.documentContentType = data.documentContentType;
+      updateData.documentFilename = data.documentFilename;
+      updateData.documentSize = data.documentSize;
+      // Clear URL when using binary data
+      updateData.documentUrl = null;
+    }
+
+    // Handle URL data update (legacy)
+    if (data.documentUrl) {
+      updateData.documentUrl = data.documentUrl;
+      // Clear binary fields when using URL
+      updateData.documentData = null;
+      updateData.documentContentType = null;
+      updateData.documentFilename = null;
+      updateData.documentSize = null;
+    }
+
+    if (data.documentType) {
+      updateData.documentType = data.documentType;
+    }
+
+    if (data.documentNumber !== undefined) {
+      updateData.documentNumber = data.documentNumber;
+    }
 
     await db
       .update(kycDocuments)

@@ -64,61 +64,41 @@ export default function PendingUserDashboard() {
     }
   });
 
-  // Upload file mutation for document replacement
-  const uploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      // Step 1: Get presigned upload URL from backend
-      const uploadResponse = await apiRequest('POST', '/api/objects/upload');
-      const { uploadURL } = await uploadResponse.json();
+  // Convert file to Base64 for binary storage
+  const convertFileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = reader.result as string;
+        // Remove the data:image/jpeg;base64, prefix to get pure base64
+        const base64Data = base64.split(',')[1];
+        resolve(base64Data);
+      };
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsDataURL(file);
+    });
+  };
 
-      // Step 2: Upload file directly to object storage using presigned URL
-      const uploadRequest = new XMLHttpRequest();
-      
-      return new Promise<string>((resolve, reject) => {
-        uploadRequest.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const progress = Math.round((e.loaded / e.total) * 100);
-            setUploadProgress(progress);
-          }
-        };
-
-        uploadRequest.onload = () => {
-          if (uploadRequest.status >= 200 && uploadRequest.status < 300) {
-            resolve(uploadURL);
-          } else {
-            reject(new Error(`Upload failed with status ${uploadRequest.status}`));
-          }
-        };
-
-        uploadRequest.onerror = () => {
-          reject(new Error('Upload failed'));
-        };
-
-        uploadRequest.open('PUT', uploadURL);
-        uploadRequest.setRequestHeader('Content-Type', file.type);
-        uploadRequest.send(file);
-      });
-    },
-    onError: () => {
-      setUploadProgress(0);
-      toast({
-        title: "Upload Failed",
-        description: "Failed to upload document. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Replace document mutation
+  // Replace document mutation with binary data
   const replaceDocumentMutation = useMutation({
-    mutationFn: async ({ documentId, documentUrl, documentNumber }: { 
+    mutationFn: async ({ 
+      documentId, 
+      documentData, 
+      documentContentType,
+      documentFilename,
+      documentNumber 
+    }: { 
       documentId: string;
-      documentUrl: string;
+      documentData: string;
+      documentContentType: string;
+      documentFilename: string;
       documentNumber?: string;
     }) => {
       const response = await apiRequest('PUT', `/api/kyc/${documentId}`, {
         documentType: replacingDocument?.documentType,
-        documentUrl,
+        documentData,
+        documentContentType,
+        documentFilename,
         documentNumber,
       });
       return response.json();
@@ -147,28 +127,30 @@ export default function PendingUserDashboard() {
     if (!selectedFile || !replacingDocument) return;
 
     try {
-      // Upload file first
-      const rawUploadUrl = await uploadMutation.mutateAsync(selectedFile);
+      setUploadProgress(25); // Start progress indication
       
-      // Convert the upload URL to object storage path format
-      let documentUrl = rawUploadUrl;
-      if (rawUploadUrl.startsWith('https://storage.googleapis.com/')) {
-        const url = new URL(rawUploadUrl);
-        const pathParts = url.pathname.split('/');
-        if (pathParts.length >= 4) {
-          const objectPath = pathParts.slice(3).join('/');
-          documentUrl = `/objects/${objectPath}`;
-        }
-      }
+      // Convert file to Base64
+      const documentData = await convertFileToBase64(selectedFile);
+      setUploadProgress(75); // File conversion complete
       
-      // Replace the document
+      // Replace the document with binary data
       await replaceDocumentMutation.mutateAsync({
         documentId: replacingDocument.id,
-        documentUrl,
+        documentData,
+        documentContentType: selectedFile.type,
+        documentFilename: selectedFile.name,
         documentNumber: documentNumber || undefined,
       });
+      
+      setUploadProgress(100); // Complete
     } catch (error) {
+      setUploadProgress(0); // Reset on error
       console.error('Document replacement error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to process document. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

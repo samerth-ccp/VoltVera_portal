@@ -647,6 +647,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Replace/Update KYC document with binary data
+  app.put("/api/kyc/:documentId", async (req, res) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { documentId } = req.params;
+      const { documentType, documentData, documentContentType, documentFilename, documentNumber } = req.body;
+      
+      if (!documentData || !documentContentType || !documentFilename) {
+        return res.status(400).json({ 
+          message: "Document data, content type, and filename are required" 
+        });
+      }
+
+      // Validate Base64 data
+      const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+      if (!base64Pattern.test(documentData)) {
+        return res.status(400).json({ 
+          message: "Invalid document data format" 
+        });
+      }
+
+      // Calculate file size from Base64 data
+      const documentSize = Math.round((documentData.length * 3) / 4);
+
+      // Limit file size to 10MB
+      if (documentSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ 
+          message: "Document size exceeds 10MB limit" 
+        });
+      }
+
+      // Check if document exists and belongs to user
+      const existingDocs = await storage.getUserKYCDocuments(req.session.userId!);
+      const existingDoc = existingDocs.find(doc => doc.id === documentId);
+      
+      if (!existingDoc) {
+        return res.status(404).json({ 
+          message: "Document not found or access denied" 
+        });
+      }
+      
+      // Update the document with new binary data
+      const updatedDocument = await storage.updateKYCDocument(documentId, {
+        documentData,
+        documentContentType,
+        documentFilename,
+        documentSize,
+        documentNumber: documentNumber || undefined,
+        status: 'pending', // Reset status to pending for review
+      });
+      
+      res.json(updatedDocument);
+    } catch (error) {
+      console.error("Error replacing KYC document:", error);
+      res.status(500).json({ message: "Failed to replace KYC document" });
+    }
+  });
+
   // Forgot password route
   app.post("/api/auth/forgot-password", async (req, res) => {
     try {
