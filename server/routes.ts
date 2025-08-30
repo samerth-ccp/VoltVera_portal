@@ -1459,6 +1459,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Serve private documents to authenticated users
+  app.get('/api/objects/*', isAuthenticated, async (req, res) => {
+    try {
+      const { ObjectStorageService, ObjectNotFoundError } = await import('./objectStorage');
+      const objectStorageService = new ObjectStorageService();
+      
+      // Extract the object path from the URL
+      const objectPath = req.path.replace('/api', '');
+      
+      // Get the file from object storage
+      const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
+      
+      // Stream the file to the response
+      await objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error('Error serving private document:', error);
+      if (error instanceof (await import('./objectStorage')).ObjectNotFoundError) {
+        return res.status(404).json({ error: 'Document not found' });
+      }
+      res.status(500).json({ error: 'Failed to serve document' });
+    }
+  });
+
   // Complete registration endpoint
   app.post('/api/referral/complete-registration', async (req, res) => {
     try {
