@@ -69,8 +69,11 @@ export default function Landing() {
       queryClient.invalidateQueries({ queryKey: ["/api/kyc"] });
 
       // Navigate immediately without toast to avoid persistence issues
+      // Route users based on both role and status
       if (data.user?.role === 'admin') {
         setLocation('/');
+      } else if (data.user?.status === 'pending') {
+        setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard
       } else {
         setLocation('/dashboard');
       }

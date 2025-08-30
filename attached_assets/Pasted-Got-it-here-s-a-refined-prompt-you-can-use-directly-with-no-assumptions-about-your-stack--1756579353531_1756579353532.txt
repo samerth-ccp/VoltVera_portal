@@ -1,0 +1,25 @@
+Got it 👍 — here’s a **refined prompt** you can use directly, with no assumptions about your stack, endpoints, or frameworks. It keeps the focus on fixing the issues you found, preserving dependencies/flows, and enforcing production-grade standards:
+
+---
+
+## Improved Prompt
+
+I created a new user **VV0008** through the referral registration form, uploaded documents again, and checked from the pending user dashboard. Three issues occurred:
+
+1. After completing registration, I was logged into **VV0007**’s pending user dashboard instead of VV0008’s.
+2. After logging out and then logging into VV0008, I was routed to the **wrong dashboard endpoint** (should go to pending user dashboard).
+3. I was not able to view the uploaded document as VV0008. (Screenshot attached)
+
+### Please fix these issues with the following requirements:
+
+* **Session isolation**: Ensure each user session is tied to the correct user, preventing cross-account mixups.
+* **Correct routing**: After login/registration, users must always be routed to the correct dashboard based on their account state (e.g., pending vs. active).
+* **Document visibility**: Uploaded documents must be visible only to the user who uploaded them.
+* **Dependency safety**: Check that changes do not break existing dependencies or flows.
+* **End-to-end testing**: Add thorough automated tests (unit, integration, and end-to-end) that reproduce these three issues, verify they are fixed, and prevent regressions.
+* **Production grade**: Include safeguards, error handling, logging, and secure handling of user data. Test the entire flow from registration → login → dashboard access → document upload → document retrieval.
+* **General improvements**: If you see other weak points in auth, routing, or data visibility, fix them proactively to make the system robust.
+
+---
+
+Would you like me to also **expand this into a reusable “bug-to-fix” template** prompt you can keep using in Replit (so you can just paste in issue notes and get fixes + tests consistently)?

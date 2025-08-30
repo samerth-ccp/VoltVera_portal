@@ -81,25 +81,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUserByUserIdAndPassword(userId, password);
       if (user) {
-        console.log('Login attempt for user:', userId, 'Found user ID:', user.id);
+        console.log('=== LOGIN ATTEMPT SUCCESS ===');
+        console.log('Request for userId:', userId, 'Found user record ID:', user.id);
+        console.log('Previous session ID:', req.sessionID);
+        console.log('Previous session userId:', (req.session as any)?.userId);
         
-        // Clear existing session data
-        delete (req.session as any).userId;
-        delete (req.session as any).user;
-        
-        // Set session expiration based on remember me
-        const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-        req.session.cookie.maxAge = maxAge;
-        
-        // Update last active timestamp
-        await storage.updateUser(user.id, { lastActiveAt: new Date() });
-        
-        // Store user in session
-        (req.session as any).userId = user.id;
-        (req.session as any).user = user;
-        
-        console.log('SESSION UPDATED FOR USER:', user.id, user.userId, 'Session ID:', req.sessionID);
-        res.json({ success: true, user });
+        // Regenerate session to prevent session fixation attacks
+        req.session.regenerate((err: any) => {
+          if (err) {
+            console.error('Session regeneration error:', err);
+            return res.status(500).json({ message: "Login failed" });
+          }
+          
+          // Set session expiration based on remember me
+          const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+          req.session.cookie.maxAge = maxAge;
+          
+          // Store user in fresh session
+          (req.session as any).userId = user.id;
+          (req.session as any).user = user;
+          
+          // Save session explicitly to ensure data is persisted
+          req.session.save((saveErr: any) => {
+            if (saveErr) {
+              console.error('Session save error:', saveErr);
+              return res.status(500).json({ message: "Login failed" });
+            }
+            
+            console.log('=== LOGIN SESSION CREATED ===');
+            console.log('New session ID:', req.sessionID);
+            console.log('User stored in session:', user.id, user.userId);
+            console.log('User status:', user.status, 'User role:', user.role);
+            
+            // Update last active timestamp
+            storage.updateUser(user.id, { lastActiveAt: new Date() }).then(() => {
+              res.json({ success: true, user });
+            }).catch((updateError) => {
+              console.error('Last active update error:', updateError);
+              res.json({ success: true, user }); // Still return success
+            });
+          });
+        });
       } else {
         console.log('Login failed for user:', userId, '- Invalid credentials');
         res.status(401).json({ message: "Invalid user ID or password" });
@@ -1462,36 +1484,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Serve documents with object storage integration  
+  // Serve documents with proper access control and object storage integration  
   app.get('/api/documents/*', isAuthenticated, async (req, res) => {
     try {
       const documentPath = req.path.replace('/api/documents/', '');
+      const requestingUserId = (req.session as any)?.userId;
+      const requestingUser = (req.session as any)?.user;
       
-      // Since this is a legacy document path, try multiple strategies to find the actual document
+      // Check if the requesting user has permission to access this document
+      // Admins can access any document, users can only access their own documents
+      let hasPermission = false;
+      
+      if (requestingUser?.role === 'admin') {
+        hasPermission = true;
+      } else {
+        // Check if this document belongs to the requesting user
+        // For legacy documents, check profileImageUrl and KYC documents
+        const userKycDocs = await storage.getUserKYCDocuments(requestingUserId);
+        const userProfile = await storage.getUserById(requestingUserId);
+        
+        // Check if the document matches the user's profile image
+        if (userProfile?.profileImageUrl?.includes(documentPath)) {
+          hasPermission = true;
+        }
+        
+        // Check if the document is in the user's KYC documents
+        for (const doc of userKycDocs) {
+          if (doc.documentUrl.includes(documentPath)) {
+            hasPermission = true;
+            break;
+          }
+        }
+      }
+      
+      if (!hasPermission) {
+        console.log(`Access denied: User ${requestingUserId} (${requestingUser?.userId}) attempted to access document ${documentPath}`);
+        return res.status(403).json({ error: 'Access denied: You can only view your own documents' });
+      }
+      
+      // If user has permission, try to serve the document
       try {
         const { ObjectStorageService } = await import('./objectStorage');
         const objectStorageService = new ObjectStorageService();
         
-        // Strategy 1: Try to find in public directories of object storage
+        // Try to find in object storage public directories first
         let documentFile = await objectStorageService.searchPublicObject(documentPath);
         
-        if (!documentFile) {
-          // Strategy 2: For legacy documents, they might be stored directly in the bucket root
-          // Try to construct path for documents bucket
-          const documentsBucketPath = `/documents/${documentPath}`;
-          try {
-            documentFile = await objectStorageService.searchPublicObject(documentPath.replace('photo-', ''));
-          } catch (err) {
-            // Ignore and continue
-          }
-        }
-        
         if (documentFile) {
-          // Found the document in object storage, serve it
           return objectStorageService.downloadObject(documentFile, res);
         }
         
-        // Strategy 3: Try legacy storage as fallback
+        // Try legacy storage as fallback
         const legacyUrl = `https://storage.googleapis.com/documents/${documentPath}`;
         try {
           const response = await fetch(legacyUrl);
@@ -1515,12 +1558,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log('Legacy document not accessible');
         }
         
-        // If still not found, this document is genuinely missing - inform user
-        console.log(`Document not found: ${documentPath}. This document may need to be re-uploaded.`);
-        throw new Error('Document not accessible');
+        // Document not found in any storage but user has permission
+        console.log(`Document not found but access permitted: ${documentPath} for user ${requestingUserId}`);
+        throw new Error('Document not found');
         
       } catch (storageError) {
-        // Document not found anywhere - serve an informative placeholder
+        // Document not found - serve informative placeholder for authorized user
         const isImage = documentPath.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/);
         const isPdf = documentPath.toLowerCase().endsWith('.pdf');
         
