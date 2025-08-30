@@ -49,7 +49,7 @@ export default function Landing() {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
-    onSuccess: async (data: any) => {
+    onSuccess: (data: any) => {
       console.log('Login successful for user:', data.user?.userId, 'User ID:', data.user?.id);
       
       // Save userId and remember me preference if rememberMe is checked
@@ -64,37 +64,18 @@ export default function Landing() {
       // Clear cached queries to prevent data leakage between users
       queryClient.clear();
       
-      // Pre-populate the auth cache with the login response data
+      // Pre-populate the auth cache with the login response data - this is the key fix
       queryClient.setQueryData(["/api/auth/user"], data.user);
       
-      // Force a refresh of the auth query to ensure proper session establishment
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      
-      // Longer delay to ensure session is fully established
-      setTimeout(async () => {
-        // Verify authentication by refetching user data
-        try {
-          await queryClient.ensureQueryData({
-            queryKey: ["/api/auth/user"],
-          });
-          
-          // Route users based on both role and status
-          if (data.user?.role === 'admin') {
-            setLocation('/');
-          } else if (data.user?.status === 'pending') {
-            setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard
-          } else {
-            setLocation('/dashboard');
-          }
-        } catch (error) {
-          console.error('Session verification failed after login:', error);
-          toast({
-            title: "Session Error",
-            description: "Please try logging in again",
-            variant: "destructive",
-          });
-        }
-      }, 200);
+      // Navigate immediately without waiting for validation
+      // The router will re-render based on the updated auth state
+      if (data.user?.role === 'admin') {
+        setLocation('/');
+      } else if (data.user?.status === 'pending') {
+        setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard  
+      } else {
+        setLocation('/dashboard');
+      }
     },
     onError: (error: Error) => {
       toast({
