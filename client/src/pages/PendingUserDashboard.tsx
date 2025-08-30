@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
+import type { User as UserType, KYCDocument, Notification } from "@shared/schema";
 
 export default function PendingUserDashboard() {
   const { user, logout } = useAuth();
@@ -24,20 +25,17 @@ export default function PendingUserDashboard() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [documentNumber, setDocumentNumber] = useState('');
 
-  // Fetch user profile data
-  const { data: profile } = useQuery({
-    queryKey: ['/api/auth/user'],
-    enabled: !!user
-  });
+  // Use the user data from useAuth directly as profile
+  const profile = user;
 
   // Fetch KYC documents
-  const { data: kycDocuments = [] } = useQuery({
+  const { data: kycDocuments = [] } = useQuery<KYCDocument[]>({
     queryKey: ['/api/kyc'],
     enabled: !!user
   });
 
   // Fetch user notifications/messages
-  const { data: notifications = [] } = useQuery({
+  const { data: notifications = [] } = useQuery<Notification[]>({
     queryKey: ['/api/notifications'],
     enabled: !!user
   });
