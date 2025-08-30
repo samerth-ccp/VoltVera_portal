@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
-import { Clock, User, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import { Clock, User, FileText, AlertCircle, CheckCircle, Download, Eye, MessageSquare, Camera, CreditCard, Building } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Link } from "wouter";
@@ -22,6 +22,18 @@ export default function PendingUserDashboard() {
   // Fetch user profile data
   const { data: profile } = useQuery({
     queryKey: ['/api/auth/user'],
+    enabled: !!user
+  });
+
+  // Fetch KYC documents
+  const { data: kycDocuments = [] } = useQuery({
+    queryKey: ['/api/kyc'],
+    enabled: !!user
+  });
+
+  // Fetch admin feedback/messages (if any)
+  const { data: adminMessages = [] } = useQuery({
+    queryKey: ['/api/admin/messages'],
     enabled: !!user
   });
 
@@ -320,6 +332,170 @@ export default function PendingUserDashboard() {
             )}
           </CardContent>
         </Card>
+
+        {/* Uploaded Documents Section */}
+        <Card className="bg-black/20 backdrop-blur-sm border-white/10 mt-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center">
+              <FileText className="mr-2 h-5 w-5 text-blue-400" />
+              Your Uploaded Documents
+            </CardTitle>
+            <CardDescription className="text-white/60">
+              View your submitted KYC documents and their status
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {kycDocuments.length === 0 ? (
+              <div className="text-center py-8">
+                <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-white/60">No documents uploaded yet</p>
+                <p className="text-white/40 text-sm">Upload your KYC documents to complete verification</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {kycDocuments.map((doc: any) => {
+                  const getDocumentIcon = (type: string) => {
+                    switch(type) {
+                      case 'pan': return CreditCard;
+                      case 'aadhaar': return FileText;
+                      case 'bank_statement': return Building;
+                      case 'photo': return Camera;
+                      default: return FileText;
+                    }
+                  };
+
+                  const getDocumentLabel = (type: string) => {
+                    switch(type) {
+                      case 'pan': return 'PAN Card';
+                      case 'aadhaar': return 'Aadhaar Card';
+                      case 'bank_statement': return 'Bank Statement';
+                      case 'photo': return 'Photo ID';
+                      default: return type;
+                    }
+                  };
+
+                  const getStatusBadge = (status: string) => {
+                    switch(status) {
+                      case 'approved':
+                        return <Badge className="bg-green-500/20 text-green-300 border-green-400/30">Approved</Badge>;
+                      case 'rejected':
+                        return <Badge className="bg-red-500/20 text-red-300 border-red-400/30">Rejected</Badge>;
+                      default:
+                        return <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-400/30">Under Review</Badge>;
+                    }
+                  };
+
+                  const IconComponent = getDocumentIcon(doc.documentType);
+
+                  return (
+                    <div key={doc.id} className="border border-white/10 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-3">
+                          <IconComponent className="h-8 w-8 text-blue-400" />
+                          <div>
+                            <h3 className="font-semibold text-white">{getDocumentLabel(doc.documentType)}</h3>
+                            {doc.documentNumber && (
+                              <p className="text-sm text-white/60">Number: {doc.documentNumber}</p>
+                            )}
+                          </div>
+                        </div>
+                        {getStatusBadge(doc.status)}
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm text-white/60">
+                          <p>Uploaded: {new Date(doc.createdAt).toLocaleDateString()}</p>
+                          {doc.reviewedAt && (
+                            <p>Reviewed: {new Date(doc.reviewedAt).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                        
+                        <div className="flex space-x-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            onClick={() => window.open(doc.documentUrl, '_blank')}
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+                            onClick={() => {
+                              const link = document.createElement('a');
+                              link.href = doc.documentUrl;
+                              link.download = `${getDocumentLabel(doc.documentType)}_${doc.documentNumber || 'document'}`;
+                              link.click();
+                            }}
+                          >
+                            <Download className="h-4 w-4 mr-1" />
+                            Download
+                          </Button>
+                        </div>
+                      </div>
+                      
+                      {doc.status === 'rejected' && doc.rejectionReason && (
+                        <div className="mt-3 p-3 bg-red-900/30 border border-red-400/30 rounded-md">
+                          <div className="flex items-start space-x-2">
+                            <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-red-300 font-medium">Admin Feedback</p>
+                              <p className="text-red-200 text-sm mt-1">{doc.rejectionReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Admin Messages Section */}
+        {adminMessages.length > 0 && (
+          <Card className="bg-black/20 backdrop-blur-sm border-white/10 mt-8">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center">
+                <MessageSquare className="mr-2 h-5 w-5 text-purple-400" />
+                Messages from Admin
+              </CardTitle>
+              <CardDescription className="text-white/60">
+                Important updates and requests from our admin team
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {adminMessages.map((message: any) => (
+                  <div key={message.id} className="border border-white/10 rounded-lg p-4">
+                    <div className="flex items-start space-x-3">
+                      <MessageSquare className="h-6 w-6 text-purple-400 mt-1 flex-shrink-0" />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="font-semibold text-white">{message.subject}</h3>
+                          <Badge variant="outline" className="text-xs">
+                            {new Date(message.createdAt).toLocaleDateString()}
+                          </Badge>
+                        </div>
+                        <p className="text-white/80">{message.content}</p>
+                        {message.priority === 'high' && (
+                          <div className="flex items-center space-x-2 mt-2">
+                            <AlertCircle className="h-4 w-4 text-red-400" />
+                            <span className="text-red-300 text-sm font-medium">High Priority</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* What's Next Section */}
         <Card className="bg-black/20 backdrop-blur-sm border-white/10 mt-8">
