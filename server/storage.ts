@@ -155,6 +155,8 @@ export interface IStorage {
   // KYC operations
   getUserKYCDocuments(userId: string): Promise<KYCDocument[]>;
   createKYCDocument(userId: string, data: CreateKYC): Promise<KYCDocument>;
+  getKYCDocumentById(id: string): Promise<KYCDocument | null>;
+  updateKYCDocument(id: string, data: CreateKYC): Promise<KYCDocument>;
   updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean>;
   getAllPendingKYC(): Promise<KYCDocument[]>;
   
@@ -1358,6 +1360,32 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId));
     
     return kyc;
+  }
+
+  async getKYCDocumentById(id: string): Promise<KYCDocument | null> {
+    const [document] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
+    return document || null;
+  }
+
+  async updateKYCDocument(id: string, data: CreateKYC): Promise<KYCDocument> {
+    const updateData = {
+      documentType: data.documentType,
+      documentUrl: data.documentUrl,
+      documentNumber: data.documentNumber,
+      status: 'pending' as const, // Reset status to pending when updated
+      rejectionReason: null,
+      reviewedBy: null,
+      reviewedAt: null,
+      updatedAt: new Date(),
+    };
+
+    await db
+      .update(kycDocuments)
+      .set(updateData)
+      .where(eq(kycDocuments.id, id));
+
+    const [updatedDoc] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
+    return updatedDoc!;
   }
 
   async updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean> {

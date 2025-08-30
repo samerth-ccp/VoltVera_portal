@@ -276,6 +276,29 @@ router.post('/kyc', requireAuth, async (req, res) => {
   }
 });
 
+// Replace/update existing KYC document
+router.put('/kyc/:documentId', requireAuth, async (req, res) => {
+  try {
+    const { documentId } = req.params;
+    const result = createKYCSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: 'Invalid KYC data', errors: result.error.errors });
+    }
+    
+    // Check if document belongs to the current user
+    const existingDoc = await storage.getKYCDocumentById(documentId);
+    if (!existingDoc || existingDoc.userId !== req.session.userId!) {
+      return res.status(404).json({ message: 'Document not found' });
+    }
+    
+    const updatedDocument = await storage.updateKYCDocument(documentId, result.data);
+    res.json(updatedDocument);
+  } catch (error) {
+    console.error('Error updating KYC document:', error);
+    res.status(500).json({ message: 'Failed to update KYC document' });
+  }
+});
+
 // Get all pending KYC (Admin only)
 router.get('/admin/kyc', requireAuth, requireAdmin, async (req, res) => {
   try {

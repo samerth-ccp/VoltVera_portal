@@ -69,12 +69,39 @@ export default function KYCUpload() {
   // Upload file mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      // Simulate file upload to cloud storage (implement actual upload)
-      const formData = new FormData();
-      formData.append('file', file);
+      // Step 1: Get presigned upload URL from backend
+      const uploadResponse = await apiRequest('POST', '/api/objects/upload');
+      const { uploadURL } = await uploadResponse.json();
+
+      // Step 2: Upload file directly to object storage using presigned URL
+      const uploadRequest = new XMLHttpRequest();
       
-      // For now, return a mock URL - implement actual file upload
-      return Promise.resolve(`https://storage.voltverashop.com/documents/${file.name}`);
+      return new Promise<string>((resolve, reject) => {
+        uploadRequest.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const progress = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(progress);
+          }
+        };
+
+        uploadRequest.onload = () => {
+          if (uploadRequest.status >= 200 && uploadRequest.status < 300) {
+            // Return the upload URL for storage in database
+            resolve(uploadURL);
+          } else {
+            reject(new Error(`Upload failed with status ${uploadRequest.status}`));
+          }
+        };
+
+        uploadRequest.onerror = () => {
+          reject(new Error('Upload failed'));
+        };
+
+        // Upload to the presigned URL
+        uploadRequest.open('PUT', uploadURL);
+        uploadRequest.setRequestHeader('Content-Type', file.type);
+        uploadRequest.send(file);
+      });
     },
     onSuccess: () => {
       setUploadProgress(100);
@@ -125,7 +152,20 @@ export default function KYCUpload() {
 
     try {
       // Upload file first
-      const documentUrl = await uploadMutation.mutateAsync(selectedFile);
+      const rawUploadUrl = await uploadMutation.mutateAsync(selectedFile);
+      
+      // Convert the upload URL to object storage path format
+      // The upload URL is a presigned URL, we need to normalize it to /objects/uploads/... format
+      let documentUrl = rawUploadUrl;
+      if (rawUploadUrl.startsWith('https://storage.googleapis.com/')) {
+        const url = new URL(rawUploadUrl);
+        const pathParts = url.pathname.split('/');
+        if (pathParts.length >= 4) {
+          // Extract the object path from the full URL
+          const objectPath = pathParts.slice(3).join('/'); // Skip /bucket-name and get the rest
+          documentUrl = `/objects/${objectPath}`;
+        }
+      }
       
       // Then submit KYC document
       await submitKycMutation.mutateAsync({

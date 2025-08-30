@@ -8,9 +8,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
-import { Clock, User, FileText, AlertCircle, CheckCircle, Download, Eye, MessageSquare, Camera, CreditCard, Building } from "lucide-react";
+import { Clock, User, FileText, AlertCircle, CheckCircle, Download, Eye, MessageSquare, Camera, CreditCard, Building, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Link } from "wouter";
 
 export default function PendingUserDashboard() {
@@ -18,6 +19,10 @@ export default function PendingUserDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
+  const [replacingDocument, setReplacingDocument] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [documentNumber, setDocumentNumber] = useState('');
 
   // Fetch user profile data
   const { data: profile } = useQuery({
@@ -58,6 +63,114 @@ export default function PendingUserDashboard() {
       });
     }
   });
+
+  // Upload file mutation for document replacement
+  const uploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      // Step 1: Get presigned upload URL from backend
+      const uploadResponse = await apiRequest('POST', '/api/objects/upload');
+      const { uploadURL } = await uploadResponse.json();
+
+      // Step 2: Upload file directly to object storage using presigned URL
+      const uploadRequest = new XMLHttpRequest();
+      
+      return new Promise<string>((resolve, reject) => {
+        uploadRequest.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const progress = Math.round((e.loaded / e.total) * 100);
+            setUploadProgress(progress);
+          }
+        };
+
+        uploadRequest.onload = () => {
+          if (uploadRequest.status >= 200 && uploadRequest.status < 300) {
+            resolve(uploadURL);
+          } else {
+            reject(new Error(`Upload failed with status ${uploadRequest.status}`));
+          }
+        };
+
+        uploadRequest.onerror = () => {
+          reject(new Error('Upload failed'));
+        };
+
+        uploadRequest.open('PUT', uploadURL);
+        uploadRequest.setRequestHeader('Content-Type', file.type);
+        uploadRequest.send(file);
+      });
+    },
+    onError: () => {
+      setUploadProgress(0);
+      toast({
+        title: "Upload Failed",
+        description: "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Replace document mutation
+  const replaceDocumentMutation = useMutation({
+    mutationFn: async ({ documentId, documentUrl, documentNumber }: { 
+      documentId: string;
+      documentUrl: string;
+      documentNumber?: string;
+    }) => {
+      const response = await apiRequest('PUT', `/api/kyc/${documentId}`, {
+        documentType: replacingDocument?.documentType,
+        documentUrl,
+        documentNumber,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      setReplacingDocument(null);
+      setSelectedFile(null);
+      setUploadProgress(0);
+      setDocumentNumber('');
+      queryClient.invalidateQueries({ queryKey: ['/api/kyc'] });
+      toast({
+        title: "Document Replaced",
+        description: "Your document has been replaced successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Replacement Failed",
+        description: error.message || "Failed to replace document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleReplaceDocument = async () => {
+    if (!selectedFile || !replacingDocument) return;
+
+    try {
+      // Upload file first
+      const rawUploadUrl = await uploadMutation.mutateAsync(selectedFile);
+      
+      // Convert the upload URL to object storage path format
+      let documentUrl = rawUploadUrl;
+      if (rawUploadUrl.startsWith('https://storage.googleapis.com/')) {
+        const url = new URL(rawUploadUrl);
+        const pathParts = url.pathname.split('/');
+        if (pathParts.length >= 4) {
+          const objectPath = pathParts.slice(3).join('/');
+          documentUrl = `/objects/${objectPath}`;
+        }
+      }
+      
+      // Replace the document
+      await replaceDocumentMutation.mutateAsync({
+        documentId: replacingDocument.id,
+        documentUrl,
+        documentNumber: documentNumber || undefined,
+      });
+    } catch (error) {
+      console.error('Document replacement error:', error);
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -434,6 +547,18 @@ export default function PendingUserDashboard() {
                             <Download className="h-4 w-4 mr-1" />
                             Download
                           </Button>
+                          {doc.status === 'rejected' && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="bg-orange-500/20 border-orange-400/30 text-orange-300 hover:bg-orange-500/30"
+                              onClick={() => setReplacingDocument(doc)}
+                              data-testid={`button-replace-${doc.documentType}`}
+                            >
+                              <Upload className="h-4 w-4 mr-1" />
+                              Replace
+                            </Button>
+                          )}
                         </div>
                       </div>
                       
@@ -531,6 +656,76 @@ export default function PendingUserDashboard() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Document Replacement Dialog */}
+        <Dialog open={!!replacingDocument} onOpenChange={(open) => !open && setReplacingDocument(null)}>
+          <DialogContent className="sm:max-w-md bg-black/90 border-white/20">
+            <DialogHeader>
+              <DialogTitle className="text-white">Replace Document</DialogTitle>
+              <DialogDescription className="text-white/70">
+                Replace your rejected {replacingDocument?.documentType} document
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="replacement-file" className="text-white">Select New Document</Label>
+                <Input
+                  id="replacement-file"
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                  onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                  className="bg-white/10 border-white/20 text-white"
+                  data-testid="input-replacement-file"
+                />
+              </div>
+              <div>
+                <Label htmlFor="replacement-number" className="text-white">
+                  Document Number (Optional)
+                </Label>
+                <Input
+                  id="replacement-number"
+                  value={documentNumber}
+                  onChange={(e) => setDocumentNumber(e.target.value)}
+                  placeholder="Enter document number if applicable"
+                  className="bg-white/10 border-white/20 text-white placeholder-white/40"
+                  data-testid="input-replacement-number"
+                />
+              </div>
+              {uploadProgress > 0 && uploadProgress < 100 && (
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm text-white/70">
+                    <span>Uploading...</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="w-full bg-gray-700 rounded-full h-2">
+                    <div 
+                      className="bg-green-500 h-2 rounded-full transition-all duration-300" 
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-end space-x-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setReplacingDocument(null)}
+                  className="bg-white/10 border-white/20 text-white"
+                  data-testid="button-cancel-replace"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleReplaceDocument}
+                  disabled={!selectedFile || uploadMutation.isPending || replaceDocumentMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700"
+                  data-testid="button-confirm-replace"
+                >
+                  {uploadMutation.isPending || replaceDocumentMutation.isPending ? 'Replacing...' : 'Replace Document'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
