@@ -26,56 +26,59 @@ import PendingUserDashboard from "@/pages/PendingUserDashboard";
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+
+  // Early return pattern for cleaner routing logic
+  if (isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <Switch>
+        {/* Public routes */}
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/signup" component={Signup} />
+        <Route path="/verify-email" component={VerifyEmail} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/complete-invitation" component={CompleteInvitation} />
+        <Route path="/referral-register" component={CompleteReferralRegistration} />
+        <Route path="/recruit" component={CompleteReferralRegistration} />
+        <Route path="/" component={Landing} />
+        <Route component={NotFound} />
+      </Switch>
+    );
+  }
+
+  // Authenticated user routes - clear route precedence
   return (
     <Switch>
-      {/* Public routes */}
-      <Route path="/forgot-password" component={ForgotPassword} />
-      <Route path="/signup" component={Signup} />
-      <Route path="/verify-email" component={VerifyEmail} />
-      <Route path="/reset-password" component={ResetPassword} />
-      <Route path="/complete-invitation" component={CompleteInvitation} />
-      <Route path="/referral-register" component={CompleteReferralRegistration} />
-      <Route path="/recruit" component={CompleteReferralRegistration} />
+      {/* Change password available to all authenticated users */}
+      <Route path="/change-password" component={ChangePassword} />
       
-      {/* Show landing page if not authenticated or still loading */}
-      {isLoading || !isAuthenticated ? (
-        <Route path="/" component={Landing} />
-      ) : (
+      {/* Pending user specific routes */}
+      {user?.status === 'pending' && (
         <>
-          {/* Protected routes for authenticated users */}
-          <Route path="/change-password" component={ChangePassword} />
+          <Route path="/pending-dashboard" component={PendingUserDashboard} />
+          <Route path="/" component={PendingUserDashboard} />
+        </>
+      )}
+      
+      {/* Non-pending user routes */}
+      {user?.status !== 'pending' && (
+        <>
+          <Route path="/dashboard" component={UserDashboard} />
+          <Route path="/kyc-upload" component={KYCUpload} />
+          <Route path="/my-team" component={MyTeam} />
+          <Route path="/products" component={ProductCatalog} />
+          <Route path="/my-purchases" component={MyPurchases} />
           
-          {/* Only allow access to full features for non-pending users */}
-          {user?.status !== 'pending' && (
-            <>
-              <Route path="/dashboard" component={UserDashboard} />
-              <Route path="/kyc-upload" component={KYCUpload} />
-              <Route path="/my-team" component={MyTeam} />
-              <Route path="/products" component={ProductCatalog} />
-              <Route path="/my-purchases" component={MyPurchases} />
-            </>
+          {/* Role-based home routes */}
+          {user?.role === 'founder' && <Route path="/" component={FounderDashboard} />}
+          {user?.role === 'admin' && <Route path="/" component={AdminDashboard} />}
+          {['mini_franchise', 'basic_franchise'].includes(user?.role || '') && (
+            <Route path="/" component={FranchiseDashboard} />
           )}
-          
-          {/* Pending user routes */}
-          {user?.status === 'pending' && (
-            <>
-              <Route path="/" component={PendingUserDashboard} />
-              <Route path="/pending-dashboard" component={PendingUserDashboard} />
-            </>
-          )}
-          
-          {/* Status and role-based routing for authenticated users */}
-          {user?.status !== 'pending' && (
-            user?.role === 'founder' ? (
-            <Route path="/" component={FounderDashboard} />
-            ) : user?.role === 'admin' ? (
-              <Route path="/" component={AdminDashboard} />
-            ) : ['mini_franchise', 'basic_franchise'].includes(user?.role || '') ? (
-              <Route path="/" component={FranchiseDashboard} />
-            ) : (
-              <Route path="/" component={UserDashboard} />
-            )
-          )}
+          {user?.role === 'user' && <Route path="/" component={UserDashboard} />}
         </>
       )}
       

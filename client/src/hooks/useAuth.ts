@@ -12,8 +12,10 @@ export function useAuth() {
     queryFn: getQueryFn({ on401: "returnNull" }),
     retry: false,
     refetchOnWindowFocus: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always consider data stale so updates trigger re-renders
+    gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes but allow updates (TanStack Query v5)
   });
+
 
   const logout = async () => {
     try {
