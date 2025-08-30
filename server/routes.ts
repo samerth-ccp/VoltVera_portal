@@ -81,26 +81,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const user = await storage.getUserByUserIdAndPassword(userId, password);
       if (user) {
-        // Update last active timestamp
-        await storage.updateUser(user.id, { lastActiveAt: new Date() });
-        
-        // Store user in session
-        (req.session as any).userId = user.id;
-        
-        // Set session expiration based on remember me
-        if (rememberMe) {
-          // Remember me: 30 days
-          req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
-        } else {
-          // Regular session: 24 hours
-          req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
-        }
-        
-        // Store user in session
-        (req.session as any).userId = user.id;
-        (req.session as any).user = user;
-        
-        res.json({ success: true, user });
+        // Clear any existing session data first
+        req.session.regenerate((err: any) => {
+          if (err) {
+            console.error('Session regeneration error:', err);
+          }
+          
+          // Update last active timestamp
+          storage.updateUser(user.id, { lastActiveAt: new Date() });
+          
+          // Set session expiration based on remember me
+          if (rememberMe) {
+            // Remember me: 30 days
+            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+          } else {
+            // Regular session: 24 hours
+            req.session.cookie.maxAge = 24 * 60 * 60 * 1000;
+          }
+          
+          // Store user in session (only store userId and user data)
+          (req.session as any).userId = user.id;
+          (req.session as any).user = user;
+          
+          // Save session and respond
+          req.session.save((saveErr: any) => {
+            if (saveErr) {
+              console.error('Session save error:', saveErr);
+              return res.status(500).json({ message: "Session save failed" });
+            }
+            
+            console.log('New session created for user:', user.id, 'Session ID:', req.sessionID);
+            res.json({ success: true, user });
+          });
+        });
       } else {
         res.status(401).json({ message: "Invalid user ID or password" });
       }
@@ -115,6 +128,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Logout (support both GET and POST)
   const handleLogout = (req: any, res: any) => {
+    console.log('Logout request for session:', req.sessionID, 'User:', (req.session as any)?.userId);
+    
     if (req.session) {
       req.session.destroy((err: any) => {
         if (err) {
@@ -122,6 +137,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: "Logout failed" });
         }
         res.clearCookie('voltverashop.sid'); // Clear the session cookie
+        console.log('Session destroyed successfully');
         res.json({ success: true });
       });
     } else {
