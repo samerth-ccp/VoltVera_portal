@@ -808,6 +808,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Check if user has admin upline workflow
+  app.get("/api/team/admin-upline-workflow", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.id;
+      const result = await storage.checkAdminUplineWorkflow(userId);
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error checking admin upline workflow:", error);
+      res.status(500).json({ message: error.message || "Failed to check workflow" });
+    }
+  });
+
+  // Create pending recruit with position selection (admin upline workflow)
+  app.post("/api/team/recruit-with-position", isAuthenticated, async (req: any, res) => {
+    try {
+      const recruiterId = req.user.id;
+      const result = recruitUserSchema.extend({
+        position: z.enum(['left', 'right'])
+      }).safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid data", errors: result.error.flatten() });
+      }
+
+      // Check if email already exists
+      const existingUser = await storage.getUserByEmail(result.data.email!);
+      if (existingUser) {
+        return res.status(409).json({ message: "A user with this email already exists" });
+      }
+      
+      const pendingRecruit = await storage.createPendingRecruitWithPosition(result.data, recruiterId);
+      
+      res.status(201).json({
+        message: "Recruit created with position selected! Referral link will be generated for full registration.",
+        pendingRecruit: {
+          id: pendingRecruit.id,
+          email: pendingRecruit.email,
+          fullName: pendingRecruit.fullName,
+          position: pendingRecruit.position,
+          status: pendingRecruit.status
+        }
+      });
+    } catch (error: any) {
+      console.error("Error creating pending recruit with position:", error);
+      res.status(500).json({ message: error.message || "Failed to create pending recruit" });
+    }
+  });
+
   app.get("/api/team/members", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.id;

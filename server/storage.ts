@@ -712,7 +712,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  // Pending recruits operations (simplified - recruiter handles own approvals)
+  // Pending recruits operations 
   async createPendingRecruit(data: RecruitUser, recruiterId: string): Promise<PendingRecruit> {
     // Find the recruiter
     console.log('Looking for recruiter with ID:', recruiterId);
@@ -722,38 +722,102 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
-    // SIMPLIFIED: Recruiter is always the upline for their own recruits
-    // This eliminates the need for founder approval - recruiter decides positions directly
-    const uplineId = recruiterId;
+    // Determine the actual upline based on the recruiter's parent in the MLM tree
+    // If recruiter has admin as parent, they get admin-like workflow
+    let uplineId = recruiterId; // Default: recruiter is their own upline
+    let isAdminUplineWorkflow = false;
 
-    console.log('=== RECRUIT CREATION (SIMPLIFIED) ===');
+    // Check if recruiter's parent/sponsor is admin
+    if (recruiter.parentId || recruiter.sponsorId) {
+      const actualUpline = await this.getUser(recruiter.parentId || recruiter.sponsorId || recruiterId);
+      if (actualUpline && (actualUpline.role === 'admin' || actualUpline.role === 'founder')) {
+        console.log('*** ADMIN UPLINE WORKFLOW DETECTED ***');
+        console.log('Recruiter parent/sponsor is admin:', actualUpline.email);
+        uplineId = actualUpline.id; // Admin becomes the upline for position decisions
+        isAdminUplineWorkflow = true;
+      }
+    }
+
+    console.log('=== RECRUIT CREATION ===');
     console.log('Recruiter:', recruiter.email);
-    console.log('Upline (same as recruiter):', uplineId);
+    console.log('Upline:', uplineId);
+    console.log('Admin upline workflow:', isAdminUplineWorkflow);
 
-    // Check if upline is admin or self-upline - if so, skip upline approval step
-    const isAdminUpline = recruiter.role === 'admin' || recruiter.role === 'founder';
-    const isSelfUpline = recruiterId === uplineId; // This is always true in simplified model, but keeping for clarity
-    
+    // Determine initial status based on workflow type
     let initialStatus = 'awaiting_upline';
     let initialUplineDecision = 'pending';
     
-    // For admin uplines or self-uplines, we can skip the upline approval step
-    // and go directly to position decision (which will generate referral link)
-    if (isAdminUpline || isSelfUpline) {
-      console.log('Admin or self-upline detected - recruiter can directly generate referral link');
-      // Status stays as awaiting_upline, but upline (recruiter) can immediately approve
+    // For recruiters with admin uplines, they can directly choose position and generate referral link
+    // For regular recruiters, they handle their own position decisions
+    const isDirectApproval = recruiter.role === 'admin' || recruiter.role === 'founder' || !isAdminUplineWorkflow;
+    
+    if (isDirectApproval && !isAdminUplineWorkflow) {
+      console.log('Regular recruiter workflow - can directly approve position');
+    } else if (isAdminUplineWorkflow) {
+      console.log('Admin upline workflow - admin will handle position decision');
     }
 
-    // Recruiter handles their own position decisions
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId,
+      uplineId, // This will be admin ID for users with admin uplines
       status: initialStatus,
       uplineDecision: initialUplineDecision,
     }).returning();
+    return pendingRecruit;
+  }
+
+  // Check if user has admin upline workflow (can choose position immediately)
+  async checkAdminUplineWorkflow(userId: string): Promise<{ hasAdminUpline: boolean, uplineId?: string }> {
+    const user = await this.getUser(userId);
+    if (!user) {
+      return { hasAdminUpline: false };
+    }
+
+    // Check if user's parent/sponsor is admin
+    if (user.parentId || user.sponsorId) {
+      const actualUpline = await this.getUser(user.parentId || user.sponsorId || userId);
+      if (actualUpline && (actualUpline.role === 'admin' || actualUpline.role === 'founder')) {
+        return { hasAdminUpline: true, uplineId: actualUpline.id };
+      }
+    }
+
+    return { hasAdminUpline: false };
+  }
+
+  // Create pending recruit with immediate position selection (for admin upline workflow)
+  async createPendingRecruitWithPosition(data: RecruitUser & { position: 'left' | 'right' }, recruiterId: string): Promise<PendingRecruit> {
+    // Check if this user has admin upline workflow
+    const { hasAdminUpline, uplineId: adminUplineId } = await this.checkAdminUplineWorkflow(recruiterId);
+    if (!hasAdminUpline || !adminUplineId) {
+      throw new Error('This workflow is only available for users with admin uplines');
+    }
+
+    const recruiter = await this.getUser(recruiterId);
+    if (!recruiter) {
+      throw new Error(`Recruiter not found with ID: ${recruiterId}`);
+    }
+
+    console.log('=== ADMIN UPLINE WORKFLOW - IMMEDIATE POSITION SELECTION ===');
+    console.log('Recruiter:', recruiter.email);
+    console.log('Admin upline:', adminUplineId);
+    console.log('Position chosen:', data.position);
+
+    // Create pending recruit with position already selected and status awaiting_details for referral link generation
+    const [pendingRecruit] = await db.insert(pendingRecruits).values({
+      email: data.email,
+      fullName: data.fullName,
+      mobile: data.mobile,
+      recruiterId,
+      uplineId: adminUplineId, // Admin becomes the upline
+      position: data.position, // Position chosen by recruiter
+      status: 'awaiting_details', // Ready for referral link generation
+      uplineDecision: 'approved', // Pre-approved since position is chosen
+      uplineDecisionAt: new Date(),
+    }).returning();
+
     return pendingRecruit;
   }
 

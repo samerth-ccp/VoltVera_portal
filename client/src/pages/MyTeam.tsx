@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Users, Plus, Search, TreePine, BarChart3, UserCheck, TrendingUp } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { User, RecruitUser } from "@shared/schema";
@@ -24,7 +25,12 @@ const recruitFormSchema = z.object({
   email: z.string().email("Valid email is required"),
 });
 
+const recruitWithPositionFormSchema = recruitFormSchema.extend({
+  position: z.enum(['left', 'right']),
+});
+
 type RecruitFormData = z.infer<typeof recruitFormSchema>;
+type RecruitWithPositionData = z.infer<typeof recruitWithPositionFormSchema>;
 
 export default function MyTeam() {
   const { user } = useAuth();
@@ -32,6 +38,7 @@ export default function MyTeam() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isRecruitOpen, setIsRecruitOpen] = useState(false);
+  const [selectedPosition, setSelectedPosition] = useState<'left' | 'right' | ''>('');
 
   // Form handling
   const form = useForm<RecruitFormData>({
@@ -61,6 +68,15 @@ export default function MyTeam() {
   // Fetch pending recruits
   const { data: pendingRecruits = [] } = useQuery<any[]>({
     queryKey: ["/api/team/pending-recruits"],
+    enabled: !!user,
+  });
+
+  // Check if user has admin upline workflow
+  const { data: adminUplineWorkflow, isLoading: workflowLoading } = useQuery<{
+    hasAdminUpline: boolean;
+    uplineId?: string;
+  }>({
+    queryKey: ["/api/team/admin-upline-workflow"],
     enabled: !!user,
   });
 
@@ -96,8 +112,46 @@ export default function MyTeam() {
     },
   });
 
+  // Recruit with position mutation (for admin upline workflow)
+  const recruitWithPositionMutation = useMutation({
+    mutationFn: async (data: RecruitWithPositionData) => {
+      const response = await apiRequest('POST', '/api/team/recruit-with-position', data);
+      return response.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/team/pending-recruits"] });
+      setIsRecruitOpen(false);
+      form.reset();
+      setSelectedPosition('');
+      
+      toast({
+        title: "Recruit submitted successfully",
+        description: "Position selected and referral link will be generated for full registration details.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit recruit",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRecruit = (data: RecruitFormData) => {
-    recruitMutation.mutate(data);
+    // Check if user has admin upline workflow and position is selected
+    if (adminUplineWorkflow?.hasAdminUpline && selectedPosition) {
+      const dataWithPosition: RecruitWithPositionData = {
+        ...data,
+        position: selectedPosition as 'left' | 'right',
+      };
+      recruitWithPositionMutation.mutate(dataWithPosition);
+    } else {
+      // Regular workflow
+      recruitMutation.mutate(data);
+    }
   };
 
   const filteredMembers = teamMembers.filter(member =>
@@ -176,20 +230,54 @@ export default function MyTeam() {
                   </p>
                 )}
               </div>
+              
+              {/* Position Selection for Admin Upline Workflow */}
+              {adminUplineWorkflow?.hasAdminUpline && (
+                <div>
+                  <Label htmlFor="position">Select Position</Label>
+                  <Select value={selectedPosition} onValueChange={(value: 'left' | 'right') => setSelectedPosition(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose position for recruit" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="left">Left Position</SelectItem>
+                      <SelectItem value="right">Right Position</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {adminUplineWorkflow?.hasAdminUpline && !selectedPosition && (
+                    <p className="text-sm text-blue-600 mt-1">
+                      Position selection required for admin upline workflow
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end space-x-2">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => setIsRecruitOpen(false)}
+                  onClick={() => {
+                    setIsRecruitOpen(false);
+                    setSelectedPosition('');
+                    form.reset();
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={recruitMutation.isPending}
+                  disabled={
+                    recruitMutation.isPending || 
+                    recruitWithPositionMutation.isPending ||
+                    (adminUplineWorkflow?.hasAdminUpline && !selectedPosition)
+                  }
                   className="volt-gradient text-white"
                 >
-                  {recruitMutation.isPending ? "Submitting..." : "Submit Recruit"}
+                  {(recruitMutation.isPending || recruitWithPositionMutation.isPending) 
+                    ? "Submitting..." 
+                    : adminUplineWorkflow?.hasAdminUpline 
+                      ? "Submit with Position" 
+                      : "Submit Recruit"}
                 </Button>
               </div>
             </form>
