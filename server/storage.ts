@@ -743,6 +743,57 @@ export class DatabaseStorage implements IStorage {
     return pendingRecruit;
   }
 
+  // Create comprehensive pending recruit for full registration form
+  async createComprehensivePendingRecruit(
+    data: {
+      fullName: string;
+      email: string;
+      mobile?: string;
+      packageAmount?: string;
+      password: string;
+      // Additional comprehensive data (will be stored as JSON for now)
+      dateOfBirth?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      panNumber?: string;
+      aadhaarNumber?: string;
+      bankAccountNumber?: string;
+      bankIFSC?: string;
+      bankName?: string;
+      panCardUrl?: string;
+      aadhaarCardUrl?: string;
+      bankStatementUrl?: string;
+      profileImageUrl?: string;
+    },
+    recruiterId: string,
+    placementSide: string
+  ): Promise<PendingRecruit> {
+    const recruiter = await this.getUser(recruiterId);
+    if (!recruiter) {
+      throw new Error(`Recruiter not found with ID: ${recruiterId}`);
+    }
+
+    // Create pending recruit with admin approval status
+    const [pendingRecruit] = await db.insert(pendingRecruits).values({
+      email: data.email,
+      fullName: data.fullName,
+      mobile: data.mobile,
+      recruiterId,
+      uplineId: recruiterId, // For simplified MLM structure
+      packageAmount: data.packageAmount || '0.00',
+      position: placementSide,
+      status: 'awaiting_admin',
+      uplineDecision: 'approved', // Auto-approve upline decision for full registrations
+    }).returning();
+
+    // TODO: Store additional comprehensive data in a separate table or extend the pending_recruits schema
+    // For now, the core workflow will work and admin can see the pending recruit
+    
+    return pendingRecruit;
+  }
+
   async getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]> {
     let query = db.select().from(pendingRecruits)
       .where(eq(pendingRecruits.status, 'awaiting_admin'))

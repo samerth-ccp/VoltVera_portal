@@ -106,12 +106,10 @@ export default function CompleteReferralRegistration() {
     },
     onSuccess: (data: any) => {
       setIsSubmitted(true);
-      if (data.loginCredentials) {
-        setLoginCredentials(data.loginCredentials);
-      }
+      // Note: No login credentials provided immediately - admin approval required
       toast({
-        title: "Registration Complete!",
-        description: "Your account has been created. Your login credentials are shown below.",
+        title: "Registration Submitted!",
+        description: data.message || "Your registration has been submitted for admin approval. You will receive login credentials via email once approved.",
       });
     },
     onError: (error: any) => {

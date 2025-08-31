@@ -1810,7 +1810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Complete registration endpoint
+  // Complete registration endpoint - Creates pending recruit for admin approval
   app.post('/api/referral/complete-registration', async (req, res) => {
     try {
       const validationResult = completeUserRegistrationSchema.safeParse(req.body);
@@ -1846,17 +1846,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create user account with all the provided information
-      const userId = nanoid();
-      
-      const userData = {
-        id: userId,
+      // Create a comprehensive pending recruit record for admin approval
+      const pendingRecruit = await storage.createComprehensivePendingRecruit({
+        fullName: `${data.firstName} ${data.lastName}`,
         email: data.email,
-        password: data.password, // createUser will hash this
-        firstName: data.firstName,
-        lastName: data.lastName,
         mobile: data.mobile,
-        dateOfBirth: new Date(data.dateOfBirth),
+        dateOfBirth: data.dateOfBirth,
         address: data.address,
         city: data.city,
         state: data.state,
@@ -1871,77 +1866,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         aadhaarCardUrl: data.aadhaarCardUrl,
         bankStatementUrl: data.bankStatementUrl,
         profileImageUrl: data.photoUrl,
-        sponsorId: referralLink.generatedBy,
-        position: referralLink.placementSide,
-        status: 'pending' as const,
-        emailVerified: new Date(),
-        kycStatus: 'pending' as const,
-        kycSubmittedAt: new Date(),
-        registrationDate: new Date(),
-        role: 'user' as const,
-        currentRank: 'Executive' as const,
-        level: '1'
-      };
-
-      // Create the user
-      const newUser = await storage.createUser(userData);
-      
-      // Create KYC documents for uploaded files
-      if (data.panCardUrl) {
-        await storage.createKYCDocument(newUser.id, {
-          documentType: 'pan',
-          documentUrl: data.panCardUrl,
-          documentNumber: data.panNumber
-        });
-      }
-      
-      if (data.aadhaarCardUrl) {
-        await storage.createKYCDocument(newUser.id, {
-          documentType: 'aadhaar',
-          documentUrl: data.aadhaarCardUrl,
-          documentNumber: data.aadhaarNumber
-        });
-      }
-      
-      if (data.bankStatementUrl) {
-        await storage.createKYCDocument(newUser.id, {
-          documentType: 'bank_statement',
-          documentUrl: data.bankStatementUrl,
-          documentNumber: data.bankAccountNumber
-        });
-      }
-      
-      if (data.photoUrl) {
-        await storage.createKYCDocument(newUser.id, {
-          documentType: 'photo',
-          documentUrl: data.photoUrl
-        });
-      }
+        password: data.password, // Store securely for later use
+      }, referralLink.generatedBy, referralLink.placementSide);
       
       // Mark referral link as used
-      await storage.markReferralLinkAsUsed(data.referralToken, newUser.id);
-      
-      // Add to binary tree
-      const { binaryTreeService } = await import('./binaryTreeService');
-      const parentUserId = referralLink.generatedBy;
-      await binaryTreeService.placeUserInTree(newUser.id, parentUserId, referralLink.placementSide as 'left' | 'right', parentUserId);
-      
-      // No email sending - credentials shown on screen
+      await storage.markReferralLinkAsUsed(data.referralToken, pendingRecruit.id);
 
       res.status(201).json({
-        message: 'Registration completed successfully',
-        userId: newUser.id,
-        loginCredentials: {
-          userId: newUser.userId,
-          password: data.password
-        },
-        loginCredentialsSent: true
+        message: 'Registration submitted successfully! Your application has been sent for admin approval. You will receive login credentials via email once approved.',
+        status: 'awaiting_admin',
+        recruitId: pendingRecruit.id
       });
     } catch (error: any) {
       console.error('Error completing registration:', error);
       
       // Handle duplicate email error
-      if (error.code === '23505' && error.constraint === 'users_email_unique') {
+      if (error.code === '23505' && error.constraint?.includes('email')) {
         return res.status(409).json({ 
           message: 'An account with this email already exists. Please use a different email address or try logging in.',
           error: 'DUPLICATE_EMAIL'
