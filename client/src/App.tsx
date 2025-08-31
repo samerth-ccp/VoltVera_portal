@@ -52,6 +52,10 @@ function Router() {
   // Authenticated user routes - clear route precedence
   return (
     <Switch>
+      {/* Public routes available to authenticated users too */}
+      <Route path="/referral-register" component={CompleteReferralRegistration} />
+      <Route path="/recruit" component={CompleteReferralRegistration} />
+      
       {/* Change password available to all authenticated users */}
       <Route path="/change-password" component={ChangePassword} />
       
