@@ -1183,7 +1183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const pendingRecruit = await storage.createPendingRecruit({
           fullName: recruiteeName,
           email: recruiteeEmail,
-          mobile: null
+          mobile: undefined
         }, referralLink.generatedBy);
         pendingRecruitId = pendingRecruit.id;
       }
@@ -1235,7 +1235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName: request.recruiteeName?.split(' ')[0] || 'User',
         lastName: request.recruiteeName?.split(' ').slice(1).join(' ') || '',
         role: 'user',
-        status: 'pending' // Will be activated when they complete invitation
+        // status: 'pending' will be set in user creation process separately
       });
       
       // Set KYC deadline (7 days)
@@ -1414,7 +1414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Update session to log in as the target user
       req.session.userId = userId;
-      req.session.user = targetUser;
+      (req.session as any).user = targetUser;
 
       res.json({ message: 'Successfully logged in as user', user: targetUser });
     } catch (error) {
@@ -1639,8 +1639,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Check if the document is in the user's KYC documents
         // Handle both full URLs and path-only formats
         for (const doc of userKycDocs) {
-          if (doc.documentUrl.includes(documentPath) || 
-              doc.documentUrl.endsWith(documentPath)) {
+          if (doc.documentUrl && (doc.documentUrl.includes(documentPath) || 
+              doc.documentUrl.endsWith(documentPath))) {
             hasPermission = true;
             console.log(`Document access granted: ${documentPath} matches KYC document for ${requestingUser?.userId}`);
             break;
@@ -1656,7 +1656,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         for (const doc of userKycDocs) {
-          const docFilename = doc.documentUrl.split('/').pop();
+          const docFilename = doc.documentUrl?.split('/').pop();
           if (filename && docFilename === filename) {
             hasPermission = true;
             console.log(`Document access granted: ${filename} matches KYC document filename for ${requestingUser?.userId}`);
