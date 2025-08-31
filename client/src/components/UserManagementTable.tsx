@@ -272,6 +272,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                             onClick={() => loginAsUserMutation.mutate(user.id)}
                             disabled={loginAsUserMutation.isPending}
                             data-testid={`button-login-${user.id}`}
+                            title="Login as this user"
                           >
                             <LogIn className="h-3 w-3" />
                           </Button>
@@ -280,6 +281,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                             variant="outline"
                             onClick={() => setEditingUser(user)}
                             data-testid={`button-edit-${user.id}`}
+                            title="Edit user details"
                           >
                             <Edit className="h-3 w-3" />
                           </Button>
@@ -293,6 +295,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                             })}
                             disabled={toggleUserStatusMutation.isPending}
                             data-testid={`button-block-${user.id}`}
+                            title={user.status === 'active' ? 'Block user' : 'Activate user'}
                           >
                             <UserX className="h-3 w-3" />
                           </Button>
@@ -318,6 +321,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                             size="sm"
                             variant="ghost"
                             onClick={() => copyToClipboard(user.userId || user.id)}
+                            title="Copy User ID"
                           >
                             <Copy className="h-3 w-3" />
                           </Button>

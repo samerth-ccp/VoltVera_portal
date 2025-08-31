@@ -76,6 +76,13 @@ function Router() {
           <Route path="/products" component={ProductCatalog} />
           <Route path="/my-purchases" component={MyPurchases} />
           
+          {/* Role-based routes */}
+          {user?.role === 'founder' && <Route path="/founder" component={FounderDashboard} />}
+          {user?.role === 'admin' && <Route path="/admin" component={AdminDashboard} />}
+          {['mini_franchise', 'basic_franchise'].includes(user?.role || '') && (
+            <Route path="/franchise" component={FranchiseDashboard} />
+          )}
+          
           {/* Role-based home routes */}
           {user?.role === 'founder' && <Route path="/" component={FounderDashboard} />}
           {user?.role === 'admin' && <Route path="/" component={AdminDashboard} />}
