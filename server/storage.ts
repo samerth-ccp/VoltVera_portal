@@ -744,10 +744,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]> {
-    let query = db.select().from(pendingRecruits).orderBy(desc(pendingRecruits.createdAt));
+    let query = db.select().from(pendingRecruits)
+      .where(eq(pendingRecruits.status, 'awaiting_admin'))
+      .orderBy(desc(pendingRecruits.createdAt));
     
     if (recruiterId) {
-      query = query.where(eq(pendingRecruits.recruiterId, recruiterId)) as typeof query;
+      query = query.where(and(
+        eq(pendingRecruits.status, 'awaiting_admin'),
+        eq(pendingRecruits.recruiterId, recruiterId)
+      )) as typeof query;
     }
     
     return await query;
