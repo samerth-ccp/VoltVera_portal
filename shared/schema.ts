@@ -188,7 +188,7 @@ export const pendingRecruits = pgTable("pending_recruits", {
   position: varchar("position"), // Will be set by upline decision
   uplineDecision: varchar("upline_decision").default('pending'), // 'pending', 'approved', 'rejected'
   uplineDecisionAt: timestamp("upline_decision_at"),
-  status: varchar("status").default('awaiting_upline'), // 'awaiting_upline', 'awaiting_admin', 'approved', 'rejected'
+  status: varchar("status").default('awaiting_upline'), // 'awaiting_upline', 'awaiting_details', 'awaiting_admin', 'approved', 'rejected'
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   rejectionReason: varchar("rejection_reason"), // Why it was rejected

@@ -730,6 +730,20 @@ export class DatabaseStorage implements IStorage {
     console.log('Recruiter:', recruiter.email);
     console.log('Upline (same as recruiter):', uplineId);
 
+    // Check if upline is admin or self-upline - if so, skip upline approval step
+    const isAdminUpline = recruiter.role === 'admin' || recruiter.role === 'founder';
+    const isSelfUpline = recruiterId === uplineId; // This is always true in simplified model, but keeping for clarity
+    
+    let initialStatus = 'awaiting_upline';
+    let initialUplineDecision = 'pending';
+    
+    // For admin uplines or self-uplines, we can skip the upline approval step
+    // and go directly to position decision (which will generate referral link)
+    if (isAdminUpline || isSelfUpline) {
+      console.log('Admin or self-upline detected - recruiter can directly generate referral link');
+      // Status stays as awaiting_upline, but upline (recruiter) can immediately approve
+    }
+
     // Recruiter handles their own position decisions
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
@@ -737,8 +751,8 @@ export class DatabaseStorage implements IStorage {
       mobile: data.mobile,
       recruiterId,
       uplineId,
-      status: 'awaiting_upline',
-      uplineDecision: 'pending',
+      status: initialStatus,
+      uplineDecision: initialUplineDecision,
     }).returning();
     return pendingRecruit;
   }
@@ -952,7 +966,8 @@ export class DatabaseStorage implements IStorage {
 
     if (decision === 'approved') {
       updateData.position = position;
-      updateData.status = 'awaiting_admin'; // Move to admin approval stage
+      // NEW WORKFLOW: Set to awaiting_details so recruit gets referral link for complete registration
+      updateData.status = 'awaiting_details'; // Generate referral link for full details
     } else {
       updateData.status = 'rejected';
     }
