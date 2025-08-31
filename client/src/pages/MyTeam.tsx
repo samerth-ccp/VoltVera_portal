@@ -72,13 +72,19 @@ export default function MyTeam() {
   });
 
   // Check if user has admin upline workflow
-  const { data: adminUplineWorkflow, isLoading: workflowLoading } = useQuery<{
+  const { data: adminUplineWorkflow, isLoading: workflowLoading, error: workflowError } = useQuery<{
     hasAdminUpline: boolean;
     uplineId?: string;
   }>({
     queryKey: ["/api/team/admin-upline-workflow"],
     enabled: !!user,
   });
+
+  // Debug logging
+  console.log('Admin upline workflow data:', adminUplineWorkflow);
+  console.log('User data:', user);
+  console.log('Workflow loading:', workflowLoading);
+  console.log('Workflow error:', workflowError);
 
   // Recruit mutation
   const recruitMutation = useMutation({
