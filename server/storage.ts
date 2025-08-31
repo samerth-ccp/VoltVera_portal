@@ -776,12 +776,27 @@ export class DatabaseStorage implements IStorage {
       return { hasAdminUpline: false };
     }
 
+    console.log('=== CHECKING ADMIN UPLINE WORKFLOW ===');
+    console.log('User ID:', userId);
+    console.log('User sponsorId:', user.sponsorId);
+    console.log('User parentId:', user.parentId);
+
     // Check if user's parent/sponsor is admin
     if (user.parentId || user.sponsorId) {
-      const actualUpline = await this.getUser(user.parentId || user.sponsorId || userId);
-      if (actualUpline && (actualUpline.role === 'admin' || actualUpline.role === 'founder')) {
-        return { hasAdminUpline: true, uplineId: actualUpline.id };
+      const uplineId = user.parentId || user.sponsorId;
+      const uplineUser = await this.getUser(uplineId!);
+      
+      console.log('Upline user found:', uplineUser?.email);
+      console.log('Upline user role:', uplineUser?.role);
+      
+      if (uplineUser && (uplineUser.role === 'admin' || uplineUser.role === 'founder')) {
+        console.log('✅ Admin upline detected!');
+        return { hasAdminUpline: true, uplineId: uplineUser.id };
+      } else {
+        console.log('❌ Upline is not admin');
       }
+    } else {
+      console.log('❌ No parent or sponsor found');
     }
 
     return { hasAdminUpline: false };
