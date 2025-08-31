@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { UserCheck, CheckCircle, XCircle, DollarSign } from "lucide-react";
+import { UserCheck, CheckCircle, XCircle, DollarSign, Eye, FileText, CreditCard, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { formatDistanceToNow } from "date-fns";
 import { RejectRecruitDialog } from "./RejectRecruitDialog";
@@ -26,6 +26,23 @@ interface PendingRecruit {
   uplineDecisionAt: string | null;
   createdAt: string;
   updatedAt: string;
+  
+  // Comprehensive registration data
+  password?: string;
+  dateOfBirth?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  panNumber?: string;
+  aadhaarNumber?: string;
+  bankAccountNumber?: string;
+  bankIFSC?: string;
+  bankName?: string;
+  panCardUrl?: string;
+  aadhaarCardUrl?: string;
+  bankStatementUrl?: string;
+  profileImageUrl?: string;
 }
 
 export function AdminPendingRecruits() {
@@ -36,6 +53,8 @@ export function AdminPendingRecruits() {
   const [position, setPosition] = useState("Left");
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [rejectDialogRecruit, setRejectDialogRecruit] = useState<PendingRecruit | null>(null);
+  const [detailsRecruit, setDetailsRecruit] = useState<PendingRecruit | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
   // Fetch pending recruits
   const { data: pendingRecruits = [], isLoading } = useQuery<PendingRecruit[]>({
@@ -93,6 +112,11 @@ export function AdminPendingRecruits() {
 
   const handleReject = (recruit: PendingRecruit) => {
     setRejectDialogRecruit(recruit);
+  };
+
+  const handleViewDetails = (recruit: PendingRecruit) => {
+    setDetailsRecruit(recruit);
+    setIsDetailsOpen(true);
   };
 
   if (isLoading) {
@@ -155,6 +179,15 @@ export function AdminPendingRecruits() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleViewDetails(recruit)}
+                    className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Details
+                  </Button>
                   <Button
                     size="sm"
                     onClick={() => handleApprove(recruit)}
@@ -250,6 +283,225 @@ export function AdminPendingRecruits() {
           recruitId={rejectDialogRecruit?.id || ""}
           recruitName={rejectDialogRecruit?.fullName || ""}
         />
+
+        {/* Details View Dialog */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Complete Registration Details
+              </DialogTitle>
+            </DialogHeader>
+            {detailsRecruit && (
+              <div className="space-y-6 py-4">
+                {/* Basic Information */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <User className="h-4 w-4" />
+                        Personal Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Full Name</Label>
+                        <p className="font-medium">{detailsRecruit.fullName}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Email</Label>
+                        <p className="font-medium">{detailsRecruit.email}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Mobile</Label>
+                        <p className="font-medium">{detailsRecruit.mobile || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Date of Birth</Label>
+                        <p className="font-medium">
+                          {detailsRecruit.dateOfBirth 
+                            ? new Date(detailsRecruit.dateOfBirth).toLocaleDateString() 
+                            : 'Not provided'
+                          }
+                        </p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Address</Label>
+                        <p className="font-medium text-sm">
+                          {detailsRecruit.address && detailsRecruit.city && detailsRecruit.state
+                            ? `${detailsRecruit.address}, ${detailsRecruit.city}, ${detailsRecruit.state} - ${detailsRecruit.pincode}`
+                            : 'Address not provided'
+                          }
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* KYC Information */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        KYC Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">PAN Number</Label>
+                        <p className="font-medium">{detailsRecruit.panNumber || 'Not provided'}</p>
+                        {detailsRecruit.panCardUrl && (
+                          <Button variant="outline" size="sm" asChild className="mt-1">
+                            <a href={detailsRecruit.panCardUrl} target="_blank" rel="noopener noreferrer">
+                              View PAN Card
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium text-gray-500">Aadhaar Number</Label>
+                        <p className="font-medium">{detailsRecruit.aadhaarNumber || 'Not provided'}</p>
+                        {detailsRecruit.aadhaarCardUrl && (
+                          <Button variant="outline" size="sm" asChild className="mt-1">
+                            <a href={detailsRecruit.aadhaarCardUrl} target="_blank" rel="noopener noreferrer">
+                              View Aadhaar Card
+                            </a>
+                          </Button>
+                        )}
+                      </div>
+                      {detailsRecruit.profileImageUrl && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Profile Photo</Label>
+                          <div className="mt-1">
+                            <Button variant="outline" size="sm" asChild>
+                              <a href={detailsRecruit.profileImageUrl} target="_blank" rel="noopener noreferrer">
+                                View Profile Photo
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Bank Information */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Bank Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Bank Name</Label>
+                      <p className="font-medium">{detailsRecruit.bankName || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Account Number</Label>
+                      <p className="font-medium">{detailsRecruit.bankAccountNumber || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">IFSC Code</Label>
+                      <p className="font-medium">{detailsRecruit.bankIFSC || 'Not provided'}</p>
+                    </div>
+                    {detailsRecruit.bankStatementUrl && (
+                      <div className="md:col-span-3">
+                        <Label className="text-sm font-medium text-gray-500">Bank Statement</Label>
+                        <div className="mt-1">
+                          <Button variant="outline" size="sm" asChild>
+                            <a href={detailsRecruit.bankStatementUrl} target="_blank" rel="noopener noreferrer">
+                              View Bank Statement
+                            </a>
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Registration Status */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <UserCheck className="h-4 w-4" />
+                      Registration Status
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Status</Label>
+                      <Badge variant="outline" className="mt-1 border-blue-300 text-blue-700">
+                        {detailsRecruit.status}
+                      </Badge>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Submitted</Label>
+                      <p className="font-medium">
+                        {formatDistanceToNow(new Date(detailsRecruit.createdAt), { addSuffix: true })}
+                      </p>
+                    </div>
+                    {detailsRecruit.uplineDecision === 'approved' && (
+                      <>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Position Decision</Label>
+                          <Badge variant="outline" className="mt-1 border-green-300 text-green-700">
+                            {detailsRecruit.position} Position (Upline Decided)
+                          </Badge>
+                        </div>
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Position Decided At</Label>
+                          <p className="font-medium">
+                            {detailsRecruit.uplineDecisionAt 
+                              ? formatDistanceToNow(new Date(detailsRecruit.uplineDecisionAt), { addSuffix: true })
+                              : 'Recently'
+                            }
+                          </p>
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Recruiter ID</Label>
+                      <p className="font-medium">{detailsRecruit.recruiterId}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Package Amount</Label>
+                      <p className="font-medium">${detailsRecruit.packageAmount}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>
+                    Close
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      handleApprove(detailsRecruit);
+                    }}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-1" />
+                    Approve This Application
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setIsDetailsOpen(false);
+                      handleReject(detailsRecruit);
+                    }}
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Reject This Application
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
