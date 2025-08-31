@@ -76,8 +76,10 @@ export default function MyTeam() {
     hasAdminUpline: boolean;
     uplineId?: string;
   }>({
-    queryKey: ["/api/team/admin-upline-workflow"],
+    queryKey: ["/api/team/admin-upline-workflow", user?.id],
     enabled: !!user,
+    staleTime: 0, // Don't cache this query
+    cacheTime: 0, // Don't cache this query
   });
 
   // Debug logging
