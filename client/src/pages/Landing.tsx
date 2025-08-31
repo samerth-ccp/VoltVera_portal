@@ -49,7 +49,7 @@ export default function Landing() {
       const response = await apiRequest('POST', '/api/login', credentials);
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       console.log('Login successful for user:', data.user?.userId, 'User ID:', data.user?.id);
       
       // Save userId and remember me preference if rememberMe is checked
@@ -61,21 +61,23 @@ export default function Landing() {
         localStorage.setItem('voltverashop_remember_me', 'false');
       }
       
-      // Clear cached queries to prevent data leakage between users
-      queryClient.clear();
-      
-      // Pre-populate the auth cache with the login response data - this is the key fix
+      // Pre-populate the auth cache with the login response data FIRST
       queryClient.setQueryData(["/api/auth/user"], data.user);
+      console.log('Auth cache updated with user data:', data.user?.userId);
       
-      // Navigate immediately without waiting for validation
-      // The router will re-render based on the updated auth state
-      if (data.user?.role === 'admin') {
-        setLocation('/');
-      } else if (data.user?.status === 'pending') {
-        setLocation('/'); // Pending users go to root, which will route to PendingUserDashboard  
-      } else {
-        setLocation('/dashboard');
-      }
+      // Ensure the cache update is processed by invalidating the query
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+      console.log('Query invalidated, waiting for state update...');
+      
+      // Small delay to ensure state updates are processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Navigate based on user role/status
+      const targetPath = data.user?.role === 'admin' ? '/' : 
+                        data.user?.status === 'pending' ? '/' : '/dashboard';
+      
+      console.log('Navigating to:', targetPath, 'for user:', data.user?.userId, 'status:', data.user?.status);
+      setLocation(targetPath);
     },
     onError: (error: Error) => {
       toast({
