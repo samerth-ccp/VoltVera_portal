@@ -50,7 +50,6 @@ export default function Landing() {
       return response.json();
     },
     onSuccess: async (data: any) => {
-      console.log('Login successful for user:', data.user?.userId, 'User ID:', data.user?.id);
       
       // Save userId and remember me preference if rememberMe is checked
       if (rememberMe) {
@@ -61,23 +60,15 @@ export default function Landing() {
         localStorage.setItem('voltverashop_remember_me', 'false');
       }
       
-      // Pre-populate the auth cache with the login response data FIRST
-      queryClient.setQueryData(["/api/auth/user"], data.user);
-      console.log('Auth cache updated with user data:', data.user?.userId);
+      // Since the backend session is correctly established, force a page reload
+      // to ensure the frontend picks up the authentication state immediately
       
-      // Ensure the cache update is processed by invalidating the query
-      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-      console.log('Query invalidated, waiting for state update...');
-      
-      // Small delay to ensure state updates are processed
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Navigate based on user role/status
+      // Determine the target path based on user role/status
       const targetPath = data.user?.role === 'admin' ? '/' : 
                         data.user?.status === 'pending' ? '/' : '/dashboard';
       
-      console.log('Navigating to:', targetPath, 'for user:', data.user?.userId, 'status:', data.user?.status);
-      setLocation(targetPath);
+      // Force a page reload to the target path to ensure clean state sync
+      window.location.href = targetPath;
     },
     onError: (error: Error) => {
       toast({

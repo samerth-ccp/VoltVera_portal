@@ -16,13 +16,6 @@ export function useAuth() {
     gcTime: 1000 * 60 * 5, // Keep in cache for 5 minutes but allow updates (TanStack Query v5)
   });
 
-  // Debug authentication state changes
-  console.log('useAuth hook:', { 
-    userID: user?.userId, 
-    isLoading, 
-    isAuthenticated: !!user,
-    userStatus: user?.status 
-  });
 
 
   const logout = async () => {
