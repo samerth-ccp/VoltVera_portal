@@ -593,7 +593,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     try {
       const { documentType, documentData, documentContentType, documentFilename, documentNumber } = req.body;
-      console.log(`[KYC UPLOAD] User ${req.session.userId} uploading ${documentType}, filename: ${documentFilename}, data length: ${documentData?.length || 0}`);
       
       if (!documentType || !documentData || !documentContentType || !documentFilename) {
         return res.status(400).json({ 
@@ -657,7 +656,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { documentId } = req.params;
       const { documentType, documentData, documentContentType, documentFilename, documentNumber } = req.body;
-      console.log(`[KYC REPLACE] User ${req.session.userId} replacing document ${documentId}, filename: ${documentFilename}, data length: ${documentData?.length || 0}`);
       
       if (!documentData || !documentContentType || !documentFilename) {
         return res.status(400).json({ 
