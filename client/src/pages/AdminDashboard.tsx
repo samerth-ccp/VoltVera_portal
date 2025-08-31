@@ -363,14 +363,6 @@ export default function AdminDashboard() {
                 >
                   Users Activities
                 </button>
-                <button 
-                  onClick={() => setActiveSection('user-management')}
-                  className={`block w-full px-4 py-2 text-left text-sm rounded hover:bg-white/10 ${
-                    activeSection === 'user-management' ? 'text-yellow-300' : 'text-white/80'
-                  }`}
-                >
-                  User Management
-                </button>
               </div>
             )}
           </div>
@@ -892,9 +884,6 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {activeSection === 'user-management' && (
-            <UserManagement />
-          )}
 
           {/* Withdrawal Management Sections */}
           {activeSection === 'pending-withdraw' && (
