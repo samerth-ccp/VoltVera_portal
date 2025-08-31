@@ -751,7 +751,7 @@ export class DatabaseStorage implements IStorage {
       mobile?: string;
       packageAmount?: string;
       password: string;
-      // Additional comprehensive data (will be stored as JSON for now)
+      // Additional comprehensive data
       dateOfBirth?: string;
       address?: string;
       city?: string;
@@ -775,7 +775,10 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
-    // Create pending recruit with admin approval status
+    // Hash the password before storing
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+
+    // Create pending recruit with all comprehensive data
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
@@ -786,11 +789,24 @@ export class DatabaseStorage implements IStorage {
       position: placementSide,
       status: 'awaiting_admin',
       uplineDecision: 'approved', // Auto-approve upline decision for full registrations
+      // Store all the comprehensive registration data
+      password: hashedPassword,
+      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      address: data.address,
+      city: data.city,
+      state: data.state,
+      pincode: data.pincode,
+      panNumber: data.panNumber,
+      aadhaarNumber: data.aadhaarNumber,
+      bankAccountNumber: data.bankAccountNumber,
+      bankIFSC: data.bankIFSC,
+      bankName: data.bankName,
+      panCardUrl: data.panCardUrl,
+      aadhaarCardUrl: data.aadhaarCardUrl,
+      bankStatementUrl: data.bankStatementUrl,
+      profileImageUrl: data.profileImageUrl,
     }).returning();
 
-    // TODO: Store additional comprehensive data in a separate table or extend the pending_recruits schema
-    // For now, the core workflow will work and admin can see the pending recruit
-    
     return pendingRecruit;
   }
 
@@ -990,7 +1006,9 @@ export class DatabaseStorage implements IStorage {
     const firstName = names[0];
     const lastName = names.slice(1).join(' ') || '';
 
-    const defaultPassword = 'defaultpass123';
+    // Use stored password if available (comprehensive registration), otherwise generate default
+    const passwordToUse = pendingRecruit.password || await bcrypt.hash('defaultpass123', 10);
+    
     const [newUser] = await db.insert(users).values({
       email: pendingRecruit.email,
       firstName,
@@ -1004,7 +1022,19 @@ export class DatabaseStorage implements IStorage {
       idStatus: 'Active',
       role: 'user',
       status: 'active',
-      password: await bcrypt.hash(defaultPassword, 10), // Generate default password
+      password: passwordToUse,
+      // Include comprehensive data if available
+      dateOfBirth: pendingRecruit.dateOfBirth,
+      address: pendingRecruit.address,
+      city: pendingRecruit.city,
+      state: pendingRecruit.state,
+      pincode: pendingRecruit.pincode,
+      panNumber: pendingRecruit.panNumber,
+      aadhaarNumber: pendingRecruit.aadhaarNumber,
+      bankAccountNumber: pendingRecruit.bankAccountNumber,
+      bankIFSC: pendingRecruit.bankIFSC,
+      bankName: pendingRecruit.bankName,
+      profileImageUrl: pendingRecruit.profileImageUrl,
     }).returning();
 
     // Place user in binary tree at the position decided by upline
@@ -1013,14 +1043,66 @@ export class DatabaseStorage implements IStorage {
     }
     await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, pendingRecruit.position as 'left' | 'right', pendingRecruit.recruiterId);
 
+    // Transfer KYC documents if available from comprehensive registration
+    if (pendingRecruit.panCardUrl || pendingRecruit.aadhaarCardUrl || 
+        pendingRecruit.bankStatementUrl || pendingRecruit.profileImageUrl) {
+      const { kycDocuments } = await import('@shared/schema');
+      
+      // Transfer PAN card
+      if (pendingRecruit.panCardUrl) {
+        await db.insert(kycDocuments).values({
+          userId: newUser.id,
+          documentType: 'pan',
+          documentUrl: pendingRecruit.panCardUrl,
+          documentNumber: pendingRecruit.panNumber,
+          status: 'pending'
+        });
+      }
+      
+      // Transfer Aadhaar card  
+      if (pendingRecruit.aadhaarCardUrl) {
+        await db.insert(kycDocuments).values({
+          userId: newUser.id,
+          documentType: 'aadhaar',
+          documentUrl: pendingRecruit.aadhaarCardUrl,
+          documentNumber: pendingRecruit.aadhaarNumber,
+          status: 'pending'
+        });
+      }
+      
+      // Transfer bank statement
+      if (pendingRecruit.bankStatementUrl) {
+        await db.insert(kycDocuments).values({
+          userId: newUser.id,
+          documentType: 'bank_statement',
+          documentUrl: pendingRecruit.bankStatementUrl,
+          status: 'pending'
+        });
+      }
+      
+      // Transfer profile photo
+      if (pendingRecruit.profileImageUrl) {
+        await db.insert(kycDocuments).values({
+          userId: newUser.id,
+          documentType: 'photo',
+          documentUrl: pendingRecruit.profileImageUrl,
+          status: 'pending'
+        });
+      }
+      
+      console.log(`KYC documents transferred for user ${newUser.email}`);
+    }
+
     // Send login credentials email
     try {
       const { sendLoginCredentialsEmail } = await import('./emailService');
-      const emailSent = await sendLoginCredentialsEmail(newUser.email!, firstName, defaultPassword);
+      // If comprehensive registration, user already set their password, just send account activation
+      const passwordForEmail = pendingRecruit.password ? 'Your chosen password' : 'defaultpass123';
+      const emailSent = await sendLoginCredentialsEmail(newUser.email!, firstName, passwordForEmail);
       if (emailSent) {
         console.log(`Login credentials email sent to ${newUser.email}`);
       } else {
-        console.log(`Failed to send email to ${newUser.email} - User can still login with default password: ${defaultPassword}`);
+        console.log(`Failed to send email to ${newUser.email} - User can still login`);
       }
     } catch (emailError) {
       console.error('Error sending login credentials email:', emailError);

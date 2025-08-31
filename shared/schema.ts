@@ -203,6 +203,23 @@ export const pendingRecruits = pgTable("pending_recruits", {
   // Risk scoring
   riskScore: integer("risk_score").default(0), // 0-100 risk assessment
   kycStatus: varchar("kyc_status").default('pending'), // 'pending', 'required', 'submitted', 'verified'
+  
+  // Comprehensive registration data (for full referral registrations)
+  password: varchar("password"), // Encrypted password for account creation
+  dateOfBirth: timestamp("date_of_birth"),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  pincode: varchar("pincode"),
+  panNumber: varchar("pan_number"),
+  aadhaarNumber: varchar("aadhaar_number"),
+  bankAccountNumber: varchar("bank_account_number"),
+  bankIFSC: varchar("bank_ifsc"),
+  bankName: varchar("bank_name"),
+  panCardUrl: varchar("pan_card_url"),
+  aadhaarCardUrl: varchar("aadhaar_card_url"),
+  bankStatementUrl: varchar("bank_statement_url"),
+  profileImageUrl: varchar("profile_image_url"),
 });
 
 // Notifications table for tracking system events
