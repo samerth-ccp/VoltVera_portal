@@ -90,7 +90,7 @@ export default function KYCUpload() {
       documentFilename: string;
       documentNumber?: string;
     }) => {
-      return apiRequest('/api/kyc/upload', 'POST', data);
+      return apiRequest('POST', '/api/kyc/upload', data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/kyc'] });
