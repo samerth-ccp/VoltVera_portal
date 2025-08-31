@@ -76,10 +76,12 @@ export default function MyTeam() {
     hasAdminUpline: boolean;
     uplineId?: string;
   }>({
-    queryKey: ["/api/team/admin-upline-workflow", user?.id],
+    queryKey: ["/api/team/admin-upline-workflow", user?.id, Date.now()],
     enabled: !!user,
     staleTime: 0, // Don't cache this query
     cacheTime: 0, // Don't cache this query
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Debug logging
@@ -87,6 +89,18 @@ export default function MyTeam() {
   console.log('User data:', user);
   console.log('Workflow loading:', workflowLoading);
   console.log('Workflow error:', workflowError);
+
+  // Manual test function
+  const testAdminUplineWorkflow = async () => {
+    try {
+      console.log('🧪 Testing admin upline workflow manually...');
+      const response = await apiRequest('GET', '/api/team/admin-upline-workflow');
+      const result = await response.json();
+      console.log('🧪 Manual test result:', result);
+    } catch (error) {
+      console.error('🧪 Manual test error:', error);
+    }
+  };
 
   // Recruit mutation
   const recruitMutation = useMutation({
@@ -199,14 +213,20 @@ export default function MyTeam() {
           <p className="text-gray-600">Manage your recruitment network</p>
         </div>
         
-        <Dialog open={isRecruitOpen} onOpenChange={setIsRecruitOpen}>
-          <DialogTrigger asChild>
-            <Button className="volt-gradient text-white">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Recruit
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+        <div className="flex gap-2">
+          {/* Debug button - temporary */}
+          <Button onClick={testAdminUplineWorkflow} variant="outline" size="sm">
+            🧪 Test Workflow
+          </Button>
+        
+          <Dialog open={isRecruitOpen} onOpenChange={setIsRecruitOpen}>
+            <DialogTrigger asChild>
+              <Button className="volt-gradient text-white">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Recruit
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Add New Recruit</DialogTitle>
             </DialogHeader>
@@ -290,8 +310,8 @@ export default function MyTeam() {
               </div>
             </form>
           </DialogContent>
-        </Dialog>
-      </div>
+          </Dialog>
+        </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -545,6 +565,6 @@ export default function MyTeam() {
             </Card>
           </TabsContent>
         </Tabs>
-    </div>
+      </div>
   );
 }
