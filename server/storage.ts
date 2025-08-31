@@ -1009,7 +1009,11 @@ export class DatabaseStorage implements IStorage {
     // Use stored password if available (comprehensive registration), otherwise generate default
     const passwordToUse = pendingRecruit.password || await bcrypt.hash('defaultpass123', 10);
     
+    // Generate sequential user ID
+    const userId = await this.generateNextUserId();
+    
     const [newUser] = await db.insert(users).values({
+      userId,
       email: pendingRecruit.email,
       firstName,
       lastName,
