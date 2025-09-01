@@ -787,24 +787,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
       
-      // Create pending recruit (new workflow)
-      const pendingRecruit = await storage.createPendingRecruit(recruitData, recruiterId);
+      // Generate referral link for the prospect to complete registration
+      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'https://voltverashop.replit.app';
+      const referralLink = `${baseUrl}/register/referral/${recruiterId}?name=${encodeURIComponent(recruitData.fullName)}&email=${encodeURIComponent(recruitData.email)}`;
       
       res.status(201).json({ 
-        message: "Recruitment request submitted successfully! Admin will process your request and send credentials.",
-        pendingRecruit: {
-          id: pendingRecruit.id,
-          email: pendingRecruit.email,
-          fullName: pendingRecruit.fullName,
-          status: pendingRecruit.status
+        message: "Referral link generated successfully",
+        referralLink,
+        recruitInfo: {
+          name: recruitData.fullName,
+          email: recruitData.email,
+          referrerId: recruiterId
         }
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
-      console.error("Error creating pending recruit:", error);
-      res.status(500).json({ message: "Failed to submit recruitment request" });
+      console.error("Error generating referral link:", error);
+      res.status(500).json({ message: "Failed to generate referral link" });
     }
   });
 

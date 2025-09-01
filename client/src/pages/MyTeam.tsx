@@ -78,10 +78,19 @@ export default function MyTeam() {
       setIsRecruitOpen(false);
       form.reset();
       
-      toast({
-        title: "Referral link generated",
-        description: "Share the referral link with your prospect to complete their registration",
-      });
+      // Copy referral link to clipboard
+      if (result.referralLink) {
+        navigator.clipboard.writeText(result.referralLink);
+        toast({
+          title: "Referral link generated and copied!",
+          description: "The referral link has been copied to your clipboard. Share it with your prospect to complete registration.",
+        });
+      } else {
+        toast({
+          title: "Referral link generated",
+          description: "Share the referral link with your prospect to complete their registration",
+        });
+      }
     },
     onError: (error: any) => {
       toast({
