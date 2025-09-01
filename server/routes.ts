@@ -787,9 +787,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
       
-      // Generate referral link for the prospect to complete registration
-      const baseUrl = process.env.REPLIT_DOMAINS?.split(',')[0] || 'https://voltverashop.replit.app';
-      const referralLink = `${baseUrl}/register/referral/${recruiterId}?name=${encodeURIComponent(recruitData.fullName)}&email=${encodeURIComponent(recruitData.email)}`;
+      // Generate invitation token using the EXACT same pattern as admin workflow
+      const token = nanoid();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+      
+      // Create user account with pending status (EXACT same as admin workflow)
+      const newUserId = nanoid();
+      const user = await storage.createUser({
+        id: newUserId,
+        email: recruitData.email,
+        firstName: recruitData.fullName.split(' ')[0] || recruitData.fullName,
+        lastName: recruitData.fullName.split(' ').slice(1).join(' ') || '',
+        role: 'user',
+        sponsorId: recruiterId,
+        status: 'invited', // Same as admin workflow
+      });
+
+      // Store invitation token (EXACT same as admin workflow)
+      await storage.createEmailToken({
+        token,
+        email: recruitData.email,
+        type: 'invitation',
+        expiresAt
+      });
+
+      // Use the EXACT same route pattern as admin workflow: /complete-invitation?token=...
+      const baseUrl = req.get('host')?.includes('replit.dev') 
+        ? `https://${req.get('host')}`
+        : 'https://voltveratech.com';
+      
+      const referralLink = `${baseUrl}/complete-invitation?token=${token}`;
       
       res.status(201).json({ 
         message: "Referral link generated successfully",
