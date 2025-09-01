@@ -32,6 +32,7 @@ export default function MyTeam() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [isRecruitOpen, setIsRecruitOpen] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string>('');
 
   // Form handling
   const form = useForm<RecruitFormData>({
@@ -75,20 +76,20 @@ export default function MyTeam() {
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/team/members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/team/stats"] });
-      setIsRecruitOpen(false);
-      form.reset();
       
-      // Copy referral link to clipboard
+      // Store and display the generated link
       if (result.referralLink) {
+        setGeneratedLink(result.referralLink);
         navigator.clipboard.writeText(result.referralLink);
         toast({
           title: "Referral link generated and copied!",
-          description: "The referral link has been copied to your clipboard. Share it with your prospect to complete registration.",
+          description: "Check below for the link and share it with your prospect.",
         });
       } else {
         toast({
-          title: "Referral link generated",
-          description: "Share the referral link with your prospect to complete their registration",
+          title: "Error generating link",
+          description: "Please try again",
+          variant: "destructive",
         });
       }
     },
@@ -207,6 +208,48 @@ export default function MyTeam() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Generated Referral Link */}
+      {generatedLink && (
+        <Card className="mb-6 border-l-4 border-l-green-500">
+          <CardHeader>
+            <CardTitle className="text-lg text-green-700">Generated Referral Link</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-sm text-gray-600">Share this link with your prospect to complete registration:</p>
+              <div className="flex items-center space-x-2 p-3 bg-gray-50 rounded-md border">
+                <Input 
+                  value={generatedLink} 
+                  readOnly 
+                  className="bg-transparent border-none text-sm"
+                />
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(generatedLink);
+                    toast({
+                      title: "Copied!",
+                      description: "Referral link copied to clipboard",
+                    });
+                  }}
+                  className="shrink-0"
+                >
+                  Copy
+                </Button>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setGeneratedLink('')}
+                className="text-gray-500"
+              >
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
