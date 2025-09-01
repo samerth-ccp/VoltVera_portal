@@ -791,8 +791,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const token = nanoid();
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
       
-      // Create user account with pending status (EXACT same as admin workflow)
+      // Create user account with temporary password (EXACT same as admin workflow)
       const newUserId = nanoid();
+      const tempPassword = nanoid(16); // Same as admin workflow
       const user = await storage.createUser({
         id: newUserId,
         email: recruitData.email,
@@ -800,7 +801,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName: recruitData.fullName.split(' ').slice(1).join(' ') || '',
         role: 'user',
         sponsorId: recruiterId,
-        status: 'invited', // Same as admin workflow
+        password: tempPassword, // Required field like admin workflow
       });
 
       // Store invitation token (EXACT same as admin workflow)
