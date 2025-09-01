@@ -73,7 +73,6 @@ export interface IStorage {
     kycStatus?: string;
   }): Promise<User[]>;
   createUser(user: CreateUser): Promise<User>;
-  recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
   updateUserProfile(id: string, updates: UpdateUserProfile): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
@@ -229,6 +228,36 @@ export interface IStorage {
   
   // Get all referral links
   getReferralLinks(): Promise<ReferralLink[]>;
+  
+  // Admin user operations
+  getAdminUser(): Promise<any>;
+  
+  // Comprehensive pending recruit operations
+  createComprehensivePendingRecruit(
+    data: {
+      fullName: string;
+      email: string;
+      mobile?: string;
+      packageAmount?: string;
+      password: string;
+      dateOfBirth?: string;
+      address?: string;
+      city?: string;
+      state?: string;
+      pincode?: string;
+      panNumber?: string;
+      aadhaarNumber?: string;
+      bankAccountNumber?: string;
+      bankIFSC?: string;
+      bankName?: string;
+      panCardUrl?: string;
+      aadhaarCardUrl?: string;
+      bankStatementUrl?: string;
+      profileImageUrl?: string;
+    },
+    recruiterId: string,
+    placementSide: string
+  ): Promise<PendingRecruit>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -311,7 +340,7 @@ export class DatabaseStorage implements IStorage {
         ...userData,
         userId,
         password: hashedPassword,
-        status: userData.status || 'active', // Use provided status or default to active for admin-created users
+        status: 'active', // Default to active for admin-created users
         emailVerified: new Date(),
         lastActiveAt: new Date()
       })
@@ -319,22 +348,7 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async recruitUser(recruitData: RecruitUser, recruiterId: string): Promise<User> {
-    // Hash a temporary password (will be replaced when user accepts invitation)
-    const tempPassword = nanoid(16);
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    
-    const [user] = await db
-      .insert(users)
-      .values({
-        ...recruitData,
-        password: hashedPassword,
-        sponsorId: recruiterId,
-        status: 'pending'
-      })
-      .returning();
-    return user;
-  }
+
 
   async updateUser(id: string, updates: UpdateUser): Promise<User | undefined> {
     const [user] = await db
@@ -809,6 +823,20 @@ export class DatabaseStorage implements IStorage {
     return pendingRecruit;
   }
 
+  // Get admin user for upline assignment
+  async getAdminUser(): Promise<any> {
+    try {
+      const adminUsers = await db.select()
+        .from(users)
+        .where(eq(users.role, 'admin'))
+        .limit(1);
+      return adminUsers[0] || null;
+    } catch (error) {
+      console.error('Error getting admin user:', error);
+      return null;
+    }
+  }
+
   // Create comprehensive pending recruit for full registration form
   async createComprehensivePendingRecruit(
     data: {
@@ -844,17 +872,31 @@ export class DatabaseStorage implements IStorage {
     // Hash the password before storing
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
+    // Determine the correct upline (recruiter's parent or admin)
+    let uplineId = recruiter.parentId;
+    
+    // If recruiter has no parent, use admin as upline
+    if (!uplineId) {
+      const adminUser = await this.getAdminUser();
+      if (adminUser) {
+        uplineId = adminUser.id;
+      } else {
+        // Fallback to recruiter if no admin found
+        uplineId = recruiterId;
+      }
+    }
+
     // Create pending recruit with all comprehensive data
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId: recruiterId, // For simplified MLM structure
+      uplineId: uplineId, // Use the determined upline
       packageAmount: data.packageAmount || '0.00',
       position: placementSide,
-      status: 'awaiting_admin',
-      uplineDecision: 'approved', // Auto-approve upline decision for full registrations
+      status: 'awaiting_upline', // First step: wait for upline approval
+      uplineDecision: 'pending', // Upline needs to decide
       // Store all the comprehensive registration data
       password: hashedPassword,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,

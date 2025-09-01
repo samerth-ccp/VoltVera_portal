@@ -36,9 +36,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   let sessionStore;
   try {
-    // Try to use PostgreSQL session store
+    // Try to use PostgreSQL session store with explicit configuration
+    const dbUrl = process.env.DATABASE_URL;
+    if (!dbUrl) {
+      throw new Error('DATABASE_URL not configured');
+    }
+    
     sessionStore = new PgSession({
-      conString: process.env.DATABASE_URL,
+      conString: dbUrl,
       tableName: 'sessions',
       createTableIfMissing: true,
     });
@@ -781,44 +786,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const recruitData = recruitUserSchema.parse(req.body);
       const recruiterId = req.user.id;
       
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(recruitData.email!);
-      if (existingUser) {
-        return res.status(409).json({ message: "A user with this email already exists" });
-      }
-      
-      // Use the EXACT admin workflow by creating user data in admin format
-      const adminUserData = {
-        email: recruitData.email,
-        firstName: recruitData.fullName.split(' ')[0] || recruitData.fullName,
-        lastName: recruitData.fullName.split(' ').slice(1).join(' ') || '',
-        role: 'user' as const,
-        sponsorId: recruiterId
-      };
+             // Check if email already exists
+       const existingUser = await storage.getUserByEmail(recruitData.email!);
+       if (existingUser) {
+         return res.status(409).json({ message: "A user with this email already exists" });
+       }
 
-      // Create user with temporary password (EXACT same as admin workflow)
-      const tempPassword = nanoid(16);
-      const userWithPassword = { ...adminUserData, password: tempPassword };
-      const user = await storage.createUser(userWithPassword);
-      
-      // Generate invitation token (EXACT same as admin workflow)
-      const token = nanoid(32);
-      const expiresAt = new Date();
-      expiresAt.setHours(expiresAt.getHours() + 24);
-      
-      await storage.createEmailToken({
-        email: user.email!,
-        token,
-        type: 'invitation',
-        expiresAt
-      });
+             // Create referral link for user recruit (different from admin workflow)
+       const token = nanoid(32);
+       const expiresAt = new Date();
+       expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
+       
+       // Create referral link instead of invitation token
+       await storage.createReferralLink({
+         token,
+         generatedBy: recruiterId,
+         generatedByRole: req.user.role,
+         placementSide: 'left', // Default to left, can be changed later
+         expiresAt
+       });
 
-      // Use the EXACT same route pattern as admin workflow
-      const baseUrl = req.get('host')?.includes('replit.dev') 
-        ? `https://${req.get('host')}`
-        : 'https://voltveratech.com';
-      
-      const referralLink = `${baseUrl}/complete-invitation?token=${token}`;
+             // Generate referral link with correct pattern for user recruits
+       let baseUrl;
+       if (process.env.NODE_ENV === 'development') {
+         baseUrl = 'http://localhost:5000';
+       } else if (req.get('host')?.includes('replit.dev')) {
+         baseUrl = `https://${req.get('host')}`;
+       } else {
+         baseUrl = 'https://voltveratech.com';
+       }
+       
+       const referralLink = `${baseUrl}/recruit?ref=${token}`;
       
       res.status(201).json({ 
         message: "Referral link generated successfully",
@@ -1951,8 +1949,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.markReferralLinkAsUsed(data.referralToken, pendingRecruit.id);
 
       res.status(201).json({
-        message: 'Registration submitted successfully! Your application has been sent for admin approval. You will receive login credentials via email once approved.',
-        status: 'awaiting_admin',
+        message: 'Registration submitted successfully! Your application has been sent for upline approval first, then admin approval. You will receive login credentials via email once both approvals are complete.',
+        status: 'awaiting_upline',
         recruitId: pendingRecruit.id
       });
     } catch (error: any) {
