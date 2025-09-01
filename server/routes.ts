@@ -775,7 +775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Team management routes
+  // Team management routes - call admin user creation directly
   app.post("/api/team/recruit", isAuthenticated, async (req: any, res) => {
     try {
       const recruitData = recruitUserSchema.parse(req.body);
@@ -787,32 +787,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "A user with this email already exists" });
       }
       
-      // Generate invitation token using the EXACT same pattern as admin workflow
-      const token = nanoid();
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
-      
-      // Create user account with temporary password (EXACT same as admin workflow)
-      const newUserId = nanoid();
-      const tempPassword = nanoid(16); // Same as admin workflow
-      const user = await storage.createUser({
-        id: newUserId,
+      // Use the EXACT admin workflow by creating user data in admin format
+      const adminUserData = {
         email: recruitData.email,
         firstName: recruitData.fullName.split(' ')[0] || recruitData.fullName,
         lastName: recruitData.fullName.split(' ').slice(1).join(' ') || '',
-        role: 'user',
-        sponsorId: recruiterId,
-        password: tempPassword, // Required field like admin workflow
-      });
+        role: 'user' as const,
+        sponsorId: recruiterId
+      };
 
-      // Store invitation token (EXACT same as admin workflow)
+      // Create user with temporary password (EXACT same as admin workflow)
+      const tempPassword = nanoid(16);
+      const userWithPassword = { ...adminUserData, password: tempPassword };
+      const user = await storage.createUser(userWithPassword);
+      
+      // Generate invitation token (EXACT same as admin workflow)
+      const token = nanoid(32);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + 24);
+      
       await storage.createEmailToken({
+        email: user.email!,
         token,
-        email: recruitData.email,
         type: 'invitation',
         expiresAt
       });
 
-      // Use the EXACT same route pattern as admin workflow: /complete-invitation?token=...
+      // Use the EXACT same route pattern as admin workflow
       const baseUrl = req.get('host')?.includes('replit.dev') 
         ? `https://${req.get('host')}`
         : 'https://voltveratech.com';
