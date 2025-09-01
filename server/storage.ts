@@ -769,36 +769,9 @@ export class DatabaseStorage implements IStorage {
     return pendingRecruit;
   }
 
-  // Check if user has admin upline workflow (can choose position immediately)
+  // Simple referral link generation - no complex workflow needed
   async checkAdminUplineWorkflow(userId: string): Promise<{ hasAdminUpline: boolean, uplineId?: string }> {
-    const user = await this.getUser(userId);
-    if (!user) {
-      return { hasAdminUpline: false };
-    }
-
-    console.log('=== CHECKING ADMIN UPLINE WORKFLOW ===');
-    console.log('User ID:', userId);
-    console.log('User sponsorId:', user.sponsorId);
-    console.log('User parentId:', user.parentId);
-
-    // Check if user's parent/sponsor is admin
-    if (user.parentId || user.sponsorId) {
-      const uplineId = user.parentId || user.sponsorId;
-      const uplineUser = await this.getUser(uplineId!);
-      
-      console.log('Upline user found:', uplineUser?.email);
-      console.log('Upline user role:', uplineUser?.role);
-      
-      if (uplineUser && (uplineUser.role === 'admin' || uplineUser.role === 'founder')) {
-        console.log('✅ Admin upline detected!');
-        return { hasAdminUpline: true, uplineId: uplineUser.id };
-      } else {
-        console.log('❌ Upline is not admin');
-      }
-    } else {
-      console.log('❌ No parent or sponsor found');
-    }
-
+    // All users now use simple referral link generation
     return { hasAdminUpline: false };
   }
 
