@@ -237,8 +237,8 @@ export default function BinaryTreeView() {
             </>
           )}
 
-          {/* Tree Statistics */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Enhanced Tree Statistics */}
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
             <Card>
               <CardContent className="p-4 text-center">
                 <Users className="h-6 w-6 text-blue-500 mx-auto mb-2" />
@@ -268,6 +268,116 @@ export default function BinaryTreeView() {
                   {treeData?.rightChild ? 1 : 0}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">Right Position</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4 text-center">
+                <TrendingUp className="h-6 w-6 text-purple-500 mx-auto mb-2" />
+                <p className="text-2xl font-bold">
+                  {treeData?.totalBV ? parseFloat(treeData.totalBV).toFixed(2) : '0.00'}
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total BV</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Tree Performance Metrics */}
+          <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-gray-600">Left Leg Performance</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Members:</span>
+                    <span className="font-medium">
+                      {treeData?.leftChild ? 
+                        (treeData.leftChild.leftChild ? 1 : 0) + (treeData.leftChild.rightChild ? 1 : 0) + 1 
+                        : 0
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>BV:</span>
+                    <span className="font-medium text-green-600">
+                      ₹{treeData?.leftBV || '0.00'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Status:</span>
+                    <Badge variant={treeData?.leftChild ? 'default' : 'secondary'} className="text-xs">
+                      {treeData?.leftChild ? 'Active' : 'Empty'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-gray-600">Right Leg Performance</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Members:</span>
+                    <span className="font-medium">
+                      {treeData?.rightChild ? 
+                        (treeData.rightChild.leftChild ? 1 : 0) + (treeData.rightChild.rightChild ? 1 : 0) + 1 
+                        : 0
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>BV:</span>
+                    <span className="font-medium text-green-600">
+                      ₹{treeData?.rightBV || '0.00'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Status:</span>
+                    <Badge variant={treeData?.rightChild ? 'default' : 'secondary'} className="text-xs">
+                      {treeData?.rightChild ? 'Active' : 'Empty'}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm text-gray-600">Tree Balance</CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span>Left/Right Ratio:</span>
+                    <span className="font-medium">
+                      {treeData?.leftChild && treeData?.rightChild ? '1:1' : 
+                       treeData?.leftChild || treeData?.rightChild ? '1:0' : '0:0'
+                      }
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Depth:</span>
+                    <span className="font-medium">
+                      {Math.max(
+                        treeData?.leftChild ? 2 : 1,
+                        treeData?.rightChild ? 2 : 1
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Growth:</span>
+                    <Badge variant="outline" className="text-xs">
+                      {treeData?.leftChild && treeData?.rightChild ? 'Balanced' : 
+                       treeData?.leftChild || treeData?.rightChild ? 'Growing' : 'Empty'
+                      }
+                    </Badge>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </div>

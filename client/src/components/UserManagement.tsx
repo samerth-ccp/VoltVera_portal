@@ -22,7 +22,7 @@ export default function UserManagement() {
 
   // Fetch pending recruits  
   const { data: pendingRecruits, isLoading: loadingRecruits } = useQuery({
-    queryKey: ['/api/pending-recruits'],
+    queryKey: ['/api/admin/pending-recruits'],
     enabled: true,
   });
 
@@ -72,11 +72,11 @@ export default function UserManagement() {
 
   const handleApproveRecruit = async (id: string) => {
     try {
-      await apiRequest(`/api/pending-recruits/${id}/approve`, {
+      await apiRequest(`/api/admin/pending-recruits/${id}/approve`, {
         method: 'POST'
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/pending-recruits'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/pending-recruits'] });
       
       toast({
         title: "Success",
@@ -93,11 +93,11 @@ export default function UserManagement() {
 
   const handleRejectRecruit = async (id: string) => {
     try {
-      await apiRequest(`/api/pending-recruits/${id}/reject`, {
+      await apiRequest(`/api/admin/pending-recruits/${id}/reject`, {
         method: 'DELETE'
       });
       
-      queryClient.invalidateQueries({ queryKey: ['/api/pending-recruits'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/pending-recruits'] });
       
       toast({
         title: "Success", 

@@ -20,6 +20,7 @@ import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import AdminPendingUsers from "@/components/AdminPendingUsers";
 import UserManagement from "@/components/UserManagement";
 import { NotificationCenter } from "@/components/NotificationCenter";
+import { AdminStrategicUserCreation } from "@/components/AdminStrategicUserCreation";
 
 interface UserStats {
   totalUsers: number;
@@ -43,7 +44,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
-  const [isAddUserOpen, setIsAddUserOpen] = useState(false);
+
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
@@ -148,7 +149,7 @@ export default function AdminDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/users/stats"] });
-      setIsAddUserOpen(false);
+
       toast({
         title: "Signup email sent",
         description: "Invitation email has been sent to the user",
@@ -621,14 +622,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <NotificationCenter />
-              <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-                <DialogTrigger asChild>
-                  <Button className="volt-gradient text-white hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add User
-                  </Button>
-                </DialogTrigger>
-              </Dialog>
+              {/* Add User functionality now handled by AdminStrategicUserCreation component */}
 
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-volt-light rounded-full flex items-center justify-center text-white font-medium text-sm">
@@ -785,6 +779,17 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               {/* Pending Recruits Section - Show at top */}
               <AdminPendingRecruits />
+              
+              {/* Strategic User Creation Section */}
+              <div className="bg-white rounded-lg shadow-sm border p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-medium text-gray-800">Strategic User Creation</h3>
+                  <AdminStrategicUserCreation />
+                </div>
+                <p className="text-gray-600 text-sm">
+                  Create users with strategic placement control in the MLM tree. Choose exact parent and position for optimal tree structure.
+                </p>
+              </div>
               
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <h3 className="text-lg font-medium text-gray-800 mb-6">All Members Management</h3>
@@ -1152,86 +1157,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Add User Dialog */}
-      <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add New User</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6">
-            {/* User Creation Method Selection */}
-            <div>
-              <Label className="text-base font-medium">How would you like to add this user?</Label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                <Card 
-                  className="cursor-pointer hover:bg-gray-50 border-2 hover:border-volt-light transition-colors"
-                  onClick={() => setActiveSection('create-direct')}
-                >
-                  <CardContent className="p-4 text-center">
-                    <Mail className="h-8 w-8 mx-auto mb-2 text-volt-light" />
-                    <h3 className="font-medium">Send Invitation</h3>
-                    <p className="text-sm text-gray-600">Email invitation with login details</p>
-                  </CardContent>
-                </Card>
-                
-                <Card 
-                  className="cursor-pointer hover:bg-gray-50 border-2 hover:border-volt-light transition-colors"
-                  onClick={() => setActiveSection('create-referral')}
-                >
-                  <CardContent className="p-4 text-center">
-                    <Link2 className="h-8 w-8 mx-auto mb-2 text-volt-light" />
-                    <h3 className="font-medium">Generate Referral Link</h3>
-                    <p className="text-sm text-gray-600">Let them register via referral link</p>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Direct Invitation Form */}
-            {activeSection === 'create-direct' && (
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input name="fullName" placeholder="Enter full name" required />
-                </div>
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input name="email" type="email" placeholder="Enter email address" required />
-                </div>
-                <div>
-                  <Label htmlFor="role">Role</Label>
-                  <Select name="role" defaultValue="user" required>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex space-x-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsAddUserOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    type="submit" 
-                    className="volt-gradient text-white flex-1"
-                    disabled={createUserMutation.isPending}
-                  >
-                    {createUserMutation.isPending ? "Sending..." : "Send Invitation"}
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {/* Referral Link Generation */}
-            {activeSection === 'create-referral' && (
-              <ReferralLinkForm onClose={() => setIsAddUserOpen(false)} />
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Add User Dialog - Now handled by unified AdminStrategicUserCreation component */}
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
@@ -1298,138 +1224,4 @@ export default function AdminDashboard() {
   );
 }
 
-// Referral Link Form Component for Admin
-function ReferralLinkForm({ onClose }: { onClose: () => void }) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedLink, setGeneratedLink] = useState<string>('');
-  const [placementSide, setPlacementSide] = useState<'left' | 'right'>('left');
 
-  const generateReferralLink = async () => {
-    if (!user) return;
-
-    setIsGenerating(true);
-    try {
-      const response = await apiRequest('POST', '/api/referral/generate', {
-        placementSide,
-        generatedByRole: user.role
-      });
-
-      const data = await response.json();
-      
-      if (data.url) {
-        setGeneratedLink(data.url);
-        toast({
-          title: "Success",
-          description: "Referral link generated successfully",
-        });
-      } else {
-        console.error('No URL in response:', data);
-        toast({
-          title: "Error",
-          description: "No URL received from server",
-          variant: "destructive",
-        });
-      }
-    } catch (error) {
-      console.error('Error generating referral link:', error);
-      toast({
-        title: "Error",
-        description: "Failed to generate referral link",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(generatedLink);
-    toast({
-      title: "Copied",
-      description: "Referral link copied to clipboard",
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="placement">Placement Side</Label>
-        <Select value={placementSide} onValueChange={(value: 'left' | 'right') => setPlacementSide(value)}>
-          <SelectTrigger>
-            <SelectValue placeholder="Select placement side" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="left">Left Side</SelectItem>
-            <SelectItem value="right">Right Side</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-gray-500 mt-1">
-          Choose which side of your binary tree the new recruit will be placed on.
-        </p>
-      </div>
-
-      <Button 
-        onClick={generateReferralLink} 
-        disabled={isGenerating}
-        className="w-full volt-gradient text-white"
-      >
-        {isGenerating ? (
-          <>
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            Generating...
-          </>
-        ) : (
-          <>
-            <Link2 className="mr-2 h-4 w-4" />
-            Generate Referral Link
-          </>
-        )}
-      </Button>
-
-      {generatedLink && (
-        <div className="space-y-2 p-4 bg-gray-50 rounded-lg">
-          <Label>Generated Referral Link</Label>
-          <div className="flex space-x-2">
-            <Input 
-              value={generatedLink} 
-              readOnly 
-              className="flex-1 font-mono text-sm"
-            />
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={copyToClipboard}
-            >
-              <Copy className="h-4 w-4" />
-            </Button>
-          </div>
-          <p className="text-xs text-gray-500">
-            ⏰ Link expires in 48 hours. Share this with potential recruits.
-          </p>
-          <p className="text-xs text-gray-600">
-            📧 The recruit will fill out the registration form and you'll need to approve them from "Pending Recruits".
-          </p>
-        </div>
-      )}
-
-      <div className="flex space-x-3 pt-4">
-        <Button type="button" variant="outline" onClick={onClose}>
-          {generatedLink ? 'Done' : 'Cancel'}
-        </Button>
-        {generatedLink && (
-          <Button 
-            onClick={() => {
-              copyToClipboard();
-              onClose();
-            }}
-            className="volt-gradient text-white flex-1"
-          >
-            Copy & Close
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}

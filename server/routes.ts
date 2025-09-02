@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, completeUserRegistrationSchema, users } from "@shared/schema";
+import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, completeUserRegistrationSchema, users, pendingRecruits } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -945,8 +945,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Admin routes for pending recruits management
   app.get("/api/admin/pending-recruits", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
-      const pendingRecruits = await storage.getPendingRecruits();
-      res.json(pendingRecruits);
+      console.log('=== ADMIN PENDING RECRUITS REQUEST ===');
+      console.log('Admin user:', req.user.email, req.user.role);
+      
+      // Add a test query to see all pending recruits regardless of status
+      console.log('=== TESTING DATABASE QUERY ===');
+      const allRecruits = await db.select().from(pendingRecruits);
+      console.log('All pending recruits in database:', allRecruits.length);
+      console.log('Recruits:', allRecruits.map(r => ({ 
+        id: r.id, 
+        email: r.email, 
+        status: r.status, 
+        recruiterId: r.recruiterId,
+        uplineDecision: r.uplineDecision 
+      })));
+      
+      const filteredRecruits = await storage.getPendingRecruits();
+      console.log('Admin endpoint - Found pending recruits:', filteredRecruits.length);
+      
+      res.json(filteredRecruits);
     } catch (error) {
       console.error("Error getting pending recruits:", error);
       res.status(500).json({ message: "Failed to get pending recruits" });
@@ -1004,6 +1021,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEMPORARY: Fix existing admin-generated recruits
+  app.post("/api/admin/fix-existing-recruits", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      console.log('🔧 Fixing existing admin-generated recruits...');
+      
+      // Get all pending recruits
+      const allRecruits = await db.select().from(pendingRecruits);
+      console.log(`Found ${allRecruits.length} total pending recruits`);
+      
+      // Get all users with admin/founder roles
+      const allUsers = await db.select().from(users);
+      const adminUsers = allUsers.filter(u => u.role === 'admin' || u.role === 'founder');
+      const adminIds = adminUsers.map(u => u.id);
+      console.log(`Found ${adminIds.length} admin users:`, adminIds);
+      
+      // Find recruits created by admin users
+      const adminGeneratedRecruits = allRecruits.filter(recruit => 
+        adminIds.includes(recruit.recruiterId)
+      );
+      console.log(`Found ${adminGeneratedRecruits.length} admin-generated recruits`);
+      
+      if (adminGeneratedRecruits.length === 0) {
+        console.log('✅ No admin-generated recruits to fix');
+        return res.json({ message: 'No admin-generated recruits to fix' });
+      }
+      
+      // Update each admin-generated recruit
+      let fixedCount = 0;
+      for (const recruit of adminGeneratedRecruits) {
+        console.log(`Fixing recruit ${recruit.id} (${recruit.email})`);
+        
+        // Update status to 'awaiting_admin' and uplineDecision to 'approved'
+        await db.update(pendingRecruits)
+          .set({
+            status: 'awaiting_admin',
+            uplineDecision: 'approved',
+            updatedAt: new Date()
+          })
+          .where(eq(pendingRecruits.id, recruit.id));
+        
+        fixedCount++;
+        console.log(`✅ Updated ${recruit.email}`);
+      }
+      
+      console.log('🎉 All existing admin-generated recruits have been fixed!');
+      res.json({ 
+        message: 'Fixed existing admin-generated recruits', 
+        fixedCount,
+        recruits: adminGeneratedRecruits.map(r => ({ id: r.id, email: r.email }))
+      });
+      
+    } catch (error) {
+      console.error('❌ Error fixing recruits:', error);
+      res.status(500).json({ error: 'Failed to fix existing recruits' });
+    }
+  });
+
   // Get pending recruits awaiting upline decision with strategic information
   app.get("/api/upline/pending-recruits", isAuthenticated, async (req: any, res) => {
     try {
@@ -1048,7 +1122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const baseUrl = process.env.NODE_ENV === 'production' 
           ? 'https://voltveratech.com' 
-          : `http://localhost:5000`;
+          : `http://localhost:5173`;
         const fullUrl = `${baseUrl}/referral-register?token=${token}`;
         
         // Update the pending recruit with link generation step
@@ -1136,7 +1210,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Referral link endpoints
   app.post('/api/referral/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const { placementSide } = req.body;
+      const { placementSide } = req.body; // Only placement side needed, no user details
       const userId = req.user.id;
       const userRole = req.user.role;
       
@@ -1148,23 +1222,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
       
+      // Create referral link without creating pending recruit
+      // Pending recruit will be created when the actual referral form is filled
       const referralLink = await storage.createReferralLink({
         token,
         generatedBy: userId,
         generatedByRole: userRole,
         placementSide,
+        pendingRecruitId: null, // No pending recruit at this stage
         expiresAt
       });
       
       const baseUrl = process.env.NODE_ENV === 'production' 
         ? 'https://voltveratech.com' 
-        : 'https://82cb1a2c-57cc-475d-a833-5b12dbae1ec5-00-174fj7lyv1rn5.kirk.replit.dev';
+        : 'http://localhost:5000';
       const fullUrl = `${baseUrl}/recruit?ref=${token}`;
       
       res.json({
         referralLink,
         url: fullUrl,
-        expiresIn: '48 hours'
+        expiresIn: '48 hours',
+        message: 'Referral link generated. User will complete registration through the link.'
       });
     } catch (error) {
       console.error('Error generating referral link:', error);
@@ -2066,6 +2144,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Mount MLM routes with /api prefix
   app.use('/api', mlmRoutes);
+
+  // ===== ADMIN STRATEGIC USER CREATION WITH PLACEMENT CONTROL =====
+  
+  // Get all users for parent selection in admin user creation
+  app.get('/api/admin/users-for-placement', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const users = await storage.getAllUsersForPlacement();
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users for placement:', error);
+      res.status(500).json({ message: 'Failed to fetch users for placement' });
+    }
+  });
+
+  // Admin create user with strategic placement
+  app.post('/api/admin/users/create-with-placement', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const {
+        email,
+        password,
+        firstName,
+        lastName,
+        mobile,
+        packageAmount,
+        parentId,        // Strategic parent placement
+        position,        // 'left' or 'right'
+        sponsorId,       // Optional: different from parent
+        profileData      // Additional profile fields
+      } = req.body;
+
+      console.log('=== ADMIN STRATEGIC USER CREATION ===');
+      console.log('Email:', email);
+      console.log('Parent ID:', parentId);
+      console.log('Position:', position);
+      console.log('Package Amount:', packageAmount);
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName || !parentId || !position) {
+        return res.status(400).json({ 
+          message: 'Missing required fields: email, password, firstName, lastName, parentId, position' 
+        });
+      }
+
+      if (!['left', 'right'].includes(position)) {
+        return res.status(400).json({ 
+          message: 'Position must be either "left" or "right"' 
+        });
+      }
+
+      // Create user with strategic placement
+      const newUser = await storage.createUserWithStrategicPlacement({
+        email,
+        password,
+        firstName,
+        lastName,
+        mobile,
+        packageAmount: packageAmount || '0.00',
+        parentId,
+        position,
+        sponsorId: sponsorId || parentId,
+        profileData: profileData || {}
+      });
+
+      res.status(201).json({
+        message: 'User created successfully with strategic placement',
+        user: newUser,
+        placement: {
+          parentId,
+          position,
+          level: newUser.level
+        }
+      });
+
+    } catch (error) {
+      console.error('Error creating user with strategic placement:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create user';
+      res.status(500).json({ 
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+      });
+    }
+  });
 
   const httpServer = createServer(app);
   return httpServer;

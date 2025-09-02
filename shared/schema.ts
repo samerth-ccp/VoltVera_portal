@@ -736,6 +736,7 @@ export const createReferralLinkSchema = createInsertSchema(referralLinks).pick({
   generatedBy: true,
   generatedByRole: true,
   placementSide: true,
+  pendingRecruitId: true,
   expiresAt: true,
 });
 

@@ -258,6 +258,21 @@ export interface IStorage {
     recruiterId: string,
     placementSide: string
   ): Promise<PendingRecruit>;
+  
+  // Financial operations for admin
+  getAllUsersForPlacement(): Promise<User[]>;
+  createUserWithStrategicPlacement(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    mobile?: string;
+    packageAmount: string;
+    parentId: string;
+    position: 'left' | 'right';
+    sponsorId: string;
+    profileData?: any;
+  }): Promise<User>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -687,7 +702,7 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(users.createdAt));
   }
 
-  async getDownline(userId: string, levels: number = 5): Promise<User[]> {
+  async getDownline(userId: string, levels: number = 10): Promise<User[]> {
     const allMembers: User[] = [];
     const visited = new Set<string>();
     
@@ -695,14 +710,27 @@ export class DatabaseStorage implements IStorage {
       if (currentLevel > levels || visited.has(currentUserId)) return;
       visited.add(currentUserId);
       
-      const directMembers = await db.select()
-        .from(users)
-        .where(eq(users.sponsorId, currentUserId));
+      // Use binary tree structure (leftChildId, rightChildId) instead of sponsorId
+      const currentUser = await db.select().from(users).where(eq(users.id, currentUserId)).limit(1);
+      if (!currentUser.length) return;
       
-      for (const member of directMembers) {
-        if (!allMembers.find(m => m.id === member.id)) {
-          allMembers.push(member);
-          await getLevel(member.id, currentLevel + 1);
+      const user = currentUser[0];
+      
+      // Check left child
+      if (user.leftChildId) {
+        const leftChild = await db.select().from(users).where(eq(users.id, user.leftChildId)).limit(1);
+        if (leftChild.length && !allMembers.find(m => m.id === leftChild[0].id)) {
+          allMembers.push(leftChild[0]);
+          await getLevel(leftChild[0].id, currentLevel + 1);
+        }
+      }
+      
+      // Check right child
+      if (user.rightChildId) {
+        const rightChild = await db.select().from(users).where(eq(users.id, user.rightChildId)).limit(1);
+        if (rightChild.length && !allMembers.find(m => m.id === rightChild[0].id)) {
+          allMembers.push(rightChild[0]);
+          await getLevel(rightChild[0].id, currentLevel + 1);
         }
       }
     };
@@ -769,6 +797,28 @@ export class DatabaseStorage implements IStorage {
       console.log('Regular recruiter workflow - can directly approve position');
     } else if (isAdminUplineWorkflow) {
       console.log('Admin upline workflow - admin will handle position decision');
+    }
+
+    // SPECIAL CASE: If the recruiter is an admin and we have user details, 
+    // create the recruit with status 'awaiting_admin' directly
+    console.log('=== CHECKING ADMIN STATUS ===');
+    console.log('Recruiter ID:', recruiterId);
+    console.log('Recruiter found:', !!recruiter);
+    console.log('Recruiter role:', recruiter?.role);
+    console.log('Is admin or founder:', recruiter?.role === 'admin' || recruiter?.role === 'founder');
+    
+    if (recruiter.role === 'admin' || recruiter.role === 'founder') {
+      console.log('*** ADMIN RECRUITER WORKFLOW - DIRECT TO ADMIN APPROVAL ***');
+      initialStatus = 'awaiting_admin';
+      initialUplineDecision = 'approved'; // Admin has already decided
+      uplineId = recruiterId; // Admin is their own upline
+      
+      // For admin-generated referrals, we need to set a default position
+      // since the admin is providing the placement side
+      const defaultPosition = 'left'; // This will be overridden when admin approves
+    } else {
+      console.log('*** REGULAR RECRUITER WORKFLOW - AWAITING UPLINE ***');
+      console.log('Recruiter is not admin/founder, using regular workflow');
     }
 
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
@@ -919,18 +969,53 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPendingRecruits(recruiterId?: string): Promise<PendingRecruit[]> {
+    console.log('=== GETTING PENDING RECRUITS ===');
+    console.log('Recruiter ID filter:', recruiterId);
+    
+    // Get all pending recruits that are either:
+    // 1. Awaiting admin approval (status = 'awaiting_admin')
+    // 2. Created by admin users (regardless of status)
     let query = db.select().from(pendingRecruits)
-      .where(eq(pendingRecruits.status, 'awaiting_admin'))
+      .where(
+        or(
+          eq(pendingRecruits.status, 'awaiting_admin'),
+          // Also include recruits created by admin users
+          sql`${pendingRecruits.recruiterId} IN (SELECT id FROM users WHERE role = 'admin')`
+        )
+      )
       .orderBy(desc(pendingRecruits.createdAt));
     
     if (recruiterId) {
-      query = query.where(and(
-        eq(pendingRecruits.status, 'awaiting_admin'),
-        eq(pendingRecruits.recruiterId, recruiterId)
-      )) as typeof query;
+      query = query.where(
+        or(
+          eq(pendingRecruits.status, 'awaiting_admin'),
+          eq(pendingRecruits.recruiterId, recruiterId)
+        )
+      ) as typeof query;
     }
     
-    return await query;
+    const results = await query;
+    console.log('Found pending recruits:', results.length);
+    console.log('Recruits:', results.map(r => ({ 
+      id: r.id, 
+      email: r.email, 
+      status: r.status, 
+      uplineDecision: r.uplineDecision,
+      recruiterId: r.recruiterId
+    })));
+    
+    // Enrich results with recruiter role information
+    const enrichedResults = await Promise.all(
+      results.map(async (recruit) => {
+        const recruiter = await this.getUser(recruit.recruiterId);
+        return {
+          ...recruit,
+          recruiterRole: recruiter?.role || 'user'
+        };
+      })
+    );
+    
+    return enrichedResults;
   }
 
   // Get pending recruits awaiting upline decision
@@ -1091,15 +1176,59 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Pending recruit not found');
     }
 
-    // Check if upline has approved the position
-    if (pendingRecruit.status !== 'awaiting_admin' || pendingRecruit.uplineDecision !== 'approved') {
-      console.log('ERROR: Recruit not ready for admin approval');
-      throw new Error('Recruit must be approved by upline first');
+    // Check if recruit is ready for admin approval
+    // Special case: If recruiter is admin, allow direct approval
+    // We need to check the recruiter's role from the users table
+    const recruiter = await this.getUser(pendingRecruit.recruiterId);
+    const isAdminGenerated = recruiter?.role === 'admin' || recruiter?.role === 'founder';
+    
+    if (isAdminGenerated) {
+      console.log('*** ADMIN-GENERATED RECRUIT - DIRECT APPROVAL ALLOWED ***');
+      console.log('Recruiter role:', recruiter?.role);
+      console.log('Current status:', pendingRecruit.status);
+      console.log('Upline decision:', pendingRecruit.uplineDecision);
+      
+      // For admin-generated recruits, we can approve directly
+      // Allow approval if status is 'awaiting_admin' OR if it's an old recruit with 'awaiting_upline' status
+      if (pendingRecruit.status !== 'awaiting_admin' && pendingRecruit.status !== 'awaiting_upline') {
+        console.log('ERROR: Admin-generated recruit not in correct status for approval');
+        throw new Error('Admin-generated recruit not ready for approval');
+      }
+      
+      // If it's an old recruit with 'awaiting_upline' status, we'll update it during approval
+      if (pendingRecruit.status === 'awaiting_upline') {
+        console.log('Updating old admin-generated recruit status from awaiting_upline to awaiting_admin');
+        await db.update(pendingRecruits)
+          .set({ 
+            status: 'awaiting_admin',
+            updatedAt: new Date()
+          })
+          .where(eq(pendingRecruits.id, pendingRecruit.id));
+      }
+    } else {
+      // For regular recruits, check upline approval
+      if (pendingRecruit.status !== 'awaiting_admin' || pendingRecruit.uplineDecision !== 'approved') {
+        console.log('ERROR: Regular recruit not ready for admin approval');
+        throw new Error('Recruit must be approved by upline first');
+      }
     }
 
-    if (!pendingRecruit.position) {
-      console.log('ERROR: No position set by upline');
-      throw new Error('Position must be set by upline before admin approval');
+    // Handle position requirement
+    let finalPosition = pendingRecruit.position;
+    
+    if (!finalPosition) {
+      if (isAdminGenerated) {
+        // For admin-generated recruits, use position from admin approval
+        if (!adminData.position) {
+          console.log('ERROR: Position required for admin-generated recruit');
+          throw new Error('Position is required when approving admin-generated recruit');
+        }
+        finalPosition = adminData.position;
+        console.log('Using admin-provided position:', finalPosition);
+      } else {
+        console.log('ERROR: No position set by upline');
+        throw new Error('Position must be set by upline before admin approval');
+      }
     }
 
     // Check if user already exists
@@ -1129,7 +1258,7 @@ export class DatabaseStorage implements IStorage {
       mobile: pendingRecruit.mobile,
       sponsorId: pendingRecruit.recruiterId,
       packageAmount: adminData.packageAmount,
-      position: pendingRecruit.position, // Use position decided by upline
+      position: finalPosition, // Use final position (from upline or admin)
       registrationDate: pendingRecruit.createdAt,
       activationDate: new Date(),
       idStatus: 'Active',
@@ -1150,11 +1279,11 @@ export class DatabaseStorage implements IStorage {
       profileImageUrl: pendingRecruit.profileImageUrl,
     }).returning();
 
-    // Place user in binary tree at the position decided by upline
+    // Place user in binary tree at the final position
     if (!pendingRecruit.uplineId) {
       throw new Error('Upline ID is required for position placement');
     }
-    await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, pendingRecruit.position as 'left' | 'right', pendingRecruit.recruiterId);
+    await this.placeUserInBinaryTreeAtSpecificPosition(newUser.id, pendingRecruit.uplineId, finalPosition as 'left' | 'right', pendingRecruit.recruiterId);
 
     // Transfer KYC documents if available from comprehensive registration
     if (pendingRecruit.panCardUrl || pendingRecruit.aadhaarCardUrl || 
@@ -1338,7 +1467,8 @@ export class DatabaseStorage implements IStorage {
   async getBinaryTreeData(userId: string): Promise<any> {
     // Import and use binary tree service
     const { binaryTreeService } = await import('./binaryTreeService');
-    const treeData = await binaryTreeService.getBinaryTree(userId, 5);
+    // Increase depth to 10 to show complete tree including grandchildren
+    const treeData = await binaryTreeService.getBinaryTree(userId, 10);
     console.log('=== BINARY TREE DATA ===');
     console.log('Root user:', userId);
     console.log('Tree structure:', JSON.stringify(treeData, null, 2));
@@ -2272,6 +2402,92 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error getting referral links:', error);
       return [];
+    }
+  }
+
+  // Financial operations for admin
+  async getAllUsersForPlacement(): Promise<User[]> {
+    try {
+      // Get all active users for admin to choose as parents
+      const allUsers = await db
+        .select()
+        .from(users)
+        .where(eq(users.status, 'active'))
+        .orderBy(desc(users.createdAt));
+      
+      return allUsers;
+    } catch (error) {
+      console.error('Error getting users for placement:', error);
+      return [];
+    }
+  }
+
+  async createUserWithStrategicPlacement(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    mobile?: string;
+    packageAmount: string;
+    parentId: string;
+    position: 'left' | 'right';
+    sponsorId: string;
+    profileData?: any;
+  }): Promise<User> {
+    try {
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      
+      // Get parent user to calculate level
+      const parentUser = await db.select().from(users).where(eq(users.id, data.parentId)).limit(1);
+      if (!parentUser.length) {
+        throw new Error('Parent user not found');
+      }
+      
+      const parentLevel = parseInt(parentUser[0].level || '0');
+      const userLevel = (parentLevel + 1).toString();
+      
+      // Generate unique user ID
+      const userId = `VV${String(Date.now()).slice(-4)}`;
+      
+      // Create the user with strategic placement
+      const [newUser] = await db.insert(users).values({
+        userId: userId, // Add the userId field
+        email: data.email,
+        password: hashedPassword,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        mobile: data.mobile || null,
+        packageAmount: data.packageAmount,
+        parentId: data.parentId,
+        position: data.position,
+        sponsorId: data.sponsorId,
+        level: userLevel,
+        status: 'active',
+        role: 'user',
+        registrationDate: new Date(),
+        activationDate: new Date(),
+        idStatus: 'Active',
+        ...data.profileData,
+      }).returning();
+      
+      // Update parent's child reference
+      if (data.position === 'left') {
+        await db.update(users)
+          .set({ leftChildId: newUser.id })
+          .where(eq(users.id, data.parentId));
+      } else {
+        await db.update(users)
+          .set({ rightChildId: newUser.id })
+          .where(eq(users.id, data.parentId));
+      }
+      
+      console.log(`User created with strategic placement: ${newUser.email} under ${data.parentId} at ${data.position} position`);
+      
+      return newUser;
+    } catch (error) {
+      console.error('Error creating user with strategic placement:', error);
+      throw new Error(`Failed to create user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }

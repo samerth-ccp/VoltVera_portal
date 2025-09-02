@@ -1,0 +1,325 @@
+oltverashop MLM Database Schema Documentation
+Overview
+This is a comprehensive PostgreSQL database schema for a Binary MLM (Multi-Level Marketing) platform with advanced user management, KYC (Know Your Customer) compliance, financial tracking, and business operations.
+
+Key Features
+Binary MLM Structure: Complete left/right tree with spillover mechanics
+Multi-role Authentication: Admin, User, Founder, Franchise levels
+KYC Compliance: Document upload, verification workflow
+Financial Management: Wallets, transactions, withdrawals, commissions
+Recruitment System: Upline-controlled placement decisions
+Product Catalog: MLM product management with BV (Business Volume)
+Support System: Tickets, notifications, news/announcements
+Core Tables
+1. Users Table (Main Entity)
+Primary table storing all user information with Binary MLM structure
+
+CREATE TABLE users (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR UNIQUE,                    -- Display ID (VV0001, VV0002, etc.)
+  email VARCHAR UNIQUE,
+  password VARCHAR NOT NULL,
+  first_name VARCHAR,
+  last_name VARCHAR,
+  profile_image_url VARCHAR,
+  
+  -- Authentication & Status
+  role user_role DEFAULT 'user',            -- admin, user, founder, mini_franchise, basic_franchise
+  status user_status DEFAULT 'active',      -- invited, registered, active, inactive, pending, rejected, suspended
+  email_verified TIMESTAMP,
+  last_active_at TIMESTAMP,
+  
+  -- Binary MLM Structure (CRITICAL)
+  sponsor_id VARCHAR,                        -- Who recruited them (referrer)
+  parent_id VARCHAR,                         -- Direct parent in binary tree (may differ due to spillover)
+  left_child_id VARCHAR,                     -- Left child in binary tree
+  right_child_id VARCHAR,                    -- Right child in binary tree
+  position VARCHAR,                          -- 'left' or 'right' position under parent
+  level VARCHAR DEFAULT '0',                 -- Depth in binary tree (0 = root)
+  
+  -- Business Metrics
+  package_amount DECIMAL(10,2) DEFAULT 0.00,
+  registration_date TIMESTAMP DEFAULT NOW(),
+  activation_date TIMESTAMP,
+  id_status VARCHAR DEFAULT 'Inactive',     -- Active/Inactive business status
+  
+  -- MLM Performance Tracking
+  current_rank rank DEFAULT 'Executive',    -- Executive, Bronze Star, Gold Star... Director, Founder
+  total_bv DECIMAL(12,2) DEFAULT 0.00,     -- Total Business Volume
+  left_bv DECIMAL(12,2) DEFAULT 0.00,      -- Left leg BV
+  right_bv DECIMAL(12,2) DEFAULT 0.00,     -- Right leg BV
+  total_directs INTEGER DEFAULT 0,          -- Total direct recruits
+  left_directs INTEGER DEFAULT 0,           -- Left leg direct recruits
+  right_directs INTEGER DEFAULT 0,          -- Right leg direct recruits
+  
+  -- Personal Information
+  mobile VARCHAR,
+  pan_number VARCHAR,
+  aadhaar_number VARCHAR,
+  bank_account_number VARCHAR,
+  bank_ifsc VARCHAR,
+  bank_name VARCHAR,
+  address TEXT,
+  city VARCHAR,
+  state VARCHAR,
+  pincode VARCHAR,
+  date_of_birth TIMESTAMP,
+  
+  -- KYC & Security
+  kyc_status kyc_status DEFAULT 'pending',  -- pending, approved, rejected
+  kyc_submitted_at TIMESTAMP,
+  kyc_approved_at TIMESTAMP,
+  kyc_deadline TIMESTAMP,                   -- 7-day deadline for KYC completion
+  kyc_locked BOOLEAN DEFAULT false,         -- Account locked due to KYC deadline
+  
+  -- Security Features
+  first_login BOOLEAN DEFAULT true,
+  password_changed_at TIMESTAMP,
+  txn_pin VARCHAR,                          -- Transaction PIN for withdrawals
+  crypto_wallet_address VARCHAR,            -- USDT/Crypto wallet
+  
+  -- Special Features
+  is_hidden_id BOOLEAN DEFAULT false,       -- For founder's hidden IDs
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+2. Pending Recruits Table (Recruitment Workflow)
+Handles the upline approval process for new recruits
+
+CREATE TABLE pending_recruits (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR NOT NULL,
+  full_name VARCHAR NOT NULL,
+  mobile VARCHAR,
+  recruiter_id VARCHAR NOT NULL,            -- User who recruited them
+  upline_id VARCHAR,                        -- Parent of recruiter (decides position)
+  package_amount VARCHAR DEFAULT '0.00',
+  position VARCHAR DEFAULT 'Left',          -- Will be set by upline decision
+  
+  -- Workflow Status
+  status VARCHAR DEFAULT 'awaiting_upline', -- awaiting_upline, awaiting_details, awaiting_admin, approved, rejected
+  upline_decision VARCHAR DEFAULT 'pending', -- pending, approved, rejected
+  upline_decision_at TIMESTAMP,
+  rejection_reason VARCHAR,
+  rejected_by VARCHAR,
+  rejected_at TIMESTAMP,
+  
+  -- Security & Optimization
+  version INTEGER DEFAULT 1,               -- Optimistic locking
+  placement_locked BOOLEAN DEFAULT false,  -- Position lock
+  lock_expires_at TIMESTAMP,
+  risk_score INTEGER DEFAULT 0,            -- 0-100 risk assessment
+  kyc_status VARCHAR DEFAULT 'pending',
+  
+  -- Complete Registration Data (for referral registrations)
+  password VARCHAR,                         -- Encrypted password
+  date_of_birth TIMESTAMP,
+  address TEXT,
+  city VARCHAR,
+  state VARCHAR,
+  pincode VARCHAR,
+  pan_number VARCHAR,
+  aadhaar_number VARCHAR,
+  bank_account_number VARCHAR,
+  bank_ifsc VARCHAR,
+  bank_name VARCHAR,
+  
+  -- Document URLs
+  pan_card_url VARCHAR,
+  aadhaar_card_url VARCHAR,
+  bank_statement_url VARCHAR,
+  profile_image_url VARCHAR,
+  
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+Financial Tables
+3. Wallet Balances
+CREATE TABLE wallet_balances (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL UNIQUE,
+  balance DECIMAL(12,2) DEFAULT 0.00,
+  total_earnings DECIMAL(12,2) DEFAULT 0.00,
+  total_withdrawals DECIMAL(12,2) DEFAULT 0.00,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+4. Transactions
+CREATE TABLE transactions (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  type transaction_type NOT NULL,           -- sponsor_income, sales_incentive, etc.
+  amount DECIMAL(12,2) NOT NULL,
+  description TEXT NOT NULL,
+  reference_id VARCHAR,                     -- Purchase ID, User ID, etc.
+  balance_before DECIMAL(12,2) NOT NULL,
+  balance_after DECIMAL(12,2) NOT NULL,
+  metadata JSONB,                          -- Additional transaction data
+  created_at TIMESTAMP DEFAULT NOW()
+);
+5. Withdrawal Requests
+CREATE TABLE withdrawal_requests (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  withdrawal_type VARCHAR DEFAULT 'bank',   -- 'bank', 'usdt'
+  amount DECIMAL(10,2) NOT NULL,
+  status VARCHAR DEFAULT 'pending',         -- pending, approved, rejected, processed
+  bank_details JSONB,                      -- Bank details for bank withdrawals
+  usdt_wallet_address VARCHAR,             -- For USDT withdrawals
+  network_type VARCHAR,                    -- TRC20, ERC20, BEP20
+  admin_notes TEXT,
+  processed_by VARCHAR,
+  processed_at TIMESTAMP,
+  transaction_id VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+Authentication & Security Tables
+6. Sessions (Required for Replit Auth)
+CREATE TABLE sessions (
+  sid VARCHAR PRIMARY KEY,
+  sess JSONB NOT NULL,
+  expire TIMESTAMP NOT NULL
+);
+CREATE INDEX IDX_session_expire ON sessions(expire);
+7. Email Tokens (Verification & Password Reset)
+CREATE TABLE email_tokens (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  email VARCHAR NOT NULL,
+  token VARCHAR NOT NULL UNIQUE,
+  type VARCHAR NOT NULL,                    -- 'signup', 'password_reset', 'invitation', 'referral'
+  expires_at TIMESTAMP NOT NULL,
+  
+  -- Security fields
+  consumed_at TIMESTAMP,
+  revoked_at TIMESTAMP,
+  revoked_by VARCHAR,
+  ip_address VARCHAR,
+  is_consumed BOOLEAN DEFAULT false,
+  is_revoked BOOLEAN DEFAULT false,
+  
+  -- Scoped placement data
+  scoped_data JSONB,                       -- {sponsorId, position, planId, marketId}
+  created_at TIMESTAMP DEFAULT NOW()
+);
+KYC & Document Management
+8. KYC Documents (Database Storage)
+CREATE TABLE kyc_documents (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  document_type VARCHAR NOT NULL,           -- 'pan', 'aadhaar', 'bank_statement', 'photo'
+  document_url VARCHAR,                     -- Legacy URL field (optional)
+  document_data TEXT,                       -- Base64 encoded document (NEW: Database storage)
+  document_content_type VARCHAR,            -- MIME type (image/jpeg, application/pdf)
+  document_filename VARCHAR,                -- Original filename
+  document_size INTEGER,                    -- File size in bytes
+  document_number VARCHAR,                  -- PAN/Aadhaar number extracted
+  status kyc_status DEFAULT 'pending',     -- pending, approved, rejected
+  rejection_reason TEXT,
+  reviewed_by VARCHAR,
+  reviewed_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+Business Operations Tables
+9. Products
+CREATE TABLE products (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  name VARCHAR NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  bv DECIMAL(10,2) NOT NULL,               -- Business Volume
+  gst DECIMAL(5,2) NOT NULL,               -- GST percentage
+  category VARCHAR NOT NULL,                -- 'water_purifier', 'led', 'fan', etc.
+  purchase_type purchase_type NOT NULL,    -- 'first_purchase', 'second_purchase'
+  image_url VARCHAR,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+10. Purchases
+CREATE TABLE purchases (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  product_id VARCHAR NOT NULL,
+  quantity INTEGER DEFAULT 1,
+  total_amount DECIMAL(10,2) NOT NULL,
+  total_bv DECIMAL(10,2) NOT NULL,
+  payment_method VARCHAR,
+  payment_status VARCHAR DEFAULT 'pending',
+  transaction_id VARCHAR,
+  delivery_address TEXT,
+  delivery_status VARCHAR DEFAULT 'pending',
+  tracking_id VARCHAR,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+Communication & Support Tables
+11. Notifications
+CREATE TABLE notifications (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  type VARCHAR NOT NULL,                    -- 'recruit_rejected', 'recruit_approved', etc.
+  title VARCHAR NOT NULL,
+  message TEXT NOT NULL,
+  data JSONB,                              -- Additional notification data
+  read BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+12. Support Tickets
+CREATE TABLE support_tickets (
+  id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR NOT NULL,
+  category ticket_category NOT NULL,        -- Payment, Product, ID, Technical, General
+  subject VARCHAR NOT NULL,
+  description TEXT NOT NULL,
+  status ticket_status DEFAULT 'open',     -- open, in_progress, resolved, closed
+  priority VARCHAR DEFAULT 'medium',       -- low, medium, high, urgent
+  assigned_to VARCHAR,
+  resolution TEXT,
+  resolved_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+Required Enums
+-- User roles
+CREATE TYPE user_role AS ENUM ('admin', 'user', 'founder', 'mini_franchise', 'basic_franchise');
+-- User status
+CREATE TYPE user_status AS ENUM ('invited', 'registered', 'active', 'inactive', 'pending', 'rejected', 'suspended');
+-- MLM ranks
+CREATE TYPE rank AS ENUM ('Executive', 'Bronze Star', 'Gold Star', 'Emerald Star', 'Ruby Star', 'Diamond', 'Wise President', 'President', 'Ambassador', 'Deputy Director', 'Director', 'Founder');
+-- Transaction types
+CREATE TYPE transaction_type AS ENUM ('sponsor_income', 'sales_incentive', 'sales_bonus', 'consistency_bonus', 'franchise_income', 'car_fund', 'travel_fund', 'leadership_fund', 'house_fund', 'millionaire_club', 'royalty_income', 'withdrawal', 'purchase', 'admin_credit', 'admin_debit');
+-- KYC status
+CREATE TYPE kyc_status AS ENUM ('pending', 'approved', 'rejected');
+-- Purchase types
+CREATE TYPE purchase_type AS ENUM ('first_purchase', 'second_purchase');
+-- Support ticket categories
+CREATE TYPE ticket_category AS ENUM ('Payment', 'Product', 'ID', 'Technical', 'General');
+-- Support ticket status
+CREATE TYPE ticket_status AS ENUM ('open', 'in_progress', 'resolved', 'closed');
+Key Implementation Notes
+Binary MLM Structure
+sponsor_id: Who recruited the user (business relationship)
+parent_id: Direct parent in binary tree (may differ due to spillover)
+position: 'left' or 'right' under parent
+level: Tree depth (0 = root admin)
+left_child_id/right_child_id: Direct children in binary tree
+KYC Document Storage Strategy
+Database Storage: Documents stored as Base64 in document_data field
+Legacy Support: document_url field maintained for backward compatibility
+Security: No external file dependencies, full database control
+Recruitment Workflow
+User submits recruit info → pending_recruits table
+Upline decides position → Updates position field
+Admin approves → Creates user in users table
+Email sent with login credentials
+Financial Tracking
+All money movements recorded in transactions table
+Real-time wallet balances in wallet_balances table
+Withdrawal requests processed through withdrawal_requests table
+This schema supports a complete MLM platform with binary tree structure, KYC compliance, financial management, and comprehensive user administration.---
+description:
+globs:
+alwaysApply: false
+---

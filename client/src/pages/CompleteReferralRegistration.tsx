@@ -26,7 +26,7 @@ export default function CompleteReferralRegistration() {
   const { toast } = useToast();
   const [token, setToken] = useState<string>('');
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [loginCredentials, setLoginCredentials] = useState<{userId: string, password: string} | null>(null);
+
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     panCardUrl?: string;
     aadhaarCardUrl?: string;
@@ -241,47 +241,36 @@ export default function CompleteReferralRegistration() {
         <Card className="w-full max-w-lg bg-black/20 backdrop-blur-sm border-white/10">
           <CardContent className="p-8 text-center">
             <CheckCircle className="h-16 w-16 text-green-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-white mb-4">Registration Complete!</h2>
+            <h2 className="text-2xl font-bold text-white mb-4">Registration Submitted!</h2>
             <p className="text-white/70 mb-6">
-              Your account has been created successfully. Here are your login credentials:
+              Your profile has been submitted successfully and is now pending admin approval. 
+              You will receive an email with your login credentials once approved by an administrator.
             </p>
             
-            {loginCredentials && (
-              <div className="bg-green-900/30 border border-green-400/30 rounded-lg p-6 mb-6 text-left">
-                <h3 className="text-lg font-semibold text-green-300 mb-4 text-center">Your Login Details</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm text-white/60 block mb-1">User ID:</label>
-                    <div className="bg-black/30 rounded p-3 text-white font-mono text-sm break-all">
-                      {loginCredentials.userId}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm text-white/60 block mb-1">Password:</label>
-                    <div className="bg-black/30 rounded p-3 text-white font-mono text-sm">
-                      {loginCredentials.password}
-                    </div>
-                  </div>
+            <div className="bg-blue-900/30 border border-blue-400/30 rounded-lg p-6 mb-6 text-left">
+              <h3 className="text-lg font-semibold text-blue-300 mb-4 text-center">What Happens Next?</h3>
+              <div className="space-y-3 text-sm text-white/80">
+                <div className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <p>Admin will review your registration and documents</p>
                 </div>
-                <p className="text-xs text-green-300/70 mt-4 text-center">
-                  ⚠️ Please save these credentials securely. You'll need them to log in.
-                </p>
+                <div className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <p>You'll receive an approval email with login credentials</p>
+                </div>
+                <div className="flex items-start space-x-2">
+                  <div className="w-2 h-2 bg-blue-400 rounded-full mt-2 flex-shrink-0"></div>
+                  <p>Complete KYC verification within 7 days of approval</p>
+                </div>
               </div>
-            )}
+            </div>
             
             <Button
-              onClick={() => {
-                if (loginCredentials) {
-                  // Store credentials in sessionStorage for prefilling login form
-                  sessionStorage.setItem('prefillUserId', loginCredentials.userId);
-                  sessionStorage.setItem('prefillPassword', loginCredentials.password);
-                }
-                setLocation('/');
-              }}
+              onClick={() => setLocation('/')}
               className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 w-full"
-              data-testid="button-login"
+              data-testid="button-return-home"
             >
-              Login Now
+              Return to Homepage
             </Button>
           </CardContent>
         </Card>

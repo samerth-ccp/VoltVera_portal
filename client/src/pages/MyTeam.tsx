@@ -18,6 +18,8 @@ import { z } from "zod";
 import { formatDistanceToNow } from "date-fns";
 import BinaryTreeView from "@/components/BinaryTreeView";
 import { UplineDecisions } from "@/components/UplineDecisions";
+import { DownlineView } from "@/components/DownlineView";
+import { TeamBusinessStages } from "@/components/TeamBusinessStages";
 
 const recruitFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -472,16 +474,7 @@ export default function MyTeam() {
 
           {/* Downline Tab */}
           <TabsContent value="downline">
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Downline</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Downline view coming soon...
-                </div>
-              </CardContent>
-            </Card>
+            <DownlineView />
           </TabsContent>
 
           {/* Binary Tree Tab */}
@@ -491,16 +484,7 @@ export default function MyTeam() {
 
           {/* Team Business Stages Tab */}
           <TabsContent value="business">
-            <Card>
-              <CardHeader>
-                <CardTitle>Team Business Stages</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-gray-500">
-                  Business stages tracking coming soon...
-                </div>
-              </CardContent>
-            </Card>
+            <TeamBusinessStages />
           </TabsContent>
         </Tabs>
     </div>
