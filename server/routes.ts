@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, completeUserRegistrationSchema, users, pendingRecruits } from "@shared/schema";
+import { createUserSchema, updateUserSchema, signupUserSchema, passwordResetSchema, recruitUserSchema, completeUserRegistrationSchema, users, pendingRecruits, referralLinks, kycDocuments } from "@shared/schema";
 import { z } from "zod";
 import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
@@ -10,7 +10,7 @@ import { nanoid } from "nanoid";
 import bcrypt from "bcrypt";
 import mlmRoutes from "./mlmRoutes";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, lt, and, sql } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Health check endpoint for deployment
@@ -1021,6 +1021,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get documents for a specific pending recruit
+  app.get("/api/admin/pending-recruits/:id/documents", isAuthenticated, isAdmin, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      console.log('=== FETCHING DOCUMENTS FOR PENDING RECRUIT ===');
+      console.log('Recruit ID:', id);
+      
+      // Create temporary user ID to match what we used when storing documents
+      const tempUserId = `pending_${id}`;
+      
+      // Fetch documents from kyc_documents table
+      const documents = await db.select().from(kycDocuments).where(eq(kycDocuments.userId, tempUserId));
+      
+      console.log(`Found ${documents.length} documents for recruit ${id}`);
+      
+      // Transform documents for frontend consumption
+      const transformedDocuments = documents.map(doc => ({
+        id: doc.id,
+        documentType: doc.documentType,
+        documentData: doc.documentData,
+        documentContentType: doc.documentContentType,
+        documentFilename: doc.documentFilename,
+        documentSize: doc.documentSize,
+        documentNumber: doc.documentNumber,
+        status: doc.status,
+        createdAt: doc.createdAt
+      }));
+      
+      res.json(transformedDocuments);
+    } catch (error) {
+      console.error("Error fetching documents for pending recruit:", error);
+      res.status(500).json({ message: "Failed to fetch documents" });
+    }
+  });
+
   // TEMPORARY: Fix existing admin-generated recruits
   app.post("/api/admin/fix-existing-recruits", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
@@ -1210,27 +1245,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Referral link endpoints
   app.post('/api/referral/generate', isAuthenticated, async (req: any, res) => {
     try {
-      const { placementSide } = req.body; // Only placement side needed, no user details
+      const { placementType, placementSide, parentId } = req.body; // Placement type, side, and optional parent ID
       const userId = req.user.id;
       const userRole = req.user.role;
       
-      if (!placementSide || !['left', 'right'].includes(placementSide)) {
-        return res.status(400).json({ message: 'Valid placement side (left/right) is required' });
+      if (!placementType || !placementSide || !['left', 'right'].includes(placementSide)) {
+        return res.status(400).json({ message: 'Valid placement type and side (left/right) are required' });
+      }
+      
+      // Validate parentId requirement for strategic placement
+      if (placementType === 'strategic' && !parentId) {
+        return res.status(400).json({ message: 'Parent ID is required for strategic placement' });
       }
       
       const token = nanoid(32);
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
       
-      // Create referral link without creating pending recruit
-      // Pending recruit will be created when the actual referral form is filled
+      // Create referral link with placement information
+      let pendingRecruitId = null;
+      
+      if (userRole === 'admin' || userRole === 'founder') {
+        if (placementType === 'strategic') {
+          // Create a temporary pending recruit to store strategic placement info
+          const tempRecruit = await storage.createPendingRecruit({
+            fullName: 'STRATEGIC_PLACEMENT_TEMP',
+            email: `temp_${Date.now()}@strategic.local`,
+            mobile: undefined
+          }, parentId); // Use selected parent as recruiter
+          
+          // Update with strategic placement info
+          await db.update(pendingRecruits)
+            .set({ 
+              uplineId: parentId,
+              position: placementSide,
+              status: 'awaiting_admin',
+              uplineDecision: 'approved'
+            })
+            .where(eq(pendingRecruits.id, tempRecruit.id));
+          
+          pendingRecruitId = tempRecruit.id;
+          console.log('Created temporary strategic placement recruit:', tempRecruit.id);
+        } else if (placementType === 'auto' || placementType === 'root') {
+          // For auto/root placement, create a temporary recruit with special markers
+          const tempRecruit = await storage.createPendingRecruit({
+            fullName: placementType === 'auto' ? 'AUTO_PLACEMENT_TEMP' : 'ROOT_PLACEMENT_TEMP',
+            email: `temp_${Date.now()}@${placementType}.local`,
+            mobile: undefined
+          }, 'admin-demo'); // Use admin as default recruiter
+          
+          // Update with placement type info
+          await db.update(pendingRecruits)
+            .set({ 
+              uplineId: placementType === 'root' ? null : 'admin-demo',
+              position: placementSide,
+              status: 'awaiting_admin',
+              uplineDecision: 'approved'
+            })
+            .where(eq(pendingRecruits.id, tempRecruit.id));
+          
+          pendingRecruitId = tempRecruit.id;
+          console.log(`Created temporary ${placementType} placement recruit:`, tempRecruit.id);
+        }
+      }
+      
       const referralLink = await storage.createReferralLink({
         token,
         generatedBy: userId,
         generatedByRole: userRole,
         placementSide,
-        pendingRecruitId: null, // No pending recruit at this stage
+        pendingRecruitId: pendingRecruitId, // Link to strategic placement info
         expiresAt
+      });
+      
+      console.log('Creating strategic referral link:', {
+        token,
+        parentId,
+        placementSide,
+        generatedBy: userId,
+        pendingRecruitId
       });
       
       const baseUrl = process.env.NODE_ENV === 'production' 
@@ -1242,7 +1335,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referralLink,
         url: fullUrl,
         expiresIn: '48 hours',
-        message: 'Referral link generated. User will complete registration through the link.'
+        placementType: placementType,
+        parentId: parentId || null,
+        placementSide: placementSide,
+        message: `${placementType === 'strategic' ? 'Strategic' : placementType === 'auto' ? 'Auto' : 'Root'} referral link generated. User will complete registration through the link.`
       });
     } catch (error) {
       console.error('Error generating referral link:', error);
@@ -1332,11 +1428,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pendingRecruitId = referralLink.pendingRecruitId;
       } else {
         // Create new pending recruit record for direct referral link registration
+        let recruiterId = referralLink.generatedBy;
+        let uplineId = referralLink.generatedBy;
+        
+        // Check if this is a placement referral link
+        if (referralLink.pendingRecruitId) {
+          const placementRecruit = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, referralLink.pendingRecruitId)).limit(1);
+          if (placementRecruit.length > 0) {
+            const recruit = placementRecruit[0];
+            
+            if (recruit.fullName === 'STRATEGIC_PLACEMENT_TEMP') {
+              // Strategic placement - use stored parent and position
+              recruiterId = recruit.recruiterId || referralLink.generatedBy;
+              uplineId = recruit.uplineId || referralLink.generatedBy;
+              
+              console.log('Using strategic placement info:', {
+                recruiterId,
+                uplineId,
+                position: recruit.position
+              });
+            } else if (recruit.fullName === 'AUTO_PLACEMENT_TEMP') {
+              // Auto placement - system will find best position
+              recruiterId = referralLink.generatedBy;
+              uplineId = referralLink.generatedBy;
+              
+              console.log('Using auto placement - system will find best position');
+            } else if (recruit.fullName === 'ROOT_PLACEMENT_TEMP') {
+              // Root placement - place at top level
+              recruiterId = referralLink.generatedBy;
+              uplineId = 'root'; // Special marker for root placement
+              
+              console.log('Using root placement - user will be at top level');
+            }
+            
+            // Delete the temporary placement recruit
+            await db.delete(pendingRecruits).where(eq(pendingRecruits.id, referralLink.pendingRecruitId));
+          }
+        }
+        
         const pendingRecruit = await storage.createPendingRecruit({
           fullName: recruiteeName,
           email: recruiteeEmail,
           mobile: undefined
-        }, referralLink.generatedBy);
+        }, recruiterId);
+        
+        // Update with strategic placement info if available
+        if (referralLink.pendingRecruitId) {
+          const strategicRecruit = await db.select().from(pendingRecruits).where(eq(pendingRecruits.id, referralLink.pendingRecruitId)).limit(1);
+          if (strategicRecruit.length > 0 && strategicRecruit[0].fullName === 'STRATEGIC_PLACEMENT_TEMP') {
+            await db.update(pendingRecruits)
+              .set({ 
+                uplineId: strategicRecruit[0].uplineId || referralLink.generatedBy,
+                position: strategicRecruit[0].position || 'left',
+                updatedAt: new Date()
+              })
+              .where(eq(pendingRecruits.id, pendingRecruit.id));
+          }
+        }
+        
         pendingRecruitId = pendingRecruit.id;
       }
       
@@ -1383,7 +1532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user account
       const newUser = await storage.createUser({
         email: request.recruiteeEmail,
-        password: hashedPassword,
+        password: tempPassword, // Use original password, not hashed
         firstName: request.recruiteeName?.split(' ')[0] || 'User',
         lastName: request.recruiteeName?.split(' ').slice(1).join(' ') || '',
         role: 'user',
@@ -1494,7 +1643,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         firstName,
         lastName,
-        password: hashedPassword,
+        password: tempPassword, // Use original password, not hashed
         role: 'user',
         status: 'active',
         isHiddenId: true,
@@ -1967,8 +2116,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Complete registration endpoint - Creates pending recruit for admin approval
   app.post('/api/referral/complete-registration', async (req, res) => {
     try {
+      // Debug: Log what's being received
+      console.log('Received registration data:', req.body);
+      console.log('Document fields:', {
+        panCardUrl: req.body.panCardUrl,
+        aadhaarCardUrl: req.body.aadhaarCardUrl,
+        bankStatementUrl: req.body.bankStatementUrl,
+        photoUrl: req.body.photoUrl
+      });
+      
       const validationResult = completeUserRegistrationSchema.safeParse(req.body);
       if (!validationResult.success) {
+        console.log('Validation failed:', validationResult.error.flatten());
         return res.status(400).json({ 
           message: 'Validation failed', 
           errors: validationResult.error.flatten() 
@@ -2023,13 +2182,131 @@ export async function registerRoutes(app: Express): Promise<Server> {
         password: data.password, // Store securely for later use
       }, referralLink.generatedBy, referralLink.placementSide);
       
+      // Now handle document uploads and link them to the pending recruit
+      // We'll create a temporary user ID based on the pending recruit ID for document linking
+      const tempUserId = `pending_${pendingRecruit.id}`;
+      
+      console.log('🔍 Document Processing Debug:');
+      console.log('  - tempUserId:', tempUserId);
+      console.log('  - panCardUrl exists:', !!data.panCardUrl);
+      console.log('  - panCardUrl starts with data:', data.panCardUrl?.startsWith('data:'));
+      console.log('  - aadhaarCardUrl exists:', !!data.aadhaarCardUrl);
+      console.log('  - aadhaarCardUrl starts with data:', data.aadhaarCardUrl?.startsWith('data:'));
+      console.log('  - bankStatementUrl exists:', !!data.bankStatementUrl);
+      console.log('  - bankStatementUrl starts with data:', data.bankStatementUrl?.startsWith('data:'));
+      console.log('  - photoUrl exists:', !!data.photoUrl);
+      console.log('  - photoUrl starts with data:', data.photoUrl?.startsWith('data:'));
+      
+      // Upload documents if provided and link them to the pending recruit
+      const documentUploads = [];
+      
+      if (data.panCardUrl && data.panCardUrl.startsWith('data:')) {
+        console.log('📄 Processing PAN Card document...');
+        // Extract base64 data from data URL
+        const base64Data = data.panCardUrl.split(',')[1];
+        const contentType = data.panCardUrl.split(';')[0].split(':')[1];
+        
+        console.log('  - Base64 data length:', base64Data.length);
+        console.log('  - Content type:', contentType);
+        
+        try {
+          const panDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'panCard',
+            documentData: base64Data,
+            documentContentType: contentType,
+            documentFilename: 'pan_card.jpg',
+            documentSize: Math.round((base64Data.length * 3) / 4),
+            documentNumber: data.panNumber,
+          });
+          console.log('  ✅ PAN Card document created with ID:', panDoc.id);
+          documentUploads.push({ type: 'panCard', id: panDoc.id });
+        } catch (error) {
+          console.error('  ❌ Error creating PAN Card document:', error);
+        }
+      }
+      
+      if (data.aadhaarCardUrl && data.aadhaarCardUrl.startsWith('data:')) {
+        console.log('📄 Processing Aadhaar Card document...');
+        const base64Data = data.aadhaarCardUrl.split(',')[1];
+        const contentType = data.aadhaarCardUrl.split(';')[0].split(':')[1];
+        
+        console.log('  - Base64 data length:', base64Data.length);
+        console.log('  - Content type:', contentType);
+        
+        try {
+          const aadhaarDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'aadhaarCard',
+            documentData: base64Data,
+            documentContentType: contentType,
+            documentFilename: 'aadhaar_card.jpg',
+            documentSize: Math.round((base64Data.length * 3) / 4),
+            documentNumber: data.aadhaarNumber,
+          });
+          console.log('  ✅ Aadhaar Card document created with ID:', aadhaarDoc.id);
+          documentUploads.push({ type: 'aadhaarCard', id: aadhaarDoc.id });
+        } catch (error) {
+          console.error('  ❌ Error creating Aadhaar Card document:', error);
+        }
+      }
+      
+      if (data.bankStatementUrl && data.bankStatementUrl.startsWith('data:')) {
+        console.log('📄 Processing Bank Statement document...');
+        const base64Data = data.bankStatementUrl.split(',')[1];
+        const contentType = data.bankStatementUrl.split(';')[0].split(':')[1];
+        
+        console.log('  - Base64 data length:', base64Data.length);
+        console.log('  - Content type:', contentType);
+        
+        try {
+          const bankDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'bankStatement',
+            documentData: base64Data,
+            documentContentType: contentType,
+            documentFilename: 'bank_statement.jpg',
+            documentSize: Math.round((base64Data.length * 3) / 4),
+          });
+          console.log('  ✅ Bank Statement document created with ID:', bankDoc.id);
+          documentUploads.push({ type: 'bankStatement', id: bankDoc.id });
+        } catch (error) {
+          console.error('  ❌ Error creating Bank Statement document:', error);
+        }
+      }
+      
+      if (data.photoUrl && data.photoUrl.startsWith('data:')) {
+        console.log('📄 Processing Photo document...');
+        const base64Data = data.photoUrl.split(',')[1];
+        const contentType = data.photoUrl.split(';')[0].split(':')[1];
+        
+        console.log('  - Base64 data length:', base64Data.length);
+        console.log('  - Content type:', contentType);
+        
+        try {
+          const photoDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'photo',
+            documentData: base64Data,
+            documentContentType: contentType,
+            documentFilename: 'profile_photo.jpg',
+            documentSize: Math.round((base64Data.length * 3) / 4),
+          });
+          console.log('  ✅ Photo document created with ID:', photoDoc.id);
+          documentUploads.push({ type: 'photo', id: photoDoc.id });
+        } catch (error) {
+          console.error('  ❌ Error creating Photo document:', error);
+        }
+      }
+      
+      console.log('📊 Document Processing Summary:');
+      console.log('  - Total documents processed:', documentUploads.length);
+      console.log('  - Document uploads:', documentUploads);
+      
       // Mark referral link as used
       await storage.markReferralLinkAsUsed(data.referralToken, pendingRecruit.id);
 
       res.status(201).json({
         message: 'Registration submitted successfully! Your application has been sent for upline approval first, then admin approval. You will receive login credentials via email once both approvals are complete.',
         status: 'awaiting_upline',
-        recruitId: pendingRecruit.id
+        recruitId: pendingRecruit.id,
+        documentsUploaded: documentUploads.length
       });
     } catch (error: any) {
       console.error('Error completing registration:', error);
@@ -2226,6 +2503,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+
+  // Clean up expired referral links and temporary recruits periodically
+  setInterval(async () => {
+    try {
+      const now = new Date();
+      
+      // Delete expired referral links
+      const expiredLinks = await db.delete(referralLinks)
+        .where(lt(referralLinks.expiresAt, now));
+      
+      if (expiredLinks.rowCount > 0) {
+        console.log(`Cleaned up ${expiredLinks.rowCount} expired referral links`);
+      }
+      
+      // Clean up temporary placement recruits that are older than 1 hour
+      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+      const tempRecruits = await db.delete(pendingRecruits)
+        .where(
+          and(
+            sql`full_name LIKE '%_PLACEMENT_TEMP'`,
+            lt(pendingRecruits.createdAt, oneHourAgo)
+          )
+        );
+      
+      if (tempRecruits.rowCount > 0) {
+        console.log(`Cleaned up ${tempRecruits.rowCount} old temporary placement recruits`);
+      }
+    } catch (error) {
+      console.error('Error in periodic cleanup:', error);
+    }
+  }, 60 * 60 * 1000); // Run every hour
 
   const httpServer = createServer(app);
   return httpServer;

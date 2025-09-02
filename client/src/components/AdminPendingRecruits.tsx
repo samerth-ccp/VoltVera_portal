@@ -46,6 +46,18 @@ interface PendingRecruit {
   profileImageUrl?: string;
 }
 
+interface KYCDocument {
+  id: string;
+  documentType: string;
+  documentData: string;
+  documentContentType: string;
+  documentFilename: string;
+  documentSize: number;
+  documentNumber?: string;
+  status: string;
+  createdAt: string;
+}
+
 export function AdminPendingRecruits() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,6 +68,8 @@ export function AdminPendingRecruits() {
   const [rejectDialogRecruit, setRejectDialogRecruit] = useState<PendingRecruit | null>(null);
   const [detailsRecruit, setDetailsRecruit] = useState<PendingRecruit | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [documents, setDocuments] = useState<KYCDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
 
   // Fetch pending recruits
   const { data: pendingRecruits = [], isLoading } = useQuery<PendingRecruit[]>({
@@ -94,6 +108,33 @@ export function AdminPendingRecruits() {
 
   // Note: Reject functionality is now handled by RejectRecruitDialog
 
+  // Fetch documents for a pending recruit
+  const fetchDocuments = async (recruitId: string) => {
+    try {
+      setIsLoadingDocuments(true);
+      const response = await fetch(`/api/admin/pending-recruits/${recruitId}/documents`);
+      if (response.ok) {
+        const docs = await response.json();
+        setDocuments(docs);
+      } else {
+        console.error('Failed to fetch documents:', response.statusText);
+        setDocuments([]);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      setDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  // Handle viewing recruit details and fetch documents
+  const handleViewDetails = (recruit: PendingRecruit) => {
+    setDetailsRecruit(recruit);
+    setIsDetailsOpen(true);
+    fetchDocuments(recruit.id);
+  };
+
   const handleApprove = (recruit: PendingRecruit) => {
     setSelectedRecruit(recruit);
     setPackageAmount("0.00");
@@ -121,10 +162,7 @@ export function AdminPendingRecruits() {
     setRejectDialogRecruit(recruit);
   };
 
-  const handleViewDetails = (recruit: PendingRecruit) => {
-    setDetailsRecruit(recruit);
-    setIsDetailsOpen(true);
-  };
+
 
   if (isLoading) {
     return (
@@ -397,35 +435,136 @@ export function AdminPendingRecruits() {
                       <div>
                         <Label className="text-sm font-medium text-gray-500">PAN Number</Label>
                         <p className="font-medium">{detailsRecruit.panNumber || 'Not provided'}</p>
-                        {detailsRecruit.panCardUrl && (
-                          <Button variant="outline" size="sm" asChild className="mt-1">
-                            <a href={detailsRecruit.panCardUrl} target="_blank" rel="noopener noreferrer">
+                        {/* Display PAN Card document if available */}
+                        {documents.find(doc => doc.documentType === 'panCard') && (
+                          <div className="mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                                                             onClick={() => {
+                                 const doc = documents.find(doc => doc.documentType === 'panCard');
+                                 if (doc) {
+                                   // Create a blob URL instead of data URL for better compatibility
+                                   const byteCharacters = atob(doc.documentData);
+                                   const byteNumbers = new Array(byteCharacters.length);
+                                   for (let i = 0; i < byteCharacters.length; i++) {
+                                     byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                   }
+                                   const byteArray = new Uint8Array(byteNumbers);
+                                   const blob = new Blob([byteArray], { type: doc.documentContentType });
+                                   const blobUrl = URL.createObjectURL(blob);
+                                   window.open(blobUrl, '_blank');
+                                 }
+                               }}
+                              className="text-blue-600 hover:text-blue-700"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
                               View PAN Card
-                            </a>
-                          </Button>
+                            </Button>
+                          </div>
                         )}
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Aadhaar Number</Label>
                         <p className="font-medium">{detailsRecruit.aadhaarNumber || 'Not provided'}</p>
-                        {detailsRecruit.aadhaarCardUrl && (
-                          <Button variant="outline" size="sm" asChild className="mt-1">
-                            <a href={detailsRecruit.aadhaarCardUrl} target="_blank" rel="noopener noreferrer">
+                        {/* Display Aadhaar Card document if available */}
+                        {documents.find(doc => doc.documentType === 'aadhaarCard') && (
+                          <div className="mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => {
+                                const doc = documents.find(doc => doc.documentType === 'aadhaarCard');
+                                if (doc) {
+                                  // Create a blob URL instead of data URL for better compatibility
+                                  const byteCharacters = atob(doc.documentData);
+                                  const byteNumbers = new Array(byteCharacters.length);
+                                  for (let i = 0; i < byteCharacters.length; i++) {
+                                    byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                  }
+                                  const byteArray = new Uint8Array(byteNumbers);
+                                  const blob = new Blob([byteArray], { type: doc.documentContentType });
+                                  const blobUrl = URL.createObjectURL(blob);
+                                  window.open(blobUrl, '_blank');
+                                }
+                              }}
+                              className="text-orange-600 hover:text-orange-700"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
                               View Aadhaar Card
-                            </a>
-                          </Button>
-                        )}
-                      </div>
-                      {detailsRecruit.profileImageUrl && (
-                        <div>
-                          <Label className="text-sm font-medium text-gray-500">Profile Photo</Label>
-                          <div className="mt-1">
-                            <Button variant="outline" size="sm" asChild>
-                              <a href={detailsRecruit.profileImageUrl} target="_blank" rel="noopener noreferrer">
-                                View Profile Photo
-                              </a>
                             </Button>
                           </div>
+                        )}
+                      </div>
+                      {/* Display Profile Photo document if available */}
+                      {documents.find(doc => doc.documentType === 'photo') && (
+                        <div>
+                          <Label className="text-sm font-medium text-gray-500">Profile Photo</Label>
+                          <div className="mt-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                                                             onClick={() => {
+                                 const doc = documents.find(doc => doc.documentType === 'photo');
+                                 if (doc) {
+                                   // Create a blob URL instead of data URL for better compatibility
+                                   const byteCharacters = atob(doc.documentData);
+                                   const byteNumbers = new Array(byteCharacters.length);
+                                   for (let i = 0; i < byteCharacters.length; i++) {
+                                     byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                   }
+                                   const byteArray = new Uint8Array(byteNumbers);
+                                   const blob = new Blob([byteArray], { type: doc.documentContentType });
+                                   const blobUrl = URL.createObjectURL(blob);
+                                   window.open(blobUrl, '_blank');
+                                 }
+                               }}
+                              className="text-pink-600 hover:text-pink-700"
+                            >
+                              <FileText className="h-4 w-4 mr-1" />
+                              View Profile Photo
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Document Summary */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Uploaded Documents ({documents.length})
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {isLoadingDocuments ? (
+                        <div className="text-center py-4 text-gray-500">
+                          Loading documents...
+                        </div>
+                      ) : documents.length === 0 ? (
+                        <div className="text-center py-4 text-gray-500">
+                          No documents uploaded
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          {documents.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded">
+                              <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-blue-500" />
+                                <span className="font-medium capitalize">
+                                  {doc.documentType.replace(/([A-Z])/g, ' $1').trim()}
+                                </span>
+                                {doc.documentNumber && (
+                                  <span className="text-sm text-gray-500">({doc.documentNumber})</span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {Math.round(doc.documentSize / 1024)} KB
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       )}
                     </CardContent>
@@ -453,14 +592,33 @@ export function AdminPendingRecruits() {
                       <Label className="text-sm font-medium text-gray-500">IFSC Code</Label>
                       <p className="font-medium">{detailsRecruit.bankIFSC || 'Not provided'}</p>
                     </div>
-                    {detailsRecruit.bankStatementUrl && (
+                    {/* Display Bank Statement document if available */}
+                    {documents.find(doc => doc.documentType === 'bankStatement') && (
                       <div className="md:col-span-3">
                         <Label className="text-sm font-medium text-gray-500">Bank Statement</Label>
-                        <div className="mt-1">
-                          <Button variant="outline" size="sm" asChild>
-                            <a href={detailsRecruit.bankStatementUrl} target="_blank" rel="noopener noreferrer">
-                              View Bank Statement
-                            </a>
+                        <div className="mt-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                                                         onClick={() => {
+                               const doc = documents.find(doc => doc.documentType === 'bankStatement');
+                               if (doc) {
+                                 // Create a blob URL instead of data URL for better compatibility
+                                 const byteCharacters = atob(doc.documentData);
+                                 const byteNumbers = new Array(byteCharacters.length);
+                                 for (let i = 0; i < byteCharacters.length; i++) {
+                                   byteNumbers[i] = byteCharacters.charCodeAt(i);
+                                 }
+                                 const byteArray = new Uint8Array(byteNumbers);
+                                 const blob = new Blob([byteArray], { type: doc.documentContentType });
+                                 const blobUrl = URL.createObjectURL(blob);
+                                 window.open(blobUrl, '_blank');
+                               }
+                             }}
+                            className="text-purple-600 hover:text-purple-700"
+                          >
+                            <FileText className="h-4 w-4 mr-1" />
+                            View Bank Statement
                           </Button>
                         </div>
                       </div>

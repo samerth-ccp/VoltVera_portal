@@ -58,6 +58,7 @@ export const users = pgTable("users", {
   userId: varchar("user_id").unique(), // Display ID like VV0001, VV0002, etc.
   email: varchar("email").unique(),
   password: varchar("password").notNull(),
+  originalPassword: varchar("original_password"), // Original plaintext password for admin viewing
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
@@ -315,7 +316,7 @@ export const kycDocuments = pgTable("kyc_documents", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   userId: varchar("user_id").notNull(),
   documentType: varchar("document_type").notNull(), // 'pan', 'aadhaar', 'bank_statement', 'photo'
-  documentUrl: varchar("document_url"), // Legacy URL field - now optional
+  documentUrl: varchar("document_url").notNull(), // Legacy URL field - required for now due to DB constraint
   documentData: text("document_data"), // Base64 encoded document data
   documentContentType: varchar("document_content_type"), // MIME type like 'image/jpeg', 'application/pdf'
   documentFilename: varchar("document_filename"), // Original filename
@@ -539,11 +540,11 @@ export const completeUserRegistrationSchema = z.object({
   // Package selection
   packageAmount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid package amount is required"),
   
-  // Document URLs (uploaded via object storage)
-  panCardUrl: z.string().url("PAN card document is required"),
-  aadhaarCardUrl: z.string().url("Aadhaar card document is required"),
-  bankStatementUrl: z.string().url("Bank statement document is required"),
-  photoUrl: z.string().url("Profile photo is required"),
+  // Document URLs (uploaded via object storage) - Optional
+  panCardUrl: z.string().optional().or(z.literal('')),
+  aadhaarCardUrl: z.string().optional().or(z.literal('')),
+  bankStatementUrl: z.string().optional().or(z.literal('')),
+  photoUrl: z.string().optional().or(z.literal('')),
   
   // Referral token
   referralToken: z.string().min(1, "Valid referral token is required"),

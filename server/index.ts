@@ -4,8 +4,8 @@ import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: false }));
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -46,6 +46,22 @@ app.use((req, res, next) => {
   try {
     const server = await registerRoutes(app);
     console.log('Routes registered successfully');
+    
+    // Clean up any existing temporary placement recruits
+    try {
+      const { db } = await import('./db.js');
+      const { pendingRecruits } = await import('../shared/schema.js');
+      const { sql } = await import('drizzle-orm');
+      
+      const result = await db.delete(pendingRecruits)
+        .where(sql`full_name LIKE '%_PLACEMENT_TEMP'`);
+      
+      if (result.rowCount > 0) {
+        console.log(`Cleaned up ${result.rowCount} temporary placement recruits`);
+      }
+    } catch (cleanupError) {
+      console.warn('Warning: Could not clean up temporary recruits:', cleanupError);
+    }
 
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

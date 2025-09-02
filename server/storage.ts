@@ -72,7 +72,7 @@ export interface IStorage {
     role?: string;
     kycStatus?: string;
   }): Promise<User[]>;
-  createUser(user: CreateUser): Promise<User>;
+  createUser(user: CreateUser): Promise<User & { originalPassword?: string }>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
   updateUserProfile(id: string, updates: UpdateUserProfile): Promise<User | undefined>;
   deleteUser(id: string): Promise<boolean>;
@@ -272,7 +272,7 @@ export interface IStorage {
     position: 'left' | 'right';
     sponsorId: string;
     profileData?: any;
-  }): Promise<User>;
+  }): Promise<User & { originalPassword: string }>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -343,24 +343,36 @@ export class DatabaseStorage implements IStorage {
     return 'VV0001';
   }
 
-  async createUser(userData: CreateUser): Promise<User> {
+  async createUser(userData: CreateUser): Promise<User & { originalPassword?: string }> {
     // Generate sequential user ID
     const userId = await this.generateNextUserId();
     
     // Hash password before storing (use nanoid if not provided)
     const hashedPassword = await bcrypt.hash(userData.password || "defaultpass123", 10);
+    
+    // Create user account
+    console.log('🔍 Creating user with originalPassword:', userData.password || "defaultpass123");
+    
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
         userId,
         password: hashedPassword,
+        originalPassword: userData.password || "defaultpass123", // Store original password in database
         status: 'active', // Default to active for admin-created users
         emailVerified: new Date(),
         lastActiveAt: new Date()
       })
       .returning();
-    return user;
+    
+    console.log('✅ User created, originalPassword in result:', user.originalPassword);
+    
+    // Return user with original password for admin viewing
+    return {
+      ...user,
+      originalPassword: userData.password || "defaultpass123"
+    };
   }
 
 
@@ -975,26 +987,21 @@ export class DatabaseStorage implements IStorage {
     // Get all pending recruits that are either:
     // 1. Awaiting admin approval (status = 'awaiting_admin')
     // 2. Created by admin users (regardless of status)
-    let query = db.select().from(pendingRecruits)
+    // BUT exclude temporary placement recruits
+    const results = await db.select().from(pendingRecruits)
       .where(
-        or(
-          eq(pendingRecruits.status, 'awaiting_admin'),
-          // Also include recruits created by admin users
-          sql`${pendingRecruits.recruiterId} IN (SELECT id FROM users WHERE role = 'admin')`
+        and(
+          // Exclude temporary placement recruits
+          sql`${pendingRecruits.fullName} NOT LIKE '%_PLACEMENT_TEMP'`,
+          or(
+            eq(pendingRecruits.status, 'awaiting_admin'),
+            // Also include recruits created by admin users
+            sql`${pendingRecruits.recruiterId} IN (SELECT id FROM users WHERE role = 'admin')`
+          )
         )
       )
       .orderBy(desc(pendingRecruits.createdAt));
     
-    if (recruiterId) {
-      query = query.where(
-        or(
-          eq(pendingRecruits.status, 'awaiting_admin'),
-          eq(pendingRecruits.recruiterId, recruiterId)
-        )
-      ) as typeof query;
-    }
-    
-    const results = await query;
     console.log('Found pending recruits:', results.length);
     console.log('Recruits:', results.map(r => ({ 
       id: r.id, 
@@ -1751,24 +1758,39 @@ export class DatabaseStorage implements IStorage {
     documentSize: number;
     documentNumber?: string;
   }): Promise<KYCDocument> {
-    const [kyc] = await db.insert(kycDocuments).values({
-      userId,
-      documentType: data.documentType,
-      documentData: data.documentData,
-      documentContentType: data.documentContentType,
-      documentFilename: data.documentFilename,
-      documentSize: data.documentSize,
-      documentNumber: data.documentNumber,
-      // Keep documentUrl null for new binary storage
-      documentUrl: null,
-    }).returning();
+    console.log('🗄️ Creating KYC document in database:');
+    console.log('  - userId:', userId);
+    console.log('  - documentType:', data.documentType);
+    console.log('  - documentSize:', data.documentSize);
+    console.log('  - documentNumber:', data.documentNumber);
     
-    // Update user KYC submission timestamp
-    await db.update(users)
-      .set({ kycSubmittedAt: new Date() })
-      .where(eq(users.id, userId));
-    
-    return kyc;
+    try {
+      const [kyc] = await db.insert(kycDocuments).values({
+        userId,
+        documentType: data.documentType,
+        documentData: data.documentData,
+        documentContentType: data.documentContentType,
+        documentFilename: data.documentFilename,
+        documentSize: data.documentSize,
+        documentNumber: data.documentNumber,
+              // Set a placeholder URL since documentUrl is required by schema
+      documentUrl: `data:${data.documentContentType};base64,placeholder`,
+      }).returning();
+      
+      console.log('  ✅ KYC document created successfully with ID:', kyc.id);
+      
+      // Update user KYC submission timestamp
+      await db.update(users)
+        .set({ kycSubmittedAt: new Date() })
+        .where(eq(users.id, userId));
+      
+      console.log('  ✅ User KYC submission timestamp updated');
+      
+      return kyc;
+    } catch (error) {
+      console.error('  ❌ Error creating KYC document:', error);
+      throw error;
+    }
   }
 
   async getKYCDocumentById(id: string): Promise<KYCDocument | null> {
@@ -2433,7 +2455,7 @@ export class DatabaseStorage implements IStorage {
     position: 'left' | 'right';
     sponsorId: string;
     profileData?: any;
-  }): Promise<User> {
+  }): Promise<User & { originalPassword: string }> {
     try {
       // Hash the password
       const hashedPassword = await bcrypt.hash(data.password, 10);
@@ -2451,10 +2473,13 @@ export class DatabaseStorage implements IStorage {
       const userId = `VV${String(Date.now()).slice(-4)}`;
       
       // Create the user with strategic placement
+      console.log('🔍 Creating strategic user with originalPassword:', data.password);
+      
       const [newUser] = await db.insert(users).values({
         userId: userId, // Add the userId field
         email: data.email,
         password: hashedPassword,
+        originalPassword: data.password, // Store original password in database
         firstName: data.firstName,
         lastName: data.lastName,
         mobile: data.mobile || null,
@@ -2471,6 +2496,8 @@ export class DatabaseStorage implements IStorage {
         ...data.profileData,
       }).returning();
       
+      console.log('✅ Strategic user created, originalPassword in result:', newUser.originalPassword);
+      
       // Update parent's child reference
       if (data.position === 'left') {
         await db.update(users)
@@ -2484,7 +2511,11 @@ export class DatabaseStorage implements IStorage {
       
       console.log(`User created with strategic placement: ${newUser.email} under ${data.parentId} at ${data.position} position`);
       
-      return newUser;
+      // Return user with original password for admin viewing
+      return {
+        ...newUser,
+        originalPassword: data.password
+      };
     } catch (error) {
       console.error('Error creating user with strategic placement:', error);
       throw new Error(`Failed to create user: ${error instanceof Error ? error.message : 'Unknown error'}`);

@@ -20,7 +20,7 @@ import { AdminPendingRecruits } from "@/components/AdminPendingRecruits";
 import AdminPendingUsers from "@/components/AdminPendingUsers";
 import UserManagement from "@/components/UserManagement";
 import { NotificationCenter } from "@/components/NotificationCenter";
-import { AdminStrategicUserCreation } from "@/components/AdminStrategicUserCreation";
+import { AdminReferralLinkGeneration } from "@/components/AdminStrategicUserCreation";
 
 interface UserStats {
   totalUsers: number;
@@ -622,7 +622,7 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center space-x-4">
               <NotificationCenter />
-              {/* Add User functionality now handled by AdminStrategicUserCreation component */}
+                                {/* Add User functionality now handled by AdminReferralLinkGeneration component */}
 
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 bg-volt-light rounded-full flex items-center justify-center text-white font-medium text-sm">
@@ -783,11 +783,11 @@ export default function AdminDashboard() {
               {/* Strategic User Creation Section */}
               <div className="bg-white rounded-lg shadow-sm border p-6">
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-medium text-gray-800">Strategic User Creation</h3>
-                  <AdminStrategicUserCreation />
+                  <h3 className="text-lg font-medium text-gray-800">Referral Link Generation</h3>
+                  <AdminReferralLinkGeneration />
                 </div>
                 <p className="text-gray-600 text-sm">
-                  Create users with strategic placement control in the MLM tree. Choose exact parent and position for optimal tree structure.
+                  Generate referral links for strategic user placement in the MLM tree. Users register through links and get placed under selected parents.
                 </p>
               </div>
               
@@ -1157,7 +1157,7 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Add User Dialog - Now handled by unified AdminStrategicUserCreation component */}
+                      {/* Add User Dialog - Now handled by AdminReferralLinkGeneration component */}
 
       {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>

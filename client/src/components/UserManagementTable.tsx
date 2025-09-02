@@ -34,6 +34,7 @@ interface User {
   cryptoWalletAddress?: string;
   txnPin?: string;
   password?: string; // Hashed password from backend
+  originalPassword?: string; // Original password for admin viewing
   status: 'active' | 'inactive' | 'pending';
   registrationDate: string;
   // Derived fields from other tables
@@ -354,7 +355,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           <span className="font-mono text-sm">
-                            {showPasswords[user.id] ? 'voltveratech123' : '••••••••••••••'}
+                            {showPasswords[user.id] ? (user.originalPassword || user.password || 'Password not available') : '••••••••••••••'}
                           </span>
                           <Button
                             size="sm"
