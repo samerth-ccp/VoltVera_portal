@@ -240,6 +240,7 @@ export interface IStorage {
       mobile?: string;
       packageAmount?: string;
       password: string;
+      // Additional comprehensive data
       dateOfBirth?: string;
       address?: string;
       city?: string;
@@ -776,61 +777,22 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
-    // Determine the actual upline based on the recruiter's parent in the MLM tree
-    // If recruiter has admin as parent, they get admin-like workflow
-    let uplineId = recruiterId; // Default: recruiter is their own upline
-    let isAdminUplineWorkflow = false;
-
-    // Check if recruiter's parent/sponsor is admin
-    if (recruiter.parentId || recruiter.sponsorId) {
-      const actualUpline = await this.getUser(recruiter.parentId || recruiter.sponsorId || recruiterId);
-      if (actualUpline && (actualUpline.role === 'admin' || actualUpline.role === 'founder')) {
-        console.log('*** ADMIN UPLINE WORKFLOW DETECTED ***');
-        console.log('Recruiter parent/sponsor is admin:', actualUpline.email);
-        uplineId = actualUpline.id; // Admin becomes the upline for position decisions
-        isAdminUplineWorkflow = true;
-      }
-    }
-
-    console.log('=== RECRUIT CREATION ===');
-    console.log('Recruiter:', recruiter.email);
-    console.log('Upline:', uplineId);
-    console.log('Admin upline workflow:', isAdminUplineWorkflow);
-
-    // Determine initial status based on workflow type
+    // FIXED: Every recruiter is their own upline for their recruits
+    // This ensures users control their own team placement
+    let uplineId = recruiterId; // Recruiter decides position for their recruits
     let initialStatus = 'awaiting_upline';
     let initialUplineDecision = 'pending';
-    
-    // For recruiters with admin uplines, they can directly choose position and generate referral link
-    // For regular recruiters, they handle their own position decisions
-    const isDirectApproval = recruiter.role === 'admin' || recruiter.role === 'founder' || !isAdminUplineWorkflow;
-    
-    if (isDirectApproval && !isAdminUplineWorkflow) {
-      console.log('Regular recruiter workflow - can directly approve position');
-    } else if (isAdminUplineWorkflow) {
-      console.log('Admin upline workflow - admin will handle position decision');
-    }
 
-    // SPECIAL CASE: If the recruiter is an admin and we have user details, 
-    // create the recruit with status 'awaiting_admin' directly
-    console.log('=== CHECKING ADMIN STATUS ===');
-    console.log('Recruiter ID:', recruiterId);
-    console.log('Recruiter found:', !!recruiter);
-    console.log('Recruiter role:', recruiter?.role);
-    console.log('Is admin or founder:', recruiter?.role === 'admin' || recruiter?.role === 'founder');
-    
+    // SPECIAL CASE: If the recruiter is an admin/founder, they can approve directly
     if (recruiter.role === 'admin' || recruiter.role === 'founder') {
       console.log('*** ADMIN RECRUITER WORKFLOW - DIRECT TO ADMIN APPROVAL ***');
       initialStatus = 'awaiting_admin';
       initialUplineDecision = 'approved'; // Admin has already decided
       uplineId = recruiterId; // Admin is their own upline
-      
-      // For admin-generated referrals, we need to set a default position
-      // since the admin is providing the placement side
-      const defaultPosition = 'left'; // This will be overridden when admin approves
     } else {
       console.log('*** REGULAR RECRUITER WORKFLOW - AWAITING UPLINE ***');
       console.log('Recruiter is not admin/founder, using regular workflow');
+      // Regular users need to decide position for their recruits
     }
 
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
@@ -838,7 +800,7 @@ export class DatabaseStorage implements IStorage {
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId, // This will be admin ID for users with admin uplines
+      uplineId, // This is now always the recruiter
       status: initialStatus,
       uplineDecision: initialUplineDecision,
     }).returning();
@@ -851,35 +813,29 @@ export class DatabaseStorage implements IStorage {
     return { hasAdminUpline: false };
   }
 
-  // Create pending recruit with immediate position selection (for admin upline workflow)
+  // Create pending recruit with immediate position selection (streamlined workflow)
   async createPendingRecruitWithPosition(data: RecruitUser & { position: 'left' | 'right' }, recruiterId: string): Promise<PendingRecruit> {
-    // Check if this user has admin upline workflow
-    const { hasAdminUpline, uplineId: adminUplineId } = await this.checkAdminUplineWorkflow(recruiterId);
-    if (!hasAdminUpline || !adminUplineId) {
-      throw new Error('This workflow is only available for users with admin uplines');
-    }
-
     const recruiter = await this.getUser(recruiterId);
     if (!recruiter) {
       throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
-    console.log('=== ADMIN UPLINE WORKFLOW - IMMEDIATE POSITION SELECTION ===');
+    console.log('=== POSITION-ALREADY-CHOSEN WORKFLOW ===');
     console.log('Recruiter:', recruiter.email);
-    console.log('Admin upline:', adminUplineId);
     console.log('Position chosen:', data.position);
 
-    // Create pending recruit with position already selected and status awaiting_details for referral link generation
+    // STREAMLINED WORKFLOW: Position already chosen, skip upline approval
+    // Go directly to admin approval since position decision is already made
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
       email: data.email,
       fullName: data.fullName,
       mobile: data.mobile,
       recruiterId,
-      uplineId: adminUplineId, // Admin becomes the upline
-      position: data.position, // Position chosen by recruiter
-      status: 'awaiting_details', // Ready for referral link generation
-      uplineDecision: 'approved', // Pre-approved since position is chosen
-      uplineDecisionAt: new Date(),
+      uplineId: recruiterId, // Recruiter is the upline
+      position: data.position, // Position already chosen
+      status: 'awaiting_admin', // Skip upline approval, go directly to admin
+      uplineDecision: 'approved', // Auto-approve since position is chosen
+      uplineDecisionAt: new Date(), // Mark as already decided
     }).returning();
 
     return pendingRecruit;
@@ -934,19 +890,9 @@ export class DatabaseStorage implements IStorage {
     // Hash the password before storing
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    // Determine the correct upline (recruiter's parent or admin)
-    let uplineId = recruiter.parentId;
-    
-    // If recruiter has no parent, use admin as upline
-    if (!uplineId) {
-      const adminUser = await this.getAdminUser();
-      if (adminUser) {
-        uplineId = adminUser.id;
-      } else {
-        // Fallback to recruiter if no admin found
-        uplineId = recruiterId;
-      }
-    }
+    // STREAMLINED WORKFLOW: Position already chosen, skip upline approval
+    // Since placementSide is provided, go directly to admin approval
+    const uplineId = recruiterId; // Recruiter is the upline
 
     // Create pending recruit with all comprehensive data
     const [pendingRecruit] = await db.insert(pendingRecruits).values({
@@ -956,9 +902,10 @@ export class DatabaseStorage implements IStorage {
       recruiterId,
       uplineId: uplineId, // Use the determined upline
       packageAmount: data.packageAmount || '0.00',
-      position: placementSide,
-      status: 'awaiting_upline', // First step: wait for upline approval
-      uplineDecision: 'pending', // Upline needs to decide
+      position: placementSide, // Position already chosen
+      status: 'awaiting_admin', // Skip upline approval, go directly to admin
+      uplineDecision: 'approved', // Auto-approve since position is chosen
+      uplineDecisionAt: new Date(), // Mark as already decided
       // Store all the comprehensive registration data
       password: hashedPassword,
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
@@ -1220,23 +1167,20 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Handle position requirement
+    // Handle position requirement - Admin can override upline decision
     let finalPosition = pendingRecruit.position;
     
-    if (!finalPosition) {
-      if (isAdminGenerated) {
-        // For admin-generated recruits, use position from admin approval
-        if (!adminData.position) {
-          console.log('ERROR: Position required for admin-generated recruit');
-          throw new Error('Position is required when approving admin-generated recruit');
-        }
-        finalPosition = adminData.position;
-        console.log('Using admin-provided position:', finalPosition);
-      } else {
-        console.log('ERROR: No position set by upline');
-        throw new Error('Position must be set by upline before admin approval');
-      }
+    // Admin can always override position if provided
+    if (adminData.position) {
+      finalPosition = adminData.position;
+      console.log('Admin overriding position to:', finalPosition);
+    } else if (!finalPosition) {
+      // If no position set anywhere, require admin to provide one
+      console.log('ERROR: No position set by upline or admin');
+      throw new Error('Position must be set by upline or admin before approval');
     }
+    
+    console.log('Final position for approval:', finalPosition);
 
     // Check if user already exists
     const existingUser = await this.getUserByEmail(pendingRecruit.email);

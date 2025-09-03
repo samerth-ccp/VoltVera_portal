@@ -78,12 +78,9 @@ export function AdminPendingRecruits() {
 
   // Approve recruit mutation
   const approveMutation = useMutation({
-    mutationFn: async ({ id, packageAmount, position }: { id: string; packageAmount: string; position?: string }) => {
-      const payload: any = { packageAmount };
-      // Include position if it's not already decided by upline OR if it's admin-generated recruit
-      if (position && (selectedRecruit?.uplineDecision !== 'approved' || selectedRecruit?.recruiterRole === 'admin' || selectedRecruit?.recruiterRole === 'founder')) {
-        payload.position = position;
-      }
+    mutationFn: async ({ id, packageAmount, position }: { id: string; packageAmount: string; position: string }) => {
+      const payload: any = { packageAmount, position };
+      // Always include position - admin can override upline decision
       const response = await apiRequest('POST', `/api/admin/pending-recruits/${id}/approve`, payload);
       return response.json();
     },
@@ -144,7 +141,7 @@ export function AdminPendingRecruits() {
     } else if (recruit.recruiterRole === 'admin' || recruit.recruiterRole === 'founder') {
       setPosition("Left"); // Default position for admin-generated recruits
     } else {
-      setPosition("Left");
+      setPosition("Left"); // Default position for regular recruits
     }
     setIsApproveOpen(true);
   };
@@ -323,26 +320,29 @@ export function AdminPendingRecruits() {
                 />
               </div>
               
-              {/* Show position selector if upline hasn't decided OR if it's admin-generated recruit */}
-              {(selectedRecruit?.uplineDecision !== 'approved' || selectedRecruit?.recruiterRole === 'admin' || selectedRecruit?.recruiterRole === 'founder') && (
-                <div className="space-y-2">
-                  <Label htmlFor="position">Position</Label>
-                  <Select value={position} onValueChange={setPosition}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Left">Left</SelectItem>
-                      <SelectItem value="Right">Right</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {(selectedRecruit?.recruiterRole === 'admin' || selectedRecruit?.recruiterRole === 'founder') && (
-                    <p className="text-xs text-gray-500">
-                      Position required for admin-generated recruit
-                    </p>
-                  )}
-                </div>
-              )}
+              {/* Show position selector for ALL recruits - admin can override upline decision */}
+              <div className="space-y-2">
+                <Label htmlFor="position">Position</Label>
+                <Select value={position} onValueChange={setPosition}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Left">Left</SelectItem>
+                    <SelectItem value="Right">Right</SelectItem>
+                  </SelectContent>
+                </Select>
+                {selectedRecruit?.uplineDecision === 'approved' && selectedRecruit?.position && (
+                  <p className="text-xs text-gray-500">
+                    Upline originally chose: {selectedRecruit.position}. You can change this if needed.
+                  </p>
+                )}
+                {(selectedRecruit?.recruiterRole === 'admin' || selectedRecruit?.recruiterRole === 'founder') && (
+                  <p className="text-xs text-gray-500">
+                    Position required for admin-generated recruit
+                  </p>
+                )}
+              </div>
               
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setIsApproveOpen(false)}>

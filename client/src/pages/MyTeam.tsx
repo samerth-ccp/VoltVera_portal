@@ -20,10 +20,12 @@ import BinaryTreeView from "@/components/BinaryTreeView";
 import { UplineDecisions } from "@/components/UplineDecisions";
 import { DownlineView } from "@/components/DownlineView";
 import { TeamBusinessStages } from "@/components/TeamBusinessStages";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const recruitFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Valid email is required"),
+  position: z.enum(["left", "right"]).default("left"),
 });
 
 type RecruitFormData = z.infer<typeof recruitFormSchema>;
@@ -42,6 +44,7 @@ export default function MyTeam() {
     defaultValues: {
       fullName: "",
       email: "",
+      position: "left",
     },
   });
 
@@ -183,6 +186,31 @@ export default function MyTeam() {
                 {form.formState.errors.email && (
                   <p className="text-sm text-red-500 mt-1">
                     {form.formState.errors.email.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Position Selection - NEW FIELD */}
+              <div>
+                <Label htmlFor="position">Placement Position</Label>
+                <Select 
+                  value={form.watch("position")} 
+                  onValueChange={(value) => form.setValue("position", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose placement position" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="left">Left Position</SelectItem>
+                    <SelectItem value="right">Right Position</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Choose where to place this recruit in your binary structure
+                </p>
+                {form.formState.errors.position && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {form.formState.errors.position.message}
                   </p>
                 )}
               </div>

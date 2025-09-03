@@ -783,7 +783,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Team management routes - call admin user creation directly
   app.post("/api/team/recruit", isAuthenticated, async (req: any, res) => {
     try {
-      const recruitData = recruitUserSchema.parse(req.body);
+      const result = recruitUserSchema.extend({
+        position: z.enum(['left', 'right'])
+      }).safeParse(req.body);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid data", errors: result.error.flatten() });
+      }
+
+      const recruitData = result.data;
       const recruiterId = req.user.id;
       
              // Check if email already exists
@@ -792,18 +800,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
          return res.status(409).json({ message: "A user with this email already exists" });
        }
 
-             // Create referral link for user recruit (different from admin workflow)
+       // Create referral link for user recruit (NO pending recruit creation here)
        const token = nanoid(32);
        const expiresAt = new Date();
        expiresAt.setHours(expiresAt.getHours() + 48); // 48 hours expiry
        
-       // Create referral link instead of invitation token
+       // Create referral link with placement info (no pending recruit yet)
        await storage.createReferralLink({
          token,
          generatedBy: recruiterId,
          generatedByRole: req.user.role,
-         placementSide: 'left', // Default to left, can be changed later
-         expiresAt
+         placementSide: recruitData.position, // Use the chosen position
+         expiresAt,
+         pendingRecruitId: null // No pending recruit yet
        });
 
              // Generate referral link with correct pattern for user recruits
@@ -819,12 +828,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
        const referralLink = `${baseUrl}/recruit?ref=${token}`;
       
       res.status(201).json({ 
-        message: "Referral link generated successfully",
+        message: "Referral link generated successfully with position selected!",
         referralLink,
         recruitInfo: {
           name: recruitData.fullName,
           email: recruitData.email,
-          referrerId: recruiterId
+          position: recruitData.position,
+          referrerId: recruiterId,
+          status: "pending_registration"
         }
       });
     } catch (error) {
@@ -848,41 +859,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create pending recruit with position selection (admin upline workflow)
-  app.post("/api/team/recruit-with-position", isAuthenticated, async (req: any, res) => {
-    try {
-      const recruiterId = req.user.id;
-      const result = recruitUserSchema.extend({
-        position: z.enum(['left', 'right'])
-      }).safeParse(req.body);
-      
-      if (!result.success) {
-        return res.status(400).json({ message: "Invalid data", errors: result.error.flatten() });
-      }
 
-      // Check if email already exists
-      const existingUser = await storage.getUserByEmail(result.data.email!);
-      if (existingUser) {
-        return res.status(409).json({ message: "A user with this email already exists" });
-      }
-      
-      const pendingRecruit = await storage.createPendingRecruitWithPosition(result.data, recruiterId);
-      
-      res.status(201).json({
-        message: "Recruit created with position selected! Referral link will be generated for full registration.",
-        pendingRecruit: {
-          id: pendingRecruit.id,
-          email: pendingRecruit.email,
-          fullName: pendingRecruit.fullName,
-          position: pendingRecruit.position,
-          status: pendingRecruit.status
-        }
-      });
-    } catch (error: any) {
-      console.error("Error creating pending recruit with position:", error);
-      res.status(500).json({ message: error.message || "Failed to create pending recruit" });
-    }
-  });
 
   app.get("/api/team/members", isAuthenticated, async (req: any, res) => {
     try {
