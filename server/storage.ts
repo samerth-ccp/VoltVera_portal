@@ -52,7 +52,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc, and, sql } from "drizzle-orm";
-import bcrypt from "bcrypt";
+
 import { nanoid } from "nanoid";
 
 // Interface for storage operations
@@ -286,7 +286,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByEmailAndPassword(email: string, password: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.email, email));
     if (user) {
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      const passwordMatch = password === user.password; // Direct string comparison for plaintext
       if (passwordMatch) {
         return user;
       }
@@ -297,7 +297,7 @@ export class DatabaseStorage implements IStorage {
   async getUserByUserIdAndPassword(userId: string, password: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.userId, userId));
     if (user) {
-      const passwordMatch = await bcrypt.compare(password, user.password);
+      const passwordMatch = password === user.password; // Direct string comparison for plaintext
       if (passwordMatch) {
         return user;
       }
@@ -348,18 +348,15 @@ export class DatabaseStorage implements IStorage {
     // Generate sequential user ID
     const userId = await this.generateNextUserId();
     
-    // Hash password before storing (use nanoid if not provided)
-    const hashedPassword = await bcrypt.hash(userData.password || "defaultpass123", 10);
-    
-    // Create user account
-    console.log('🔍 Creating user with originalPassword:', userData.password || "defaultpass123");
+    // Store password in plaintext (no hashing)
+    console.log('🔍 Creating user with plaintext password:', userData.password || "defaultpass123");
     
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
         userId,
-        password: hashedPassword,
+        password: userData.password || "defaultpass123", // Store password in plaintext
         originalPassword: userData.password || "defaultpass123", // Store original password in database
         status: 'active', // Default to active for admin-created users
         emailVerified: new Date(),
@@ -523,12 +520,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updatePassword(id: string, newPassword: string): Promise<boolean> {
-    // Hash password before storing
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Store password in plaintext (no hashing)
     const result = await db
       .update(users)
       .set({ 
-        password: hashedPassword,
+        password: newPassword, // Store password in plaintext
         updatedAt: new Date()
       })
       .where(eq(users.id, id));
@@ -537,13 +533,12 @@ export class DatabaseStorage implements IStorage {
 
   // Email verification and signup methods
   async createSignupUser(userData: SignupUser): Promise<User> {
-    // Hash password before storing
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    // Store password in plaintext (no hashing)
     const [user] = await db
       .insert(users)
       .values({
         ...userData,
-        password: hashedPassword,
+        password: userData.password, // Store password in plaintext
         status: 'pending', // Pending until email verification
       })
       .returning();
@@ -887,8 +882,7 @@ export class DatabaseStorage implements IStorage {
       throw new Error(`Recruiter not found with ID: ${recruiterId}`);
     }
 
-    // Hash the password before storing
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    // Store password in plaintext (no hashing)
 
     // STREAMLINED WORKFLOW: Position already chosen, skip upline approval
     // Since placementSide is provided, go directly to admin approval
@@ -907,7 +901,7 @@ export class DatabaseStorage implements IStorage {
       uplineDecision: 'approved', // Auto-approve since position is chosen
       uplineDecisionAt: new Date(), // Mark as already decided
       // Store all the comprehensive registration data
-      password: hashedPassword,
+      password: data.password, // Store password in plaintext
       dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
       address: data.address,
       city: data.city,
@@ -1195,8 +1189,8 @@ export class DatabaseStorage implements IStorage {
     const firstName = names[0];
     const lastName = names.slice(1).join(' ') || '';
 
-    // Use stored password if available (comprehensive registration), otherwise generate default
-    const passwordToUse = pendingRecruit.password || await bcrypt.hash('defaultpass123', 10);
+    // Use stored password if available (comprehensive registration), otherwise use default
+    const passwordToUse = pendingRecruit.password || 'defaultpass123';
     
     // Generate sequential user ID
     const userId = await this.generateNextUserId();
@@ -1291,7 +1285,7 @@ export class DatabaseStorage implements IStorage {
       const { sendLoginCredentialsEmail } = await import('./emailService');
       // If comprehensive registration, user already set their password, just send account activation
       const passwordForEmail = pendingRecruit.password ? 'Your chosen password' : 'defaultpass123';
-      const emailSent = await sendLoginCredentialsEmail(newUser.email!, firstName, passwordForEmail);
+      const emailSent = await sendLoginCredentialsEmail(newUser.email!, firstName, passwordForEmail, newUser.userId!);
       if (emailSent) {
         console.log(`Login credentials email sent to ${newUser.email}`);
       } else {
@@ -2401,8 +2395,7 @@ export class DatabaseStorage implements IStorage {
     profileData?: any;
   }): Promise<User & { originalPassword: string }> {
     try {
-      // Hash the password
-      const hashedPassword = await bcrypt.hash(data.password, 10);
+      // Store password in plaintext (no hashing)
       
       // Get parent user to calculate level
       const parentUser = await db.select().from(users).where(eq(users.id, data.parentId)).limit(1);
@@ -2422,7 +2415,7 @@ export class DatabaseStorage implements IStorage {
       const [newUser] = await db.insert(users).values({
         userId: userId, // Add the userId field
         email: data.email,
-        password: hashedPassword,
+        password: data.password, // Store password in plaintext
         originalPassword: data.password, // Store original password in database
         firstName: data.firstName,
         lastName: data.lastName,

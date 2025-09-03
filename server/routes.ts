@@ -7,7 +7,7 @@ import session from "express-session";
 import ConnectPgSimple from "connect-pg-simple";
 import { sendSignupEmail, sendPasswordResetEmail, sendUserInvitationEmail } from "./emailService";
 import { nanoid } from "nanoid";
-import bcrypt from "bcrypt";
+
 import mlmRoutes from "./mlmRoutes";
 import { db } from "./db";
 import { eq, lt, and, sql } from "drizzle-orm";
@@ -1504,12 +1504,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Auto-generate credentials and create user
       const tempPassword = nanoid(12);
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
       
       // Create user account
       const newUser = await storage.createUser({
         email: request.recruiteeEmail,
-        password: tempPassword, // Use original password, not hashed
+        password: tempPassword, // Store password in plaintext
         firstName: request.recruiteeName?.split(' ')[0] || 'User',
         lastName: request.recruiteeName?.split(' ').slice(1).join(' ') || '',
         role: 'user',
@@ -1614,13 +1613,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create hidden ID
       const tempPassword = nanoid(16);
-      const hashedPassword = await bcrypt.hash(tempPassword, 10);
       
       const hiddenUser = await storage.createUser({
         email,
         firstName,
         lastName,
-        password: tempPassword, // Use original password, not hashed
+        password: tempPassword, // Store password in plaintext
         role: 'user',
         status: 'active',
         isHiddenId: true,

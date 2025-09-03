@@ -188,7 +188,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
   });
 }
 
-export async function sendLoginCredentialsEmail(email: string, firstName: string, password: string): Promise<boolean> {
+export async function sendLoginCredentialsEmail(email: string, firstName: string, password: string, userID: string): Promise<boolean> {
   // Use actual production domain
   const baseUrl = 'https://voltveratech.com';
   const loginUrl = `${baseUrl}/login`;
@@ -211,7 +211,7 @@ export async function sendLoginCredentialsEmail(email: string, firstName: string
           
           <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
             <h3 style="color: #1f2937; margin-top: 0;">Your Login Credentials</h3>
-            <p style="margin: 10px 0;"><strong>Email:</strong> ${email}</p>
+            <p style="margin: 10px 0;"><strong>User ID:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${userID}</code></p>
             <p style="margin: 10px 0;"><strong>Password:</strong> <code style="background: #e5e7eb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${password}</code></p>
           </div>
           
@@ -246,6 +246,6 @@ export async function sendLoginCredentialsEmail(email: string, firstName: string
         </div>
       </div>
     `,
-    text: `Hi ${firstName}, Welcome to Voltverashop! Your account is ready. Login details: Email: ${email}, Password: ${password}. Login at: ${loginUrl}`
+    text: `Hi ${firstName}, Welcome to Voltverashop! Your account is ready. Login details: User ID: ${userID}, Password: ${password}. Login at: ${loginUrl}`
   });
 }
