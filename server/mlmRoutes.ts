@@ -1,12 +1,5 @@
 import { Router } from "express";
 import { storage } from "./storage";
-
-// Extend session type to include userId
-declare module 'express-session' {
-  interface SessionData {
-    userId: string;
-  }
-}
 import {
   createProductSchema,
   createPurchaseSchema,
@@ -25,6 +18,13 @@ import {
   type CreateNews,
   type UpdateUserProfile
 } from "@shared/schema";
+
+// Extend session type to include userId
+declare module 'express-session' {
+  interface SessionData {
+    userId: string;
+  }
+}
 
 const router = Router();
 
@@ -302,11 +302,13 @@ router.put('/kyc/:documentId', requireAuth, async (req, res) => {
 // Get all pending KYC (Admin only)
 router.get('/admin/kyc', requireAuth, requireAdmin, async (req, res) => {
   try {
+    console.log('🔍 KYC endpoint called by user:', req.session.userId);
     const documents = await storage.getAllPendingKYC();
+    console.log('📊 KYC documents found:', documents.length);
     res.json(documents);
   } catch (error) {
-    console.error('Error fetching pending KYC:', error);
-    res.status(500).json({ message: 'Failed to fetch pending KYC' });
+    console.error('❌ Error fetching pending KYC:', error);
+    res.status(500).json({ message: 'Failed to fetch pending KYC', error: error.message });
   }
 });
 
@@ -323,6 +325,135 @@ router.patch('/admin/kyc/:id', requireAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error('Error updating KYC status:', error);
     res.status(500).json({ message: 'Failed to update KYC status' });
+  }
+});
+
+// Create KYC records for existing users (Admin only)
+router.post('/admin/kyc/create-for-existing', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+    
+    // Get user data
+    const user = await storage.getUser(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    // Create KYC records for the user
+    await storage.createKYCRecordsForExistingUser(userId, user);
+    
+    res.json({ message: 'KYC records created successfully for existing user' });
+  } catch (error) {
+    console.error('Error creating KYC records for existing user:', error);
+    res.status(500).json({ message: 'Failed to create KYC records' });
+  }
+});
+
+// Create KYC records for ALL existing users (Admin only) - One-time migration
+router.post('/admin/kyc/migrate-all-users', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    console.log('🚀 Starting KYC migration for all existing users...');
+    
+    // Get all active users
+    const users = await storage.getAllUsers();
+    console.log(`📊 Found ${users.length} users to process`);
+    
+    let processedCount = 0;
+    let errorCount = 0;
+    
+    for (const user of users) {
+      try {
+        await storage.createKYCRecordsForExistingUser(user.id, user);
+        processedCount++;
+        console.log(`✅ Processed user ${user.userId} (${user.email})`);
+      } catch (error) {
+        errorCount++;
+        console.error(`❌ Error processing user ${user.userId}:`, error);
+      }
+    }
+    
+    res.json({ 
+      message: 'KYC migration completed', 
+      processed: processedCount, 
+      errors: errorCount,
+      total: users.length 
+    });
+  } catch (error) {
+    console.error('Error during KYC migration:', error);
+    res.status(500).json({ message: 'Failed to migrate KYC records' });
+  }
+});
+
+// Get KYC documents for a specific user (Admin only)
+router.get('/admin/kyc/:userId/documents', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    console.log('🔍 Fetching KYC documents for user:', userId);
+    
+    // Fetch documents from kyc_documents table
+    const documents = await db.select().from(kycDocuments).where(eq(kycDocuments.userId, userId));
+    
+    console.log(`Found ${documents.length} documents for user ${userId}`);
+    
+    // Transform documents for frontend consumption
+    const transformedDocuments = documents.map(doc => ({
+      id: doc.id,
+      documentType: doc.documentType,
+      documentData: doc.documentData,
+      documentContentType: doc.documentContentType,
+      documentFilename: doc.documentFilename,
+      documentSize: doc.documentSize,
+      documentNumber: doc.documentNumber,
+      status: doc.status,
+      rejectionReason: doc.rejectionReason,
+      reviewedBy: doc.reviewedBy,
+      reviewedAt: doc.reviewedAt,
+      createdAt: doc.createdAt,
+      updatedAt: doc.updatedAt
+    }));
+    
+    res.json(transformedDocuments);
+  } catch (error) {
+    console.error('❌ Error fetching KYC documents:', error);
+    res.status(500).json({ message: 'Failed to fetch KYC documents', error: error.message });
+  }
+});
+
+// Debug endpoint to check KYC records (Admin only)
+router.get('/admin/kyc/debug', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { kycDocuments, users } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    // Get all KYC records
+    const allKYC = await db.select().from(kycDocuments);
+    console.log('🔍 All KYC records:', allKYC);
+    
+    // Get KYC records with user info
+    const kycWithUsers = await db
+      .select({
+        kycId: kycDocuments.id,
+        userId: kycDocuments.userId,
+        documentType: kycDocuments.documentType,
+        status: kycDocuments.status,
+        userUserId: users.userId,
+        userEmail: users.email,
+        userStatus: users.status
+      })
+      .from(kycDocuments)
+      .leftJoin(users, eq(kycDocuments.userId, users.id));
+    
+    res.json({
+      totalKYCRecords: allKYC.length,
+      kycRecords: allKYC,
+      kycWithUsers: kycWithUsers
+    });
+  } catch (error) {
+    console.error('Error in KYC debug endpoint:', error);
+    res.status(500).json({ message: 'Failed to debug KYC records', error: error.message });
   }
 });
 

@@ -1107,7 +1107,7 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
-  async approvePendingRecruit(id: string, adminData: { packageAmount: string; position?: string }): Promise<User> {
+  async approvePendingRecruit(id: string, adminData: { packageAmount: string; position?: string; kycDecision?: { status: 'approved' | 'rejected'; reason?: string } }): Promise<User> {
     console.log('=== APPROVING PENDING RECRUIT ===');
     console.log('Recruit ID:', id);
     console.log('Package Amount:', adminData.packageAmount);
@@ -1280,6 +1280,60 @@ export class DatabaseStorage implements IStorage {
       console.log(`KYC documents transferred for user ${newUser.email}`);
     }
 
+    // Create KYC profile record for the user
+    try {
+      console.log('🔍 Starting KYC record creation...');
+      console.log('🔍 Admin data received:', adminData);
+      console.log('🔍 KYC decision:', adminData.kycDecision);
+      
+      const { kycDocuments } = await import('@shared/schema');
+      
+      // Determine initial KYC status based on admin decision
+      let initialStatus: 'pending' | 'approved' | 'rejected' = 'pending';
+      let initialReason = '';
+      
+      if (adminData.kycDecision) {
+        initialStatus = adminData.kycDecision.status;
+        initialReason = adminData.kycDecision.reason || '';
+        console.log('🔍 Using admin KYC decision:', initialStatus, initialReason);
+      } else {
+        initialStatus = 'pending';
+        initialReason = 'Documents submitted, awaiting admin verification';
+        console.log('🔍 No KYC decision provided, using default pending status');
+      }
+      
+      // Create single KYC profile record
+      await db.insert(kycDocuments).values({
+        userId: newUser.id,
+        documentType: 'kyc_profile',
+        documentUrl: pendingRecruit.profileImageUrl || '',
+        documentNumber: '',
+        status: initialStatus,
+        rejectionReason: initialStatus === 'rejected' ? initialReason : null,
+        reviewedBy: adminData.kycDecision ? 'admin' : null,
+        reviewedAt: adminData.kycDecision ? new Date() : null,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      });
+      
+      console.log(`✅ Created KYC profile record for user ${newUser.email} with status: ${initialStatus}`);
+      console.log('🔍 KYC record details:', {
+        userId: newUser.id,
+        documentType: 'kyc_profile',
+        status: initialStatus,
+        rejectionReason: initialStatus === 'rejected' ? initialReason : null
+      });
+      
+      // Create notification for KYC status change if admin made a decision
+      if (adminData.kycDecision) {
+        await this.createKYCStatusNotification(newUser.id, adminData.kycDecision.status, adminData.kycDecision.reason);
+      }
+      
+    } catch (kycError) {
+      console.error('Error creating KYC profile record:', kycError);
+      // Continue with user creation even if KYC record creation fails
+    }
+
     // Send login credentials email
     try {
       const { sendLoginCredentialsEmail } = await import('./emailService');
@@ -1369,6 +1423,45 @@ export class DatabaseStorage implements IStorage {
     }
   }
 
+  // Create notification for KYC status change
+  private async createKYCStatusNotification(userId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) {
+    try {
+      const { notifications } = await import('@shared/schema');
+      
+      let title = '';
+      let message = '';
+      
+      if (status === 'approved') {
+        title = 'KYC Documents Approved';
+        message = 'Your KYC documents have been approved by the admin. You can now access all platform features.';
+      } else if (status === 'rejected') {
+        title = 'KYC Documents Rejected';
+        message = reason ? 
+          `Your KYC documents have been rejected. Reason: ${reason}. Please update your documents and resubmit.` :
+          'Your KYC documents have been rejected. Please update your documents and resubmit.';
+      } else if (status === 'pending') {
+        title = 'KYC Documents Under Review';
+        message = 'Your KYC documents have been submitted and are currently under review by our admin team.';
+      }
+      
+      await db.insert(notifications).values({
+        userId: userId,
+        type: 'kyc_status_change',
+        title: title,
+        message: message,
+        data: {
+          status: status,
+          reason: reason || null,
+          timestamp: new Date().toISOString()
+        }
+      });
+      
+      console.log(`✅ KYC status notification created for user ${userId}: ${status}`);
+    } catch (error) {
+      console.error('Error creating KYC status notification:', error);
+    }
+  }
+
   // Notifications operations
   async getNotifications(userId: string): Promise<any[]> {
     const { notifications } = await import('@shared/schema');
@@ -1428,8 +1521,10 @@ export class DatabaseStorage implements IStorage {
     // Convert BinaryTreeUser to User format
     return binaryUsers.map(bu => ({
       id: bu.id,
-      email: bu.email || '',
+      userId: bu.userId || null,
+      email: bu.email || null,
       password: '', // Not exposed
+      originalPassword: null,
       firstName: bu.firstName,
       lastName: bu.lastName,
       profileImageUrl: null,
@@ -1450,6 +1545,26 @@ export class DatabaseStorage implements IStorage {
       mobile: null,
       createdAt: bu.registrationDate,
       updatedAt: bu.registrationDate,
+      // Add all required fields with default values
+      panNumber: null,
+      aadhaarNumber: null,
+      bankAccountNumber: null,
+      bankIFSC: null,
+      bankName: null,
+      dateOfBirth: null,
+      address: null,
+      city: null,
+      state: null,
+      pincode: null,
+      currentRank: null,
+      totalBV: null,
+      leftBV: null,
+      rightBV: null,
+      kycStatus: null,
+      kycSubmittedAt: null,
+      kycApprovedAt: null,
+      isHiddenId: false,
+      lastLoginAt: null,
     }));
   }
 
@@ -1782,32 +1897,349 @@ export class DatabaseStorage implements IStorage {
     return updatedDoc!;
   }
 
-  async updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean> {
-    const updateData: any = { status, reviewedAt: new Date(), updatedAt: new Date() };
-    if (rejectionReason) updateData.rejectionReason = rejectionReason;
 
-    const result = await db
-      .update(kycDocuments)
-      .set(updateData)
-      .where(eq(kycDocuments.id, id));
-
-    // If approved, update user KYC status
-    if (status === 'approved') {
-      const [kyc] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
-      if (kyc) {
-        await db.update(users)
-          .set({ kycStatus: 'approved', kycApprovedAt: new Date() })
-          .where(eq(users.id, kyc.userId));
-      }
+  async getAllPendingKYC(): Promise<any[]> {
+    try {
+      console.log('🔍 getAllPendingKYC called');
+      const { kycDocuments, users } = await import('@shared/schema');
+      const { desc, eq, and, isNotNull, inArray } = await import('drizzle-orm');
+      console.log('📚 Schema imported successfully');
+      
+      // Get ALL KYC documents with user information
+      const result = await db
+        .select({
+          kycId: kycDocuments.id,
+          userId: kycDocuments.userId,
+          documentType: kycDocuments.documentType,
+          documentUrl: kycDocuments.documentUrl,
+          documentNumber: kycDocuments.documentNumber,
+          status: kycDocuments.status,
+          rejectionReason: kycDocuments.rejectionReason,
+          reviewedBy: kycDocuments.reviewedBy,
+          reviewedAt: kycDocuments.reviewedAt,
+          createdAt: kycDocuments.createdAt,
+          updatedAt: kycDocuments.updatedAt,
+          // User details
+          userUserId: users.userId,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          userStatus: users.status,
+          // User document URLs for display (from users table)
+          profileImageUrl: users.profileImageUrl,
+          panNumber: users.panNumber,
+          aadhaarNumber: users.aadhaarNumber
+        })
+        .from(kycDocuments)
+        .innerJoin(users, eq(kycDocuments.userId, users.id))
+        .where(and(
+          isNotNull(users.id), // Ensure user exists
+          inArray(users.status, ['active', 'pending']) // Include both active and pending users
+        ))
+        .orderBy(desc(kycDocuments.createdAt));
+      
+      console.log('📊 Database query result:', result.length, 'KYC documents found');
+      console.log('🔍 Raw query result:', result);
+      
+      // Group documents by user to create one row per user
+      const userKYCData: { [key: string]: any } = {};
+      
+      result.forEach((doc) => {
+        const userId = doc.userId;
+        
+        if (!userKYCData[userId]) {
+          // Initialize user data
+          userKYCData[userId] = {
+            kycId: doc.kycId,
+            userId: doc.userId,
+            userUserId: doc.userUserId,
+            firstName: doc.firstName,
+            lastName: doc.lastName,
+            email: doc.email,
+            userStatus: doc.userStatus,
+            kycStatus: doc.status,
+            rejectionReason: doc.rejectionReason,
+            reviewedBy: doc.reviewedBy,
+            reviewedAt: doc.reviewedAt,
+            createdAt: doc.createdAt,
+            updatedAt: doc.updatedAt,
+            documents: {
+              panCard: { url: doc.documentType === 'pan' ? doc.documentUrl : '', number: doc.panNumber, status: doc.documentType === 'pan' ? doc.status : 'pending' },
+              aadhaarCard: { url: doc.documentType === 'aadhaar' ? doc.documentUrl : '', number: doc.aadhaarNumber, status: doc.documentType === 'aadhaar' ? doc.status : 'pending' },
+              bankStatement: { url: doc.documentType === 'bank_statement' ? doc.documentUrl : '', status: doc.documentType === 'bank_statement' ? doc.status : 'pending' },
+              photo: { url: doc.documentType === 'photo' ? doc.documentUrl : doc.profileImageUrl || '', status: doc.documentType === 'photo' ? doc.status : 'pending' }
+            }
+          };
+        } else {
+          // Update documents with the latest status for each document type
+          if (doc.documentType === 'pan') {
+            userKYCData[userId].documents.panCard = { 
+              url: doc.documentUrl, 
+              number: doc.documentNumber, 
+              status: doc.status 
+            };
+          } else if (doc.documentType === 'aadhaar') {
+            userKYCData[userId].documents.aadhaarCard = { 
+              url: doc.documentUrl, 
+              number: doc.documentNumber, 
+              status: doc.status 
+            };
+          } else if (doc.documentType === 'bank_statement') {
+            userKYCData[userId].documents.bankStatement = { 
+              url: doc.documentUrl, 
+              status: doc.status 
+            };
+          } else if (doc.documentType === 'photo') {
+            userKYCData[userId].documents.photo = { 
+              url: doc.documentUrl, 
+              status: doc.status 
+            };
+          }
+          
+          // Update overall KYC status based on the most recent document status
+          // Priority: rejected > pending > approved
+          if (doc.status === 'rejected' || 
+              (doc.status === 'pending' && userKYCData[userId].kycStatus !== 'rejected') ||
+              (doc.status === 'approved' && userKYCData[userId].kycStatus === 'pending')) {
+            userKYCData[userId].kycStatus = doc.status;
+            userKYCData[userId].rejectionReason = doc.rejectionReason;
+            userKYCData[userId].reviewedBy = doc.reviewedBy;
+            userKYCData[userId].reviewedAt = doc.reviewedAt;
+          }
+        }
+      });
+      
+      const finalResult = Object.values(userKYCData);
+      console.log('👥 Final result:', finalResult.length, 'users with KYC data');
+      console.log('🔍 Final result details:', finalResult);
+      return finalResult;
+      
+    } catch (error) {
+      console.error('❌ Error fetching pending KYC:', error);
+      return [];
     }
-
-    return (result.rowCount ?? 0) > 0;
   }
 
-  async getAllPendingKYC(): Promise<KYCDocument[]> {
-    return await db.select().from(kycDocuments)
-      .where(eq(kycDocuments.status, 'pending'))
-      .orderBy(desc(kycDocuments.createdAt));
+  // ===== KYC OPERATIONS =====
+  // Update KYC status for a user's profile
+  async updateKYCStatus(kycId: string, status: 'pending' | 'approved' | 'rejected', reason?: string): Promise<boolean> {
+    try {
+      const { kycDocuments, users } = await import('@shared/schema');
+      const { eq, and } = await import('drizzle-orm');
+      
+      // First, get the user ID and document type from the KYC record
+      const kycRecord = await db.select({ 
+        userId: kycDocuments.userId,
+        documentType: kycDocuments.documentType 
+      })
+        .from(kycDocuments)
+        .where(eq(kycDocuments.id, kycId))
+        .limit(1);
+      
+      if (kycRecord.length === 0) {
+        console.error('KYC record not found:', kycId);
+        return false;
+      }
+      
+      const userId = kycRecord[0].userId;
+      const documentType = kycRecord[0].documentType;
+      
+      // Update the specific KYC document
+      const result = await db.update(kycDocuments)
+        .set({
+          status: status,
+          rejectionReason: status === 'rejected' ? reason : null,
+          reviewedBy: 'admin',
+          reviewedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(kycDocuments.id, kycId));
+      
+      const success = (result.rowCount ?? 0) > 0;
+      
+      if (success) {
+        // Check if all KYC documents for this user are now approved
+        const allUserKYC = await db.select({ status: kycDocuments.status })
+          .from(kycDocuments)
+          .where(eq(kycDocuments.userId, userId));
+        
+        // Determine overall KYC status
+        let overallKYCStatus = 'pending';
+        if (allUserKYC.some(doc => doc.status === 'rejected')) {
+          overallKYCStatus = 'rejected';
+        } else if (allUserKYC.length > 0 && allUserKYC.every(doc => doc.status === 'approved')) {
+          overallKYCStatus = 'approved';
+        }
+        
+        // Update user's overall KYC status
+        await db.update(users)
+          .set({
+            kycStatus: overallKYCStatus as 'pending' | 'approved' | 'rejected',
+            kycApprovedAt: overallKYCStatus === 'approved' ? new Date() : null,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+        
+        // Create notification
+        await this.createKYCStatusNotification(userId, status, reason);
+        
+        console.log(`✅ Updated KYC status for user ${userId}: ${status} (overall: ${overallKYCStatus})`);
+      }
+      
+      return success;
+    } catch (error) {
+      console.error('Error updating KYC status:', error);
+      return false;
+    }
+  }
+
+  // Create KYC records for existing users who don't have individual document records
+  async createKYCRecordsForExistingUser(userId: string, userData: any): Promise<void> {
+    try {
+      const { kycDocuments } = await import('@shared/schema');
+      
+      // Check if user already has KYC records
+      const existingRecords = await db.select().from(kycDocuments)
+        .where(eq(kycDocuments.userId, userId));
+      
+      if (existingRecords.length > 0) {
+        console.log(`User ${userId} already has ${existingRecords.length} KYC records`);
+        return;
+      }
+      
+      // Create individual KYC document records from user data
+      const kycRecords = [];
+      
+      // PAN Card
+      if (userData.panCardUrl) {
+        kycRecords.push({
+          userId: userId,
+          documentType: 'pan',
+          documentUrl: userData.panCardUrl,
+          documentNumber: userData.panNumber || '',
+          status: 'pending' as const,
+          rejectionReason: null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Aadhaar Card
+      if (userData.aadhaarCardUrl) {
+        kycRecords.push({
+          userId: userId,
+          documentType: 'aadhaar',
+          documentUrl: userData.aadhaarCardUrl,
+          documentNumber: userData.aadhaarNumber || '',
+          status: 'pending' as const,
+          rejectionReason: null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Bank Statement
+      if (userData.bankStatementUrl) {
+        kycRecords.push({
+          userId: userId,
+          documentType: 'bankStatement',
+          documentUrl: userData.bankStatementUrl,
+          documentNumber: '',
+          status: 'pending' as const,
+          rejectionReason: null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Photo
+      if (userData.profileImageUrl) {
+        kycRecords.push({
+          userId: userId,
+          documentType: 'photo',
+          documentUrl: userData.profileImageUrl,
+          documentNumber: '',
+          status: 'pending' as const,
+          rejectionReason: null,
+          reviewedBy: null,
+          reviewedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
+      
+      // Insert all KYC records
+      if (kycRecords.length > 0) {
+        await db.insert(kycDocuments).values(kycRecords);
+        console.log(`✅ Created ${kycRecords.length} KYC document records for existing user ${userId}`);
+      }
+      
+    } catch (error) {
+      console.error('Error creating KYC records for existing user:', error);
+    }
+  }
+
+  // Get user KYC information for profile
+  async getUserKYCInfo(userId: string): Promise<any> {
+    try {
+      const { kycDocuments } = await import('@shared/schema');
+      
+      // Get all KYC documents for the user
+      const documents = await db.select().from(kycDocuments)
+        .where(eq(kycDocuments.userId, userId))
+        .orderBy(desc(kycDocuments.createdAt));
+      
+      // Get the main KYC profile record
+      const kycProfile = documents.find(doc => doc.documentType === 'kyc_profile');
+      
+      // Get individual document statuses
+      const panCard = documents.find(doc => doc.documentType === 'pan');
+      const aadhaarCard = documents.find(doc => doc.documentType === 'aadhaar');
+      const bankStatement = documents.find(doc => doc.documentType === 'bank_statement');
+      const photo = documents.find(doc => doc.documentType === 'photo');
+      
+      return {
+        overallStatus: kycProfile?.status || 'pending',
+        overallReason: kycProfile?.rejectionReason || '',
+        documents: {
+          panCard: {
+            status: panCard?.status || 'pending',
+            url: panCard?.documentUrl || '',
+            reason: panCard?.rejectionReason || ''
+          },
+          aadhaarCard: {
+            status: aadhaarCard?.status || 'pending',
+            url: aadhaarCard?.documentUrl || '',
+            reason: aadhaarCard?.rejectionReason || ''
+          },
+          bankStatement: {
+            status: bankStatement?.status || 'pending',
+            url: bankStatement?.documentUrl || '',
+            reason: bankStatement?.rejectionReason || ''
+          },
+          photo: {
+            status: photo?.status || 'pending',
+            url: photo?.documentUrl || '',
+            reason: photo?.rejectionReason || ''
+          }
+        },
+        lastUpdated: kycProfile?.updatedAt || kycProfile?.createdAt
+      };
+    } catch (error) {
+      console.error('Error getting user KYC info:', error);
+      return {
+        overallStatus: 'pending',
+        overallReason: 'Unable to load KYC information',
+        documents: {},
+        lastUpdated: null
+      };
+    }
   }
 
   // ===== RANK OPERATIONS =====

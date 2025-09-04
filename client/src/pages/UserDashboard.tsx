@@ -3,7 +3,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings, ShoppingCart, Package } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings, ShoppingCart, Package, Shield, Eye, CheckCircle, XCircle, Clock, Upload } from "lucide-react";
 import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import MyTeam from "./MyTeam";
@@ -15,6 +16,204 @@ function getInitials(firstName?: string | null, lastName?: string | null) {
   const first = firstName?.[0] || '';
   const last = lastName?.[0] || '';
   return (first + last).toUpperCase() || 'U';
+}
+
+// User KYC Section Component
+function UserKYCSection() {
+  const [kycInfo, setKycInfo] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchKYCInfo();
+  }, []);
+
+  const fetchKYCInfo = async () => {
+    try {
+      const response = await fetch('/api/user/kyc-info', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setKycInfo(data);
+      }
+    } catch (error) {
+      console.error('Error fetching KYC info:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return (
+          <Badge variant="secondary" className="bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Approved
+          </Badge>
+        );
+      case 'rejected':
+        return (
+          <Badge variant="secondary" className="bg-red-100 text-red-800">
+            <XCircle className="w-3 h-3 mr-1" />
+            Rejected
+          </Badge>
+        );
+      default:
+        return (
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+            <Clock className="w-3 h-3 mr-1" />
+            Pending
+          </Badge>
+        );
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Shield className="mr-2 h-5 w-5" />
+            KYC Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-8">Loading KYC information...</div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center">
+          <Shield className="mr-2 h-5 w-5" />
+          KYC Information
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Overall KYC Status */}
+        <div className="p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="font-semibold text-gray-800">Overall KYC Status</h3>
+            {getStatusBadge(kycInfo?.overallStatus || 'pending')}
+          </div>
+          {kycInfo?.overallReason && (
+            <p className="text-sm text-gray-600">{kycInfo.overallReason}</p>
+          )}
+          {kycInfo?.lastUpdated && (
+            <p className="text-xs text-gray-500 mt-2">
+              Last updated: {new Date(kycInfo.lastUpdated).toLocaleDateString()}
+            </p>
+          )}
+        </div>
+
+        {/* Individual Documents */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* PAN Card */}
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-800">PAN Card</h4>
+              {getStatusBadge(kycInfo?.documents?.panCard?.status || 'pending')}
+            </div>
+            {kycInfo?.documents?.panCard?.url && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(kycInfo.documents.panCard.url, '_blank')}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View Document
+              </Button>
+            )}
+            {kycInfo?.documents?.panCard?.reason && (
+              <p className="text-xs text-red-600 mt-2">{kycInfo.documents.panCard.reason}</p>
+            )}
+          </div>
+
+          {/* Aadhaar Card */}
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-800">Aadhaar Card</h4>
+              {getStatusBadge(kycInfo?.documents?.aadhaarCard?.status || 'pending')}
+            </div>
+            {kycInfo?.documents?.aadhaarCard?.url && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(kycInfo.documents.aadhaarCard.url, '_blank')}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View Document
+              </Button>
+            )}
+            {kycInfo?.documents?.aadhaarCard?.reason && (
+              <p className="text-xs text-red-600 mt-2">{kycInfo.documents.aadhaarCard.reason}</p>
+            )}
+          </div>
+
+          {/* Bank Statement */}
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-800">Bank Statement</h4>
+              {getStatusBadge(kycInfo?.documents?.bankStatement?.status || 'pending')}
+            </div>
+            {kycInfo?.documents?.bankStatement?.url && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(kycInfo.documents.bankStatement.url, '_blank')}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View Document
+              </Button>
+            )}
+            {kycInfo?.documents?.bankStatement?.reason && (
+              <p className="text-xs text-red-600 mt-2">{kycInfo.documents.bankStatement.reason}</p>
+            )}
+          </div>
+
+          {/* Photo */}
+          <div className="p-4 border rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-medium text-gray-800">Profile Photo</h4>
+              {getStatusBadge(kycInfo?.documents?.photo?.status || 'pending')}
+            </div>
+            {kycInfo?.documents?.photo?.url && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.open(kycInfo.documents.photo.url, '_blank')}
+                className="text-blue-600 border-blue-600 hover:bg-blue-50"
+              >
+                <Eye className="w-4 h-4 mr-1" />
+                View Photo
+              </Button>
+            )}
+            {kycInfo?.documents?.photo?.reason && (
+              <p className="text-xs text-red-600 mt-2">{kycInfo.documents.photo.reason}</p>
+            )}
+          </div>
+        </div>
+
+        {/* Update Documents Button */}
+        <div className="pt-4 border-t">
+          <Button variant="outline" className="w-full">
+            <Upload className="w-4 h-4 mr-2" />
+            Update KYC Documents
+          </Button>
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Contact support if you need to update your KYC documents
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function UserDashboard() {
@@ -273,7 +472,7 @@ export default function UserDashboard() {
         {activeTab === 'purchases' && <MyPurchases />}
         
         {activeTab === 'settings' && (
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="p-4 sm:p-6 lg:p-8 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Account Settings</CardTitle>
@@ -314,6 +513,9 @@ export default function UserDashboard() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* KYC Information Section */}
+            <UserKYCSection />
           </div>
         )}
       </div>

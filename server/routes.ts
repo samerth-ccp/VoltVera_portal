@@ -950,18 +950,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/pending-recruits/:id/approve", isAuthenticated, isAdmin, async (req: any, res) => {
     try {
       const { id } = req.params;
-      const { packageAmount } = req.body;
+              const { packageAmount, kycDecision } = req.body;
       
       console.log('=== ADMIN APPROVE REQUEST ===');
       console.log('Recruit ID:', id);
-      console.log('Package Amount:', packageAmount);
-      console.log('Admin User:', req.user.email);
+              console.log('Package Amount:', packageAmount);
+        console.log('KYC Decision:', kycDecision);
+        console.log('Admin User:', req.user.email);
 
       if (!packageAmount) {
         return res.status(400).json({ message: "Package amount is required" });
       }
 
-      const newUser = await storage.approvePendingRecruit(id, { packageAmount });
+              const newUser = await storage.approvePendingRecruit(id, { packageAmount, kycDecision });
       res.json({ 
         message: "Recruit approved and user created successfully",
         user: newUser 
@@ -2295,6 +2296,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.status(500).json({ message: 'Failed to complete registration' });
+    }
+  });
+
+  // Get user KYC information for profile
+  app.get('/api/user/kyc-info', isAuthenticated, async (req, res) => {
+    try {
+      const userId = (req.session as any)?.userId;
+      if (!userId) {
+        return res.status(401).json({ message: 'Unauthorized' });
+      }
+
+      const kycInfo = await storage.getUserKYCInfo(userId);
+      res.json(kycInfo);
+    } catch (error) {
+      console.error('Error fetching KYC info:', error);
+      res.status(500).json({ message: 'Failed to fetch KYC information' });
     }
   });
 

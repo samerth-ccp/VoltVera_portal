@@ -21,6 +21,7 @@ import AdminPendingUsers from "@/components/AdminPendingUsers";
 import UserManagement from "@/components/UserManagement";
 import { NotificationCenter } from "@/components/NotificationCenter";
 import { AdminReferralLinkGeneration } from "@/components/AdminStrategicUserCreation";
+import { PendingKYCSection, ApprovedKYCSection, RejectedKYCSection } from "@/components/AdminKYCSections";
 
 interface UserStats {
   totalUsers: number;
@@ -1087,6 +1088,49 @@ export default function AdminDashboard() {
             </Card>
           )}
 
+          {/* KYC Management Sections */}
+          {activeSection === 'pending-kyc' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <Shield className="mr-2 h-5 w-5 text-yellow-500" />
+                  Pending KYC Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PendingKYCSection />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'approved-kyc' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <Shield className="mr-2 h-5 w-5 text-green-500" />
+                  Approved KYC Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ApprovedKYCSection />
+              </CardContent>
+            </Card>
+          )}
+
+          {activeSection === 'rejected-kyc' && (
+            <Card className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle className="text-lg font-medium text-gray-800 flex items-center">
+                  <Shield className="mr-2 h-5 w-5 text-red-500" />
+                  Rejected KYC Requests
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RejectedKYCSection />
+              </CardContent>
+            </Card>
+          )}
+
           {/* Enhanced Section Content for other sections */}
           {(activeSection === 'paid-members' || 
             activeSection === 'today-joinings' || 
@@ -1097,9 +1141,6 @@ export default function AdminDashboard() {
             activeSection === 'salary-income' ||
             activeSection === 'payout-summary' ||
             activeSection === 'holiday-reward' ||
-            activeSection === 'pending-kyc' ||
-            activeSection === 'approved-kyc' ||
-            activeSection === 'rejected-kyc' ||
             activeSection === 'send-fund' ||
             activeSection === 'fund-history' ||
             activeSection === 'manage-fund' ||

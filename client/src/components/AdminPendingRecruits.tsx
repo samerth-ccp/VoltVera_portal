@@ -64,6 +64,8 @@ export function AdminPendingRecruits() {
   const [selectedRecruit, setSelectedRecruit] = useState<PendingRecruit | null>(null);
   const [packageAmount, setPackageAmount] = useState("0.00");
   const [position, setPosition] = useState("Left");
+  const [kycDecision, setKycDecision] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [rejectionReason, setRejectionReason] = useState('');
   const [isApproveOpen, setIsApproveOpen] = useState(false);
   const [rejectDialogRecruit, setRejectDialogRecruit] = useState<PendingRecruit | null>(null);
   const [detailsRecruit, setDetailsRecruit] = useState<PendingRecruit | null>(null);
@@ -148,11 +150,22 @@ export function AdminPendingRecruits() {
 
   const handleApproveSubmit = () => {
     if (!selectedRecruit) return;
-    approveMutation.mutate({
+    
+    const payload: any = {
       id: selectedRecruit.id,
       packageAmount,
       position
-    });
+    };
+    
+    // Add KYC decision if provided
+    if (kycDecision) {
+      payload.kycDecision = {
+        status: kycDecision,
+        reason: kycDecision === 'rejected' ? rejectionReason : undefined
+      };
+    }
+    
+    approveMutation.mutate(payload);
   };
 
   const handleReject = (recruit: PendingRecruit) => {
@@ -342,6 +355,36 @@ export function AdminPendingRecruits() {
                     Position required for admin-generated recruit
                   </p>
                 )}
+              </div>
+
+              {/* KYC Decision Section */}
+              <div className="space-y-2">
+                <Label htmlFor="kycDecision">KYC Decision</Label>
+                <Select value={kycDecision} onValueChange={(value: 'pending' | 'approved' | 'rejected') => setKycDecision(value)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose KYC decision" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending KYC</SelectItem>
+                    <SelectItem value="approved">Approve KYC</SelectItem>
+                    <SelectItem value="rejected">Reject KYC</SelectItem>
+                  </SelectContent>
+                </Select>
+                {kycDecision === 'rejected' && (
+                  <div className="space-y-2">
+                    <Label htmlFor="rejectionReason">Rejection Reason</Label>
+                    <Input
+                      id="rejectionReason"
+                      type="text"
+                      value={rejectionReason}
+                      onChange={(e) => setRejectionReason(e.target.value)}
+                      placeholder="Please provide a reason for rejection"
+                    />
+                  </div>
+                )}
+                <p className="text-xs text-gray-500">
+                  This decision will be applied to the user's KYC profile after account creation.
+                </p>
               </div>
               
               <div className="flex justify-end gap-2">
