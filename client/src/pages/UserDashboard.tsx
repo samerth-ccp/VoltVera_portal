@@ -272,11 +272,12 @@ export default function UserDashboard() {
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <NotificationCenter />
-            <Link href="/change-password">
+            {/* Hidden for now - Change password functionality */}
+            {/* <Link href="/change-password">
               <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
                 <Lock className="h-4 w-4" />
               </Button>
-            </Link>
+            </Link> */}
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {getInitials(user?.firstName, user?.lastName)}
@@ -491,12 +492,13 @@ export default function UserDashboard() {
                   <div>
                     <h3 className="font-semibold mb-3">Account Actions</h3>
                     <div className="space-y-2">
-                      <Link href="/change-password">
+                      {/* Hidden for now - Change password functionality */}
+                      {/* <Link href="/change-password">
                         <Button variant="outline" size="sm" className="w-full justify-start">
                           <Lock className="mr-2 h-4 w-4" />
                           Change Password
                         </Button>
-                      </Link>
+                      </Link> */}
                       <Button 
                         variant="outline" 
                         size="sm" 

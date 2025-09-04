@@ -1107,6 +1107,7 @@ export class DatabaseStorage implements IStorage {
       ));
   }
 
+
   async approvePendingRecruit(id: string, adminData: { packageAmount: string; position?: string; kycDecision?: { status: 'approved' | 'rejected'; reason?: string } }): Promise<User> {
     console.log('=== APPROVING PENDING RECRUIT ===');
     console.log('Recruit ID:', id);
@@ -1964,10 +1965,10 @@ export class DatabaseStorage implements IStorage {
             createdAt: doc.createdAt,
             updatedAt: doc.updatedAt,
             documents: {
-              panCard: { url: doc.documentType === 'pan' ? doc.documentUrl : '', number: doc.panNumber, status: doc.documentType === 'pan' ? doc.status : 'pending' },
-              aadhaarCard: { url: doc.documentType === 'aadhaar' ? doc.documentUrl : '', number: doc.aadhaarNumber, status: doc.documentType === 'aadhaar' ? doc.status : 'pending' },
+              panCard: { url: doc.documentType === 'pan' ? doc.documentUrl : '', number: doc.panNumber || '', status: doc.documentType === 'pan' ? doc.status : 'pending' },
+              aadhaarCard: { url: doc.documentType === 'aadhaar' ? doc.documentUrl : '', number: doc.aadhaarNumber || '', status: doc.documentType === 'aadhaar' ? doc.status : 'pending' },
               bankStatement: { url: doc.documentType === 'bank_statement' ? doc.documentUrl : '', status: doc.documentType === 'bank_statement' ? doc.status : 'pending' },
-              photo: { url: doc.documentType === 'photo' ? doc.documentUrl : doc.profileImageUrl || '', status: doc.documentType === 'photo' ? doc.status : 'pending' }
+              photo: { url: doc.documentType === 'photo' ? doc.documentUrl : (doc.profileImageUrl || ''), status: doc.documentType === 'photo' ? doc.status : 'pending' }
             }
           };
         } else {
@@ -1975,13 +1976,13 @@ export class DatabaseStorage implements IStorage {
           if (doc.documentType === 'pan') {
             userKYCData[userId].documents.panCard = { 
               url: doc.documentUrl, 
-              number: doc.documentNumber, 
+              number: doc.documentNumber || doc.panNumber || '', 
               status: doc.status 
             };
           } else if (doc.documentType === 'aadhaar') {
             userKYCData[userId].documents.aadhaarCard = { 
               url: doc.documentUrl, 
-              number: doc.documentNumber, 
+              number: doc.documentNumber || doc.aadhaarNumber || '', 
               status: doc.status 
             };
           } else if (doc.documentType === 'bank_statement') {

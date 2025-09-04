@@ -113,21 +113,42 @@ export const PendingKYCSection: React.FC = () => {
     }
   };
 
-  const updateKYCStatus = async (documentId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) => {
+  const updateKYCStatus = async (userId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) => {
     try {
-      const response = await fetch(`/api/admin/kyc/${documentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, rejectionReason: reason })
-      });
-
-      if (response.ok) {
+      // First, get all KYC documents for this user
+      const response = await fetch(`/api/admin/kyc/${userId}/documents`);
+      if (!response.ok) {
+        alert('Failed to fetch user documents. Please try again.');
+        return;
+      }
+      
+      const documents = await response.json();
+      if (documents.length === 0) {
+        alert('No KYC documents found for this user.');
+        return;
+      }
+      
+      // Update each document's status
+      let successCount = 0;
+      for (const doc of documents) {
+        const updateResponse = await fetch(`/api/admin/kyc/${doc.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, rejectionReason: reason })
+        });
+        
+        if (updateResponse.ok) {
+          successCount++;
+        }
+      }
+      
+      if (successCount === documents.length) {
         // Refresh the list
         fetchPendingKYC();
         // Show success message
-        alert(`KYC document ${status} successfully!`);
+        alert(`KYC ${status} successfully for all documents!`);
       } else {
-        alert('Failed to update KYC status. Please try again.');
+        alert(`KYC status updated for ${successCount}/${documents.length} documents.`);
       }
     } catch (error) {
       console.error('Error updating KYC status:', error);
@@ -254,7 +275,7 @@ export const PendingKYCSection: React.FC = () => {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => updateKYCStatus(userData.kycId, 'approved')}
+                      onClick={() => updateKYCStatus(userData.userId, 'approved')}
                       className="text-green-600 border-green-600 hover:bg-green-50"
                     >
                       <CheckCircle className="w-4 h-4 mr-1" />
@@ -267,7 +288,7 @@ export const PendingKYCSection: React.FC = () => {
                       onClick={() => {
                         const reason = prompt('Please provide rejection reason:');
                         if (reason) {
-                          updateKYCStatus(userData.kycId, 'rejected', reason);
+                          updateKYCStatus(userData.userId, 'rejected', reason);
                         }
                       }}
                       className="text-red-600 border-red-600 hover:bg-red-50"
@@ -355,21 +376,42 @@ export const ApprovedKYCSection: React.FC = () => {
     }
   };
 
-  const updateKYCStatus = async (documentId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) => {
+  const updateKYCStatus = async (userId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) => {
     try {
-      const response = await fetch(`/api/admin/kyc/${documentId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, rejectionReason: reason })
-      });
-
-      if (response.ok) {
+      // First, get all KYC documents for this user
+      const response = await fetch(`/api/admin/kyc/${userId}/documents`);
+      if (!response.ok) {
+        alert('Failed to fetch user documents. Please try again.');
+        return;
+      }
+      
+      const documents = await response.json();
+      if (documents.length === 0) {
+        alert('No KYC documents found for this user.');
+        return;
+      }
+      
+      // Update each document's status
+      let successCount = 0;
+      for (const doc of documents) {
+        const updateResponse = await fetch(`/api/admin/kyc/${doc.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, rejectionReason: reason })
+        });
+        
+        if (updateResponse.ok) {
+          successCount++;
+        }
+      }
+      
+      if (successCount === documents.length) {
         // Refresh the list
         fetchApprovedKYC();
         // Show success message
-        alert(`KYC document ${status} successfully!`);
+        alert(`KYC ${status} successfully for all documents!`);
       } else {
-        alert('Failed to update KYC status. Please try again.');
+        alert(`KYC status updated for ${successCount}/${documents.length} documents.`);
       }
     } catch (error) {
       console.error('Error updating KYC status:', error);
@@ -567,6 +609,49 @@ export const RejectedKYCSection: React.FC = () => {
       console.error('Error fetching rejected KYC:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updateKYCStatus = async (userId: string, status: 'pending' | 'approved' | 'rejected', reason?: string) => {
+    try {
+      // First, get all KYC documents for this user
+      const response = await fetch(`/api/admin/kyc/${userId}/documents`);
+      if (!response.ok) {
+        alert('Failed to fetch user documents. Please try again.');
+        return;
+      }
+      
+      const documents = await response.json();
+      if (documents.length === 0) {
+        alert('No KYC documents found for this user.');
+        return;
+      }
+      
+      // Update each document's status
+      let successCount = 0;
+      for (const doc of documents) {
+        const updateResponse = await fetch(`/api/admin/kyc/${doc.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status, rejectionReason: reason })
+        });
+        
+        if (updateResponse.ok) {
+          successCount++;
+        }
+      }
+      
+      if (successCount === documents.length) {
+        // Refresh the list
+        fetchRejectedKYC();
+        // Show success message
+        alert(`KYC ${status} successfully for all documents!`);
+      } else {
+        alert(`KYC status updated for ${successCount}/${documents.length} documents.`);
+      }
+    } catch (error) {
+      console.error('Error updating KYC status:', error);
+      alert('Error updating KYC status. Please try again.');
     }
   };
 

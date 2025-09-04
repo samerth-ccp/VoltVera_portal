@@ -148,11 +148,12 @@ export default function Landing() {
                 /> 
                 Remember me
               </label>
-              <Link href="/forgot-password">
+              {/* Hidden for now - Forgot password functionality */}
+              {/* <Link href="/forgot-password">
                 <span className="text-white/90 text-sm hover:text-white transition-colors cursor-pointer">
                   Forgot password?
                 </span>
-              </Link>
+              </Link> */}
             </div>
             
             <Button 
