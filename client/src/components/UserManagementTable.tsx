@@ -104,7 +104,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   // Update user mutation
   const updateUserMutation = useMutation({
     mutationFn: async (userData: Partial<User>) => {
-      return apiRequest(`/api/admin/users/${userData.id}`, 'PATCH', userData);
+      return apiRequest('PATCH', `/api/admin/users/${userData.id}`, userData);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users/search'] });
@@ -520,6 +520,16 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       <SelectItem value="pending">Pending</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="Enter new password (leave blank to keep current)"
+                    value={editingUser.password || ''}
+                    onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+                  />
                 </div>
               </div>
               <div className="flex justify-end space-x-2 pt-4">

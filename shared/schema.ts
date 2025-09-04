@@ -693,6 +693,10 @@ export const updateUserSchema = createInsertSchema(users).pick({
   status: true,
   emailVerified: true,
   lastActiveAt: true,
+  mobile: true,
+  packageAmount: true,
+  cryptoWalletAddress: true,
+  txnPin: true,
 }).partial();
 
 // Type exports
