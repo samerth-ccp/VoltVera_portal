@@ -267,7 +267,8 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       {/* Actions */}
                       <TableCell>
                         <div className="flex space-x-1">
-                          <Button
+                          {/* Hidden for now - Login as user functionality */}
+                          {/* <Button
                             size="sm"
                             variant="outline"
                             onClick={() => loginAsUserMutation.mutate(user.id)}
@@ -276,7 +277,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                             title="Login as this user"
                           >
                             <LogIn className="h-3 w-3" />
-                          </Button>
+                          </Button> */}
                           <Button
                             size="sm"
                             variant="outline"
