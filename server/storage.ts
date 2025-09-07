@@ -307,7 +307,25 @@ export class DatabaseStorage implements IStorage {
 
   // Additional user management operations
   async getAllUsers(search?: string): Promise<User[]> {
-    let query = db.select().from(users).orderBy(desc(users.createdAt));
+    let query = db.select({
+      id: users.id,
+      userId: users.userId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      email: users.email,
+      mobile: users.mobile,
+      sponsorId: users.sponsorId,
+      packageAmount: users.packageAmount,
+      cryptoWalletAddress: users.cryptoWalletAddress,
+      txnPin: users.txnPin,
+      password: users.password,
+      status: users.status,
+      registrationDate: users.createdAt,
+      kycStatus: users.kycStatus,
+      kycApprovedAt: users.kycApprovedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt
+    }).from(users).orderBy(desc(users.createdAt));
     
     if (search) {
       query = query.where(

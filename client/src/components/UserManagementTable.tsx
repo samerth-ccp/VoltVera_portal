@@ -37,6 +37,9 @@ interface User {
   originalPassword?: string; // Original password for admin viewing
   status: 'active' | 'inactive' | 'pending';
   registrationDate: string;
+  // KYC fields
+  kycStatus?: 'pending' | 'approved' | 'rejected';
+  kycApprovedAt?: string;
   // Derived fields from other tables
   walletBalance?: number;
   totalEarnings?: number;
@@ -242,6 +245,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                 <TableRow className="bg-gray-50">
                   <TableHead className="min-w-[120px]">Actions</TableHead>
                   <TableHead className="min-w-[120px]">Withdraw Status</TableHead>
+                  <TableHead className="min-w-[120px]">KYC Status</TableHead>
                   <TableHead className="min-w-[150px]">User ID</TableHead>
                   <TableHead className="min-w-[200px]">Name</TableHead>
                   <TableHead className="min-w-[150px]">Phone</TableHead>
@@ -312,6 +316,17 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                           withdrawal?.status === 'rejected' ? 'destructive' : 'outline'
                         }>
                           {withdrawal?.status || 'None'}
+                        </Badge>
+                      </TableCell>
+
+                      {/* KYC Status */}
+                      <TableCell>
+                        <Badge variant={
+                          user.kycStatus === 'approved' ? 'success' :
+                          user.kycStatus === 'rejected' ? 'destructive' :
+                          user.kycStatus === 'pending' ? 'secondary' : 'outline'
+                        }>
+                          {user.kycStatus || 'Pending'}
                         </Badge>
                       </TableCell>
 
