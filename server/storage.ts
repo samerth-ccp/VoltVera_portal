@@ -1906,7 +1906,7 @@ export class DatabaseStorage implements IStorage {
       const { desc, eq, and, isNotNull, inArray } = await import('drizzle-orm');
       console.log('📚 Schema imported successfully');
       
-      // Get ALL KYC documents with user information
+      // Get ALL KYC documents with user information (restore original working logic)
       const result = await db
         .select({
           kycId: kycDocuments.id,

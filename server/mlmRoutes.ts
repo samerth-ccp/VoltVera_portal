@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { storage } from "./storage";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import {
   createProductSchema,
   createPurchaseSchema,
@@ -9,6 +11,7 @@ import {
   createSupportTicketSchema,
   createNewsSchema,
   updateUserProfileSchema,
+  kycDocuments,
   type CreateProduct,
   type CreatePurchase,
   type CreateWithdrawal,
@@ -393,27 +396,49 @@ router.get('/admin/kyc/:userId/documents', requireAuth, requireAdmin, async (req
     const { userId } = req.params;
     console.log('🔍 Fetching KYC documents for user:', userId);
     
-    // Fetch documents from kyc_documents table
-    const documents = await db.select().from(kycDocuments).where(eq(kycDocuments.userId, userId));
+    // Check if this is a pending recruit ID (starts with 'pending_')
+    let actualUserId = userId;
+    if (userId.startsWith('pending_')) {
+      // For pending recruits, the userId in the URL is the actual userId from kyc_documents
+      actualUserId = userId;
+    } else {
+      // For regular users, we need to check if they have documents stored with their actual user ID
+      // or if they're a pending recruit that was converted to a user
+      actualUserId = userId;
+    }
     
-    console.log(`Found ${documents.length} documents for user ${userId}`);
+    // Fetch documents from kyc_documents table
+    const documents = await db.select().from(kycDocuments).where(eq(kycDocuments.userId, actualUserId));
+    
+    console.log(`Found ${documents.length} documents for user ${actualUserId}`);
     
     // Transform documents for frontend consumption
-    const transformedDocuments = documents.map(doc => ({
-      id: doc.id,
-      documentType: doc.documentType,
-      documentData: doc.documentData,
-      documentContentType: doc.documentContentType,
-      documentFilename: doc.documentFilename,
-      documentSize: doc.documentSize,
-      documentNumber: doc.documentNumber,
-      status: doc.status,
-      rejectionReason: doc.rejectionReason,
-      reviewedBy: doc.reviewedBy,
-      reviewedAt: doc.reviewedAt,
-      createdAt: doc.createdAt,
-      updatedAt: doc.updatedAt
-    }));
+    const transformedDocuments = documents.map(doc => {
+      console.log(`📄 Document ${doc.documentType}:`, {
+        hasDocumentData: !!doc.documentData,
+        hasDocumentUrl: !!doc.documentUrl,
+        documentDataLength: doc.documentData?.length || 0,
+        documentUrl: doc.documentUrl
+      });
+      
+      return {
+        id: doc.id,
+        documentType: doc.documentType,
+        documentData: doc.documentData, // This will be null for old documents
+        documentContentType: doc.documentContentType,
+        documentFilename: doc.documentFilename,
+        documentSize: doc.documentSize,
+        documentNumber: doc.documentNumber,
+        status: doc.status,
+        rejectionReason: doc.rejectionReason,
+        reviewedBy: doc.reviewedBy,
+        reviewedAt: doc.reviewedAt,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        // Include documentUrl for debugging
+        documentUrl: doc.documentUrl
+      };
+    });
     
     res.json(transformedDocuments);
   } catch (error) {

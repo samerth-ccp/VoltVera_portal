@@ -1,0 +1,796 @@
+
+# **VoltVera Portal - Testing Documentation (Updated with Admin User Creation)**
+
+## **Important Notes for Testers**
+
+### **Security & Data Handling**
+- ⚠️ **Passwords are NOT encrypted** - stored as plain text per client request
+- ⚠️ **CSV Download functionality** is Work In Progress (WIP) - may not be fully functional
+- ⚠️ **Search/Filter functionality** in User Management is Work In Progress (WIP) - may not be fully functional
+- ⚠️ **"Skip documents and proceed" button** in registration forms will be removed - do not test this functionality
+
+---
+
+## **CRITICAL: MLM Relationship Maintenance**
+
+### **⚠️ HIGHEST PRIORITY - MLM Structure Integrity**
+
+The most critical aspect of testing is ensuring that MLM (Multi-Level Marketing) relationships are maintained correctly throughout all operations. Any disruption to these relationships can cause significant business impact.
+
+#### **MLM Relationship Components to Test:**
+
+##### **1. Binary Tree Structure Integrity**
+**Critical Test Points:**
+- ✅ **Parent-Child Relationships**: Verify that parent-child relationships are never broken
+- ✅ **Left/Right Position Assignment**: Ensure positions are correctly assigned and maintained
+- ✅ **Level Calculations**: Verify that user levels are calculated correctly based on tree depth
+- ✅ **Spillover Logic**: Test that spillover works correctly when positions are filled
+- ✅ **Tree Rebalancing**: Ensure tree maintains proper binary structure
+
+**Test Scenarios:**
+1. **Add New Recruit**: Verify new recruit is placed in correct position under correct parent
+2. **User Status Changes**: Ensure blocking/unblocking users doesn't break tree relationships
+3. **User Deletion**: Test that deleting users doesn't orphan their children
+4. **Position Changes**: Verify that changing user positions maintains tree integrity
+5. **Bulk Operations**: Test that multiple operations don't corrupt the tree structure
+
+##### **2. Sponsor-Referrer Relationships**
+**Critical Test Points:**
+- ✅ **Sponsor Assignment**: Verify that sponsors are correctly assigned during registration
+- ✅ **Referral Tracking**: Ensure referral links maintain proper sponsor relationships
+- ✅ **Commission Calculations**: Test that sponsor relationships are maintained for income calculations
+- ✅ **Upline Chain**: Verify that upline chains remain intact
+
+**Test Scenarios:**
+1. **Registration via Referral Link**: Verify sponsor is correctly assigned
+2. **Admin User Creation**: Test that admin-created users maintain proper sponsor relationships
+3. **User Transfers**: Test moving users between sponsors (if applicable)
+4. **Relationship Updates**: Verify that sponsor changes don't break existing relationships
+
+##### **3. Business Volume (BV) Calculations**
+**Critical Test Points:**
+- ✅ **Left/Right BV Tracking**: Ensure BV is correctly calculated for left and right legs
+- ✅ **Total BV Calculations**: Verify total BV includes all downline contributions
+- ✅ **BV Updates**: Test that BV updates correctly when new recruits are added
+- ✅ **BV Recalculation**: Ensure BV recalculates when users are moved or status changes
+
+**Test Scenarios:**
+1. **New Recruit Addition**: Verify BV updates correctly for all uplines
+2. **User Status Changes**: Test that inactive users don't contribute to BV
+3. **Package Amount Changes**: Verify that package changes update BV correctly
+4. **Tree Rebalancing**: Test that BV recalculates after tree changes
+
+##### **4. Income Distribution Integrity**
+**Critical Test Points:**
+- ✅ **Commission Calculations**: Verify that commissions are calculated based on correct relationships
+- ✅ **Upline Commissions**: Test that uplines receive correct commissions
+- ✅ **Binary Matching**: Ensure binary matching bonuses are calculated correctly
+- ✅ **Rank Progression**: Verify that rank calculations use correct relationship data
+
+**Test Scenarios:**
+1. **Commission Payments**: Test that commissions are paid to correct uplines
+2. **Binary Matching**: Verify that binary matching works with correct leg calculations
+3. **Rank Achievements**: Test that rank progressions are based on accurate relationship data
+4. **Income Reports**: Verify that income reports reflect correct relationship data
+
+---
+
+## **Module 1: User Management - All Members Module (Admin Panel)**
+
+### **Access Path**
+- Login as Admin → Admin Dashboard → User Management → All Members
+
+### **Test Cases**
+
+#### **1.1 View All Members**
+**Test Steps:**
+1. Navigate to Admin Dashboard
+2. Click on "User Management" in sidebar
+3. Select "All Members" tab
+4. Verify the user table loads with all registered users
+
+**Expected Results:**
+- ✅ Table displays all users with columns: Name, Email, User ID, Status, Role, Registration Date
+- ✅ Users are paginated (if applicable)
+- ✅ Loading state is shown while data loads
+- ⚠️ **Search functionality is WIP** - may not work fully
+
+**Acceptance Criteria:**
+- All registered users are visible
+- Table is responsive and loads within 3 seconds
+- **CRITICAL**: MLM relationships are preserved in display
+
+#### **1.2 Search and Filter Users** ⚠️ **WIP - LIMITED TESTING**
+**Test Steps:**
+1. Use the search bar to search by user name, email, or user ID
+2. Use status filter dropdown (All Status, Active, Blocked, Pending)
+3. Use role filter dropdown (if available)
+4. Test combination of search and filters
+
+**Expected Results:**
+- ⚠️ **Search functionality is WIP** - may not work as expected
+- ⚠️ **Filters may be limited** - test basic functionality only
+- ✅ Basic table display should work
+- ✅ **CRITICAL**: MLM relationships must be preserved during any filtering
+
+**Acceptance Criteria:**
+- **CRITICAL**: No MLM relationship data is lost during search/filter operations
+- Basic functionality works (even if limited)
+- Table remains stable during operations
+
+#### **1.3 Edit User Details** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Click the edit (pencil) icon for any user
+2. Modify user details in the modal:
+   - First Name, Last Name
+   - Email, Phone
+   - TXN Pin, Package Amount
+   - Crypto Wallet Address
+   - Status (Active/Blocked/Pending)
+   - **Password** (new field)
+3. Click "Update User"
+4. Verify changes are saved
+
+**Expected Results:**
+- ✅ Modal opens with current user data pre-filled
+- ✅ All fields are editable
+- ✅ Password field accepts new password (stored as plain text)
+- ✅ Success toast notification appears
+- ✅ Table refreshes with updated data
+- ✅ **CRITICAL**: MLM relationships remain intact after update
+
+**Acceptance Criteria:**
+- **CRITICAL**: No MLM relationships are broken during user updates
+- **CRITICAL**: Parent-child relationships are preserved
+- **CRITICAL**: Sponsor relationships remain intact
+- **CRITICAL**: Binary tree positions are maintained
+- Password updates work (stored as plain text)
+- Email validation prevents invalid emails
+- Status changes are immediate
+- All fields save correctly
+
+#### **1.4 Block/Unblock Users** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Click the block (UserX) icon for an active user
+2. Confirm the action
+3. Verify user status changes to "Blocked"
+4. **CRITICAL**: Verify MLM relationships are preserved
+5. Click the block icon again to unblock
+6. Verify user status changes to "Active"
+7. **CRITICAL**: Verify MLM relationships are still intact
+
+**Expected Results:**
+- ✅ Block icon toggles between block/unblock states
+- ✅ Tooltip shows "Block user" or "Activate user"
+- ✅ Status updates immediately in table
+- ✅ Blocked users cannot log in
+- ✅ Success notification appears
+- ✅ **CRITICAL**: MLM relationships remain intact
+- ✅ **CRITICAL**: Binary tree structure is preserved
+- ✅ **CRITICAL**: Sponsor relationships are maintained
+
+**Acceptance Criteria:**
+- **CRITICAL**: Blocking/unblocking users does NOT break MLM relationships
+- **CRITICAL**: Binary tree structure remains intact
+- **CRITICAL**: Parent-child relationships are preserved
+- **CRITICAL**: Sponsor relationships are maintained
+- **CRITICAL**: BV calculations remain accurate
+- Status changes are immediate
+- Blocked users are prevented from login
+- Visual indicators show current status
+
+#### **1.5 View User Passwords**
+**Test Steps:**
+1. In the user table, look for password visibility toggle
+2. Click to show/hide passwords
+3. Verify passwords are displayed in plain text
+
+**Expected Results:**
+- ✅ Password visibility toggle works
+- ✅ Passwords are shown in plain text (not encrypted)
+- ✅ Toggle state persists per user
+- ✅ **CRITICAL**: MLM relationships are not affected by password viewing
+
+**Acceptance Criteria:**
+- Passwords are stored and displayed as plain text
+- Toggle functionality works correctly
+- **CRITICAL**: No MLM data is exposed or modified during password viewing
+
+---
+
+## **Module 1.5: Admin User Creation (CRITICAL MLM TESTING)**
+
+### **Access Path**
+- Login as Admin → Admin Dashboard → User Management → Add User (Strategic/Auto/Root)
+
+### **Understanding MLM User Creation Types**
+
+**For Testers Who Don't Understand MLM Business:**
+
+Think of the MLM structure like a family tree where:
+- **Each person can have maximum 2 direct children** (left and right positions)
+- **Sponsor** = The person who recruited them (like a parent)
+- **Parent** = The person directly above them in the binary tree
+- **Position** = Left or Right side under their parent
+- **Level** = How many steps down from the top of the tree
+- **Business Volume (BV)** = The money/packages that flow up the tree
+
+### **Test Cases**
+
+#### **1.5.1 Strategic Placement User Creation** ⚠️ **CRITICAL MLM TESTING**
+
+**What is Strategic Placement?**
+- Admin manually chooses which existing user will be the parent
+- Admin manually chooses left or right position under that parent
+- Used when admin wants to place someone in a specific location in the tree
+
+**Test Steps:**
+1. Navigate to Admin Dashboard → User Management
+2. Click "Add User" or "Strategic User Creation"
+3. Select "Strategic Placement" from dropdown
+4. Fill in the form:
+   - **Full Name** (required)
+   - **Email** (required)
+   - **Password** (required)
+   - **Parent User** (required) - Select from dropdown of existing users
+   - **Position** (required) - Left or Right
+5. Click "Generate Link" or "Create User"
+6. **CRITICAL**: Verify MLM relationships are correctly established
+
+**Expected Field Values in Database:**
+```sql
+-- User Table Fields for Strategic Placement
+sponsorId: 'admin-demo' (or the admin who created them)
+parentId: [Selected parent user's ID]
+position: 'left' or 'right' (as selected)
+level: [Calculated based on parent's level + 1]
+role: 'user'
+status: 'active' (or 'pending' if email verification required)
+idStatus: 'Active'
+packageAmount: '0.00' (default)
+currentRank: 'Executive' (default)
+totalBV: '0.00'
+leftBV: '0.00'
+rightBV: '0.00'
+```
+
+**Expected Results:**
+- ✅ User is created successfully
+- ✅ **CRITICAL**: Parent-child relationship is correctly established
+- ✅ **CRITICAL**: Position is correctly assigned (left/right)
+- ✅ **CRITICAL**: Level is calculated correctly (parent level + 1)
+- ✅ **CRITICAL**: Sponsor relationship is established
+- ✅ **CRITICAL**: Binary tree structure is updated correctly
+- ✅ User appears in parent's downline
+- ✅ User can log in with provided credentials
+
+**Acceptance Criteria:**
+- **CRITICAL**: Parent-child relationship is mathematically correct
+- **CRITICAL**: Position assignment is accurate
+- **CRITICAL**: Level calculation is correct
+- **CRITICAL**: Binary tree structure is maintained
+- **CRITICAL**: No existing relationships are broken
+- User creation is successful
+- All required fields are populated correctly
+
+#### **1.5.2 Auto Placement User Creation** ⚠️ **CRITICAL MLM TESTING**
+
+**What is Auto Placement?**
+- System automatically finds the best available position in the tree
+- System looks for users who have open left or right positions
+- Used when admin wants the system to optimize tree structure
+
+**Test Steps:**
+1. Navigate to Admin Dashboard → User Management
+2. Click "Add User" or "Strategic User Creation"
+3. Select "Auto Placement" from dropdown
+4. Fill in the form:
+   - **Full Name** (required)
+   - **Email** (required)
+   - **Password** (required)
+   - **Position** (required) - Left or Right (system preference)
+5. Click "Generate Link" or "Create User"
+6. **CRITICAL**: Verify system found optimal placement
+
+**Expected Field Values in Database:**
+```sql
+-- User Table Fields for Auto Placement
+sponsorId: 'admin-demo' (or the admin who created them)
+parentId: [System-selected parent user's ID]
+position: 'left' or 'right' (system-optimized)
+level: [Calculated based on selected parent's level + 1]
+role: 'user'
+status: 'active' (or 'pending' if email verification required)
+idStatus: 'Active'
+packageAmount: '0.00' (default)
+currentRank: 'Executive' (default)
+totalBV: '0.00'
+leftBV: '0.00'
+rightBV: '0.00'
+```
+
+**Expected Results:**
+- ✅ User is created successfully
+- ✅ **CRITICAL**: System found optimal parent and position
+- ✅ **CRITICAL**: Parent-child relationship is correctly established
+- ✅ **CRITICAL**: Position is correctly assigned
+- ✅ **CRITICAL**: Level is calculated correctly
+- ✅ **CRITICAL**: Binary tree structure is optimized
+- ✅ User appears in selected parent's downline
+- ✅ System chose best available position
+
+**Acceptance Criteria:**
+- **CRITICAL**: System optimization works correctly
+- **CRITICAL**: Parent selection is logical and optimal
+- **CRITICAL**: Position assignment maintains tree balance
+- **CRITICAL**: Level calculations are accurate
+- **CRITICAL**: No existing relationships are broken
+- User creation is successful
+- System makes intelligent placement decisions
+
+#### **1.5.3 Root Placement User Creation** ⚠️ **CRITICAL MLM TESTING**
+
+**What is Root Placement?**
+- User is placed at the very top of the tree (level 0)
+- User becomes a new root node (like starting a new tree branch)
+- Used for creating new tree structures or top-level users
+
+**Test Steps:**
+1. Navigate to Admin Dashboard → User Management
+2. Click "Add User" or "Strategic User Creation"
+3. Select "Root Placement" from dropdown
+4. Fill in the form:
+   - **Full Name** (required)
+   - **Email** (required)
+   - **Password** (required)
+   - **Position** (required) - Left or Right (for future children)
+5. Click "Generate Link" or "Create User"
+6. **CRITICAL**: Verify user is at root level
+
+**Expected Field Values in Database:**
+```sql
+-- User Table Fields for Root Placement
+sponsorId: 'admin-demo' (or the admin who created them)
+parentId: NULL (no parent - they are at root)
+position: 'left' or 'right' (for their own positioning)
+level: '0' (root level)
+role: 'user' (or 'admin' if specified)
+status: 'active' (or 'pending' if email verification required)
+idStatus: 'Active'
+packageAmount: '0.00' (default)
+currentRank: 'Executive' (default)
+totalBV: '0.00'
+leftBV: '0.00'
+rightBV: '0.00'
+```
+
+**Expected Results:**
+- ✅ User is created successfully
+- ✅ **CRITICAL**: User is at root level (level 0)
+- ✅ **CRITICAL**: No parent is assigned (parentId is NULL)
+- ✅ **CRITICAL**: User can have children placed under them
+- ✅ **CRITICAL**: Binary tree structure allows for new root
+- ✅ User appears at top of tree structure
+- ✅ User can log in with provided credentials
+
+**Acceptance Criteria:**
+- **CRITICAL**: User is correctly placed at root level
+- **CRITICAL**: No parent relationship is established
+- **CRITICAL**: Level is set to 0
+- **CRITICAL**: Tree structure allows for new root placement
+- **CRITICAL**: Existing tree structure is not affected
+- User creation is successful
+- Root placement is mathematically correct
+
+#### **1.5.4 Verify MLM Relationships After User Creation** ⚠️ **CRITICAL MLM TESTING**
+
+**Test Steps:**
+1. After creating any type of user, verify the following:
+2. Check Binary Tree View to see user placement
+3. Check parent user's downline to confirm relationship
+4. Verify level calculations are correct
+5. Check that BV calculations are updated
+6. Verify no existing relationships are broken
+
+**Expected Results:**
+- ✅ **CRITICAL**: User appears in correct location in binary tree
+- ✅ **CRITICAL**: Parent-child relationship is visible
+- ✅ **CRITICAL**: Level calculations are accurate
+- ✅ **CRITICAL**: Position (left/right) is correct
+- ✅ **CRITICAL**: Sponsor relationship is established
+- ✅ **CRITICAL**: No existing users are affected negatively
+- ✅ **CRITICAL**: Tree structure remains mathematically sound
+
+**Acceptance Criteria:**
+- **CRITICAL**: All MLM relationships are mathematically correct
+- **CRITICAL**: Binary tree structure is maintained
+- **CRITICAL**: No orphaned users exist
+- **CRITICAL**: Level calculations are accurate
+- **CRITICAL**: Position assignments are correct
+- **CRITICAL**: Sponsor relationships are established
+- Visual representation matches database relationships
+
+---
+
+## **Module 2: Add Recruit Forms** ⚠️ **CRITICAL MLM TESTING**
+
+### **Access Path**
+- Login as User → My Team → Add Recruit
+
+### **Test Cases**
+
+#### **2.1 Generate Referral Link** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Navigate to "My Team" page
+2. Click "Add Recruit" button
+3. Fill in the form:
+   - Full Name (required)
+   - Email (required)
+   - Position (Left/Right - required)
+4. Click "Generate Link"
+5. Verify referral link is generated and copied to clipboard
+6. **CRITICAL**: Verify MLM relationship data is correctly embedded in link
+
+**Expected Results:**
+- ✅ Form validation works for required fields
+- ✅ Referral link is generated successfully
+- ✅ Link is automatically copied to clipboard
+- ✅ Success toast notification appears
+- ✅ Generated link is displayed in the interface
+- ✅ **CRITICAL**: Link contains correct sponsor/referrer information
+- ✅ **CRITICAL**: Position selection is properly recorded
+
+**Acceptance Criteria:**
+- **CRITICAL**: Referral link maintains correct sponsor relationship
+- **CRITICAL**: Position selection is accurately recorded
+- **CRITICAL**: Link generation doesn't corrupt existing MLM structure
+- All required fields must be filled
+- Email format validation works
+- Position selection is mandatory
+- Link generation is successful
+
+#### **2.2 Share Referral Link** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. After generating a referral link
+2. Copy the link manually (if needed)
+3. Share the link with a prospect
+4. Verify the link works when accessed
+5. **CRITICAL**: Verify link contains correct MLM relationship data
+
+**Expected Results:**
+- ✅ Link is properly formatted
+- ✅ Link opens the registration page
+- ✅ Link contains proper referral token
+- ✅ **CRITICAL**: Link maintains correct sponsor relationship
+- ✅ **CRITICAL**: Position information is preserved
+- ✅ Link expires after specified time (if applicable)
+
+**Acceptance Criteria:**
+- **CRITICAL**: Links maintain correct MLM relationship data
+- **CRITICAL**: Sponsor information is accurately preserved
+- **CRITICAL**: Position data is correctly embedded
+- Links are unique per recruit
+- Links work across different browsers
+- Links contain proper referral information
+
+#### **2.3 Recruit Registration Process** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Use a generated referral link
+2. Fill in the registration form:
+   - Full Name
+   - Email
+   - Password
+   - Confirm Password
+3. Submit the form
+4. Verify recruit appears in pending recruits
+5. **CRITICAL**: Verify MLM relationships are correctly established
+
+**Expected Results:**
+- ✅ Registration form loads correctly
+- ✅ Form validation works
+- ✅ Registration is submitted successfully
+- ✅ Recruit appears in upline's pending recruits
+- ✅ Success message is displayed
+- ✅ **CRITICAL**: Sponsor relationship is correctly established
+- ✅ **CRITICAL**: Position is correctly assigned
+- ✅ **CRITICAL**: Binary tree structure is updated correctly
+
+**Acceptance Criteria:**
+- **CRITICAL**: Sponsor relationship is accurately established
+- **CRITICAL**: Position assignment is correct
+- **CRITICAL**: Binary tree structure is properly updated
+- **CRITICAL**: MLM hierarchy is maintained
+- Registration process is smooth
+- Data is saved correctly
+- Recruit appears in appropriate pending list
+
+---
+
+## **Module 3: Binary Tree View (Users)** ⚠️ **CRITICAL MLM TESTING**
+
+### **Access Path**
+- Login as User → My Team → Binary Tree tab
+
+### **Test Cases**
+
+#### **3.1 View Binary Tree Structure** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Navigate to "My Team" page
+2. Click on "Binary Tree" tab
+3. Verify the tree structure is displayed
+4. **CRITICAL**: Verify MLM relationships are correctly displayed
+
+**Expected Results:**
+- ✅ Tree shows current user at the root
+- ✅ Left and right positions are clearly marked
+- ✅ Empty positions show "Open Position" placeholder
+- ✅ Active/Inactive status is indicated
+- ✅ Package amounts are displayed
+- ✅ Tree is visually clear and organized
+- ✅ **CRITICAL**: Parent-child relationships are correctly shown
+- ✅ **CRITICAL**: Position assignments are accurate
+- ✅ **CRITICAL**: Level calculations are correct
+
+**Acceptance Criteria:**
+- **CRITICAL**: Binary tree structure is mathematically correct
+- **CRITICAL**: Parent-child relationships are accurate
+- **CRITICAL**: Position assignments match database
+- **CRITICAL**: Level calculations are correct
+- **CRITICAL**: No orphaned nodes exist
+- Tree structure is accurate
+- Visual hierarchy is clear
+- Status indicators work correctly
+- Tree loads within 3 seconds
+
+#### **3.2 Tree Navigation and Interaction** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Click on different nodes in the tree
+2. Verify node information is displayed
+3. Test tree expansion/collapse (if available)
+4. Verify tree updates when new recruits are added
+5. **CRITICAL**: Verify MLM relationships are preserved during interactions
+
+**Expected Results:**
+- ✅ Node clicks show user details
+- ✅ Tree updates reflect new recruits
+- ✅ Visual feedback on interactions
+- ✅ Tree maintains proper structure
+- ✅ **CRITICAL**: MLM relationships remain intact during navigation
+- ✅ **CRITICAL**: Tree structure is preserved during updates
+
+**Acceptance Criteria:**
+- **CRITICAL**: MLM relationships are never broken during interactions
+- **CRITICAL**: Tree structure integrity is maintained
+- **CRITICAL**: Parent-child relationships are preserved
+- Interactive elements work correctly
+- Tree updates in real-time
+- User experience is smooth
+
+---
+
+## **Module 4: Downline View (Users)** ⚠️ **CRITICAL MLM TESTING**
+
+### **Access Path**
+- Login as User → My Team → Downline tab
+
+### **Test Cases**
+
+#### **4.1 View Downline Structure** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Navigate to "My Team" page
+2. Click on "Downline" tab
+3. Verify downline structure is displayed
+4. **CRITICAL**: Verify MLM relationships are correctly shown
+
+**Expected Results:**
+- ✅ Downline is organized by levels
+- ✅ Each level shows user count and statistics
+- ✅ Users are displayed with their details
+- ✅ Active/Inactive status is shown
+- ✅ Business Volume (BV) is displayed
+- ✅ Levels can be expanded/collapsed
+- ✅ **CRITICAL**: Sponsor relationships are correctly displayed
+- ✅ **CRITICAL**: Level calculations are accurate
+- ✅ **CRITICAL**: BV calculations are correct
+
+**Acceptance Criteria:**
+- **CRITICAL**: Downline structure matches actual MLM relationships
+- **CRITICAL**: Sponsor relationships are accurately displayed
+- **CRITICAL**: Level calculations are mathematically correct
+- **CRITICAL**: BV calculations are accurate
+- Downline structure is accurate
+- Statistics are calculated correctly
+- Level organization is clear
+- Data loads efficiently
+
+#### **4.2 Downline Search and Filter** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Use search bar to find specific users
+2. Use level filter to show specific levels
+3. Use status filter to show active/inactive users
+4. Test combination of filters
+5. **CRITICAL**: Verify MLM relationships are preserved during filtering
+
+**Expected Results:**
+- ✅ Search works by name, email, or user ID
+- ✅ Level filter shows only selected levels
+- ✅ Status filter works correctly
+- ✅ Combined filters work together
+- ✅ Results update in real-time
+- ✅ **CRITICAL**: MLM relationships are preserved during filtering
+- ✅ **CRITICAL**: No relationship data is lost
+
+**Acceptance Criteria:**
+- **CRITICAL**: MLM relationships are never broken during search/filter operations
+- **CRITICAL**: Sponsor relationships are preserved
+- **CRITICAL**: Level calculations remain accurate
+- Search is fast and accurate
+- Filters work independently and together
+- Results are relevant and complete
+
+#### **4.3 Downline Statistics** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Verify statistics are displayed correctly:
+   - Total downline count
+   - Active members count
+   - Total Business Volume
+   - Level-wise breakdown
+2. **CRITICAL**: Verify statistics match actual MLM relationship data
+
+**Expected Results:**
+- ✅ Statistics are accurate
+- ✅ Numbers match actual downline data
+- ✅ Statistics update when downline changes
+- ✅ Visual representation is clear
+- ✅ **CRITICAL**: Statistics reflect correct MLM relationships
+- ✅ **CRITICAL**: BV calculations are mathematically correct
+
+**Acceptance Criteria:**
+- **CRITICAL**: Statistics are based on accurate MLM relationship data
+- **CRITICAL**: BV calculations are mathematically correct
+- **CRITICAL**: Counts match actual relationship data
+- Statistics are mathematically correct
+- Updates are real-time
+- Display is user-friendly
+
+---
+
+## **Module 5: Direct Recruits (Users)** ⚠️ **CRITICAL MLM TESTING**
+
+### **Access Path**
+- Login as User → My Team → Direct Recruits tab
+
+### **Test Cases**
+
+#### **5.1 View Direct Recruits** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. Navigate to "My Team" page
+2. Click on "Direct Recruits" tab
+3. Verify direct recruits are displayed
+4. **CRITICAL**: Verify only direct recruits are shown (not entire downline)
+
+**Expected Results:**
+- ✅ Only direct recruits are shown (not entire downline)
+- ✅ Recruit details are displayed (name, email, status, etc.)
+- ✅ Registration and activation dates are shown
+- ✅ Business Volume information is displayed
+- ✅ List is properly formatted
+- ✅ **CRITICAL**: Sponsor relationships are correctly displayed
+- ✅ **CRITICAL**: Only direct sponsor relationships are shown
+
+**Acceptance Criteria:**
+- **CRITICAL**: Only direct recruits appear (not entire downline)
+- **CRITICAL**: Sponsor relationships are accurately displayed
+- **CRITICAL**: No indirect recruits are shown
+- Only direct recruits appear
+- Information is complete and accurate
+- Display is organized and clear
+
+#### **5.2 Direct Recruit Management** ⚠️ **CRITICAL MLM TESTING**
+**Test Steps:**
+1. View direct recruit details
+2. Check recruit status and information
+3. Verify recruit statistics
+4. Test any available actions (if any)
+5. **CRITICAL**: Verify MLM relationships are preserved
+
+**Expected Results:**
+- ✅ Recruit information is complete
+- ✅ Status is accurate
+- ✅ Statistics are correct
+- ✅ Actions work as expected
+- ✅ **CRITICAL**: MLM relationships are preserved
+- ✅ **CRITICAL**: Sponsor relationships remain intact
+
+**Acceptance Criteria:**
+- **CRITICAL**: MLM relationships are never broken during management operations
+- **CRITICAL**: Sponsor relationships are maintained
+- **CRITICAL**: Direct recruit relationships are accurate
+- Data accuracy is maintained
+- User experience is smooth
+- All functionality works correctly
+
+---
+
+## **CRITICAL MLM RELATIONSHIP TESTING CHECKLIST**
+
+### **Before Testing Any Module:**
+- [ ] Verify current MLM structure is intact
+- [ ] Document current parent-child relationships
+- [ ] Record current sponsor relationships
+- [ ] Note current BV calculations
+- [ ] Document current binary tree structure
+
+### **After Testing Any Module:**
+- [ ] Verify MLM structure is still intact
+- [ ] Confirm parent-child relationships are preserved
+- [ ] Check sponsor relationships are maintained
+- [ ] Validate BV calculations are still accurate
+- [ ] Ensure binary tree structure is correct
+- [ ] Confirm no orphaned users exist
+- [ ] Verify level calculations are accurate
+
+### **Red Flags - Stop Testing If:**
+- ❌ Any parent-child relationship is broken
+- ❌ Sponsor relationships are lost
+- ❌ Binary tree structure is corrupted
+- ❌ BV calculations become inaccurate
+- ❌ Users become orphaned
+- ❌ Level calculations are wrong
+- ❌ Commission calculations are affected
+
+---
+
+## **General Testing Guidelines**
+
+### **Performance Requirements**
+- Page load times should be under 3 seconds
+- Search results should appear within 1 second
+- Database operations should complete within 5 seconds
+
+### **Browser Compatibility**
+- Test on Chrome, Firefox, Safari, and Edge
+- Test on mobile devices (responsive design)
+- Test with different screen resolutions
+
+### **Data Validation**
+- All form validations must work correctly
+- Error messages should be clear and helpful
+- Success messages should confirm actions
+
+### **Security Considerations**
+- Remember: Passwords are stored as plain text
+- Test user access controls
+- Verify admin-only functions are protected
+
+### **Known Issues to Note**
+- CSV download functionality is WIP
+- Search/Filter functionality in User Management is WIP
+- "Skip documents and proceed" button will be removed
+- Some features may be in development
+
+---
+
+## **Bug Reporting Template**
+
+When reporting bugs, include:
+1. **Module**: Which module (User Management, Add Recruit, etc.)
+2. **Test Case**: Which specific test case failed
+3. **MLM Impact**: Does this affect MLM relationships? (CRITICAL)
+4. **Steps to Reproduce**: Detailed steps
+5. **Expected Result**: What should happen
+6. **Actual Result**: What actually happened
+7. **MLM Relationship Status**: Are relationships intact? (CRITICAL)
+8. **Browser/Device**: Testing environment
+9. **Screenshots**: If applicable
+10. **Severity**: Critical/High/Medium/Low
+
+---
+
+**Testing Environment**: Prod
+**Last Updated**: 04/09/2025
+**Version**: 1.1
+
+**⚠️ REMEMBER: MLM RELATIONSHIP INTEGRITY IS THE HIGHEST PRIORITY. ANY ISSUE THAT BREAKS MLM RELATIONSHIPS IS CRITICAL AND MUST BE REPORTED IMMEDIATELY.**
+
+
