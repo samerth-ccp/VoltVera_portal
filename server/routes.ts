@@ -613,7 +613,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       if (existingDoc) {
         return res.status(400).json({ 
-          message: "You already have a document of this type submitted or approved" 
+          message: "You already have a document of this type submitted or approved. Please wait for admin review or contact support if you need to replace it." 
         });
       }
 

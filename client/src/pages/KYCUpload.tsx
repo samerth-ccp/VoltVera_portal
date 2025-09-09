@@ -8,7 +8,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -45,7 +44,6 @@ const documentTypes = [
 
 export default function KYCUpload() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -96,7 +94,6 @@ export default function KYCUpload() {
       queryClient.invalidateQueries({ queryKey: ['/api/kyc'] });
       form.reset();
       setSelectedFile(null);
-      setUploadProgress(0);
       toast({
         title: "Document Uploaded",
         description: "Your KYC document has been uploaded successfully and is under review.",
@@ -106,6 +103,42 @@ export default function KYCUpload() {
       toast({
         title: "Upload Failed",
         description: error.message || "Failed to upload document. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update existing KYC document
+  const updateKycMutation = useMutation({
+    mutationFn: async (data: { 
+      documentId: string;
+      documentType: string; 
+      documentData: string; 
+      documentContentType: string;
+      documentFilename: string;
+      documentNumber?: string;
+    }) => {
+      return apiRequest('PUT', `/api/kyc/${data.documentId}`, {
+        documentType: data.documentType,
+        documentData: data.documentData,
+        documentContentType: data.documentContentType,
+        documentFilename: data.documentFilename,
+        documentNumber: data.documentNumber,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/kyc'] });
+      form.reset();
+      setSelectedFile(null);
+      toast({
+        title: "Document Updated",
+        description: "Your KYC document has been updated successfully and is under review.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update document. Please try again.",
         variant: "destructive",
       });
     },
@@ -122,24 +155,37 @@ export default function KYCUpload() {
     }
 
     try {
-      setUploadProgress(25); // Start progress indication
-      
       // Convert file to Base64
       const documentData = await convertFileToBase64(selectedFile);
-      setUploadProgress(75); // File conversion complete
       
-      // Submit KYC document with binary data
-      await submitKycMutation.mutateAsync({
-        documentType: data.documentType,
-        documentData,
-        documentContentType: selectedFile.type,
-        documentFilename: selectedFile.name,
-        documentNumber: data.documentNumber,
-      });
+      // Check if there's an existing document of the same type
+      const existingDoc = kycDocuments.find(doc => 
+        doc.documentType === data.documentType && doc.status === 'rejected'
+      );
       
-      setUploadProgress(100); // Complete
+      if (existingDoc) {
+        // Update existing rejected document
+        console.log('🔄 Updating existing rejected document:', existingDoc.id);
+        await updateKycMutation.mutateAsync({
+          documentId: existingDoc.id,
+          documentType: data.documentType,
+          documentData,
+          documentContentType: selectedFile.type,
+          documentFilename: selectedFile.name,
+          documentNumber: data.documentNumber,
+        });
+      } else {
+        // Create new document
+        console.log('📄 Creating new document');
+        await submitKycMutation.mutateAsync({
+          documentType: data.documentType,
+          documentData,
+          documentContentType: selectedFile.type,
+          documentFilename: selectedFile.name,
+          documentNumber: data.documentNumber,
+        });
+      }
     } catch (error) {
-      setUploadProgress(0); // Reset on error
       console.error('KYC submission error:', error);
       toast({
         title: "Upload Failed",
@@ -174,7 +220,6 @@ export default function KYCUpload() {
       }
 
       setSelectedFile(file);
-      setUploadProgress(0);
     }
   };
 
@@ -199,13 +244,6 @@ export default function KYCUpload() {
     return <Badge variant={variants[status as keyof typeof variants] || 'secondary'}>{status}</Badge>;
   };
 
-  const getCompletionRate = () => {
-    const totalTypes = documentTypes.length;
-    const completedTypes = documentTypes.filter(type => 
-      kycDocuments.some(doc => doc.documentType === type.value && doc.status === 'approved')
-    ).length;
-    return Math.round((completedTypes / totalTypes) * 100);
-  };
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -218,13 +256,6 @@ export default function KYCUpload() {
           <CardDescription>
             Complete your identity verification by uploading the required documents. This helps us ensure the security of your account.
           </CardDescription>
-          <div className="mt-4">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
-              <span>Verification Progress</span>
-              <span>{getCompletionRate()}% Complete</span>
-            </div>
-            <Progress value={getCompletionRate()} className="h-2" />
-          </div>
         </CardHeader>
       </Card>
 
@@ -347,24 +378,15 @@ export default function KYCUpload() {
                   </label>
                 </div>
 
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Uploading...</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <Progress value={uploadProgress} />
-                  </div>
-                )}
               </div>
 
               <Button 
                 type="submit" 
                 className="w-full volt-gradient text-white"
-                disabled={!selectedFile || submitKycMutation.isPending || uploadMutation.isPending}
+                disabled={!selectedFile || submitKycMutation.isPending || updateKycMutation.isPending}
                 data-testid="button-submit-kyc"
               >
-                {submitKycMutation.isPending ? "Submitting..." : "Submit Document"}
+                {(submitKycMutation.isPending || updateKycMutation.isPending) ? "Processing..." : "Submit Document"}
               </Button>
             </form>
           </Form>

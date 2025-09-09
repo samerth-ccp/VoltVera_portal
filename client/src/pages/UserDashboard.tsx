@@ -69,6 +69,66 @@ function UserKYCSection() {
     }
   };
 
+  // Enhanced document viewing function
+  const handleViewDocument = async (document: any, documentType: string) => {
+    try {
+      console.log(`🔍 Viewing ${documentType} document:`, {
+        hasDocumentData: !!document.documentData,
+        hasUrl: !!document.url,
+        documentType: document.documentType
+      });
+
+      if (document.documentData) {
+        // Handle base64 embedded data
+        const dataUrl = `data:${document.documentType || 'application/pdf'};base64,${document.documentData}`;
+        console.log(`📄 Opening base64 document for ${documentType}`);
+        
+        // Convert to blob for better browser compatibility
+        const response = await fetch(dataUrl);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        
+        const newWindow = window.open(blobUrl, '_blank');
+        if (!newWindow) {
+          alert('Please allow popups to view documents.');
+        } else {
+          console.log(`✅ Successfully opened ${documentType} document`);
+        }
+      } else if (document.url && document.url !== 'data:image/jpeg;base64,placeholder') {
+        // Handle URL-based documents (legacy format)
+        console.log(`🔗 Opening URL-based document for ${documentType}`);
+        
+        if (document.url.startsWith('data:')) {
+          // It's a data URL, convert to blob and open
+          const response = await fetch(document.url);
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          const newWindow = window.open(blobUrl, '_blank');
+          if (!newWindow) {
+            alert('Please allow popups to view documents.');
+          } else {
+            console.log(`✅ Successfully opened ${documentType} document from data URL`);
+          }
+        } else {
+          // It's a regular URL, open directly
+          const newWindow = window.open(document.url, '_blank');
+          if (!newWindow) {
+            alert('Please allow popups to view documents.');
+          } else {
+            console.log(`✅ Successfully opened ${documentType} document from URL`);
+          }
+        }
+      } else {
+        console.warn(`No document data or URL available for ${documentType}`);
+        alert(`No document available for ${documentType}. Please upload a document first.`);
+      }
+    } catch (error) {
+      console.error(`Error viewing ${documentType} document:`, error);
+      alert(`Error opening ${documentType} document. Please try again.`);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -118,11 +178,11 @@ function UserKYCSection() {
               <h4 className="font-medium text-gray-800">PAN Card</h4>
               {getStatusBadge(kycInfo?.documents?.panCard?.status || 'pending')}
             </div>
-            {kycInfo?.documents?.panCard?.url && (
+            {(kycInfo?.documents?.panCard?.url || kycInfo?.documents?.panCard?.documentData) && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(kycInfo.documents.panCard.url, '_blank')}
+                onClick={() => handleViewDocument(kycInfo.documents.panCard, 'PAN Card')}
                 className="text-blue-600 border-blue-600 hover:bg-blue-50"
               >
                 <Eye className="w-4 h-4 mr-1" />
@@ -140,11 +200,11 @@ function UserKYCSection() {
               <h4 className="font-medium text-gray-800">Aadhaar Card</h4>
               {getStatusBadge(kycInfo?.documents?.aadhaarCard?.status || 'pending')}
             </div>
-            {kycInfo?.documents?.aadhaarCard?.url && (
+            {(kycInfo?.documents?.aadhaarCard?.url || kycInfo?.documents?.aadhaarCard?.documentData) && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(kycInfo.documents.aadhaarCard.url, '_blank')}
+                onClick={() => handleViewDocument(kycInfo.documents.aadhaarCard, 'Aadhaar Card')}
                 className="text-blue-600 border-blue-600 hover:bg-blue-50"
               >
                 <Eye className="w-4 h-4 mr-1" />
@@ -162,11 +222,11 @@ function UserKYCSection() {
               <h4 className="font-medium text-gray-800">Bank Statement</h4>
               {getStatusBadge(kycInfo?.documents?.bankStatement?.status || 'pending')}
             </div>
-            {kycInfo?.documents?.bankStatement?.url && (
+            {(kycInfo?.documents?.bankStatement?.url || kycInfo?.documents?.bankStatement?.documentData) && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(kycInfo.documents.bankStatement.url, '_blank')}
+                onClick={() => handleViewDocument(kycInfo.documents.bankStatement, 'Bank Statement')}
                 className="text-blue-600 border-blue-600 hover:bg-blue-50"
               >
                 <Eye className="w-4 h-4 mr-1" />
@@ -184,11 +244,11 @@ function UserKYCSection() {
               <h4 className="font-medium text-gray-800">Profile Photo</h4>
               {getStatusBadge(kycInfo?.documents?.photo?.status || 'pending')}
             </div>
-            {kycInfo?.documents?.photo?.url && (
+            {(kycInfo?.documents?.photo?.url || kycInfo?.documents?.photo?.documentData) && (
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => window.open(kycInfo.documents.photo.url, '_blank')}
+                onClick={() => handleViewDocument(kycInfo.documents.photo, 'Profile Photo')}
                 className="text-blue-600 border-blue-600 hover:bg-blue-50"
               >
                 <Eye className="w-4 h-4 mr-1" />
@@ -203,12 +263,19 @@ function UserKYCSection() {
 
         {/* Update Documents Button */}
         <div className="pt-4 border-t">
-          <Button variant="outline" className="w-full">
+          <Button 
+            variant="outline" 
+            className="w-full"
+            onClick={() => {
+              // Navigate to KYC upload page
+              window.location.href = '/kyc-upload';
+            }}
+          >
             <Upload className="w-4 h-4 mr-2" />
             Update KYC Documents
           </Button>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            Contact support if you need to update your KYC documents
+            Click to upload or replace your KYC documents
           </p>
         </div>
       </CardContent>

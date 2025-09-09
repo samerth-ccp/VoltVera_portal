@@ -2017,14 +2017,47 @@ export class DatabaseStorage implements IStorage {
           
           // Update overall KYC status based on the most recent document status
           // Priority: rejected > pending > approved
-          if (doc.status === 'rejected' || 
-              (doc.status === 'pending' && userKYCData[userId].kycStatus !== 'rejected') ||
-              (doc.status === 'approved' && userKYCData[userId].kycStatus === 'pending')) {
-            userKYCData[userId].kycStatus = doc.status;
+          // If any document is rejected, overall status is rejected
+          // If any document is pending (and none rejected), overall status is pending
+          // If all documents are approved, overall status is approved
+          if (doc.status === 'rejected') {
+            userKYCData[userId].kycStatus = 'rejected';
+            userKYCData[userId].rejectionReason = doc.rejectionReason;
+            userKYCData[userId].reviewedBy = doc.reviewedBy;
+            userKYCData[userId].reviewedAt = doc.reviewedAt;
+          } else if (doc.status === 'pending' && userKYCData[userId].kycStatus !== 'rejected') {
+            userKYCData[userId].kycStatus = 'pending';
             userKYCData[userId].rejectionReason = doc.rejectionReason;
             userKYCData[userId].reviewedBy = doc.reviewedBy;
             userKYCData[userId].reviewedAt = doc.reviewedAt;
           }
+          // Note: 'approved' status is only set if all documents are approved (handled after the loop)
+        }
+      });
+      
+      // Final pass: Set overall status to 'approved' only if all documents are approved
+      Object.keys(userKYCData).forEach(userId => {
+        const user = userKYCData[userId];
+        const documents = user.documents;
+        
+        // Check if all document types have approved status
+        const allApproved = [
+          documents.panCard?.status,
+          documents.aadhaarCard?.status,
+          documents.bankStatement?.status,
+          documents.photo?.status
+        ].every(status => status === 'approved' || status === undefined);
+        
+        // Only set to approved if we have at least one document and all are approved
+        const hasDocuments = [
+          documents.panCard?.status,
+          documents.aadhaarCard?.status,
+          documents.bankStatement?.status,
+          documents.photo?.status
+        ].some(status => status !== undefined);
+        
+        if (hasDocuments && allApproved && user.kycStatus !== 'rejected') {
+          user.kycStatus = 'approved';
         }
       });
       
@@ -2090,6 +2123,14 @@ export class DatabaseStorage implements IStorage {
           overallKYCStatus = 'approved';
         }
         
+        // Get the current overall KYC status before updating
+        const currentUser = await db.select({ kycStatus: users.kycStatus })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        
+        const currentOverallStatus = currentUser[0]?.kycStatus || 'pending';
+        
         // Update user's overall KYC status
         await db.update(users)
           .set({
@@ -2099,8 +2140,13 @@ export class DatabaseStorage implements IStorage {
           })
           .where(eq(users.id, userId));
         
-        // Create notification
-        await this.createKYCStatusNotification(userId, status, reason);
+        // Only create notification if the overall KYC status actually changed
+        if (currentOverallStatus !== overallKYCStatus) {
+          console.log(`📢 KYC status changed from ${currentOverallStatus} to ${overallKYCStatus} - sending notification`);
+          await this.createKYCStatusNotification(userId, overallKYCStatus, reason);
+        } else {
+          console.log(`📝 KYC status unchanged (${overallKYCStatus}) - no notification sent`);
+        }
         
         console.log(`✅ Updated KYC status for user ${userId}: ${status} (overall: ${overallKYCStatus})`);
       }
@@ -2230,21 +2276,29 @@ export class DatabaseStorage implements IStorage {
           panCard: {
             status: panCard?.status || 'pending',
             url: panCard?.documentUrl || '',
+            documentData: panCard?.documentData || '', // ✅ Added documentData
+            documentType: panCard?.documentContentType || '',
             reason: panCard?.rejectionReason || ''
           },
           aadhaarCard: {
             status: aadhaarCard?.status || 'pending',
             url: aadhaarCard?.documentUrl || '',
+            documentData: aadhaarCard?.documentData || '', // ✅ Added documentData
+            documentType: aadhaarCard?.documentContentType || '',
             reason: aadhaarCard?.rejectionReason || ''
           },
           bankStatement: {
             status: bankStatement?.status || 'pending',
             url: bankStatement?.documentUrl || '',
+            documentData: bankStatement?.documentData || '', // ✅ Added documentData
+            documentType: bankStatement?.documentContentType || '',
             reason: bankStatement?.rejectionReason || ''
           },
           photo: {
             status: photo?.status || 'pending',
             url: photo?.documentUrl || '',
+            documentData: photo?.documentData || '', // ✅ Added documentData
+            documentType: photo?.documentContentType || '',
             reason: photo?.rejectionReason || ''
           }
         },
