@@ -191,7 +191,7 @@ export async function sendPasswordResetEmail(email: string, token: string): Prom
 export async function sendLoginCredentialsEmail(email: string, firstName: string, password: string, userID: string): Promise<boolean> {
   // Use actual production domain
   const baseUrl = 'https://voltveratech.com';
-  const loginUrl = `${baseUrl}/login`;
+  const loginUrl = `${baseUrl}/`; // Login form is on the root path, not /login
   
   return sendEmail({
     to: email,
