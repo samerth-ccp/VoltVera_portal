@@ -204,7 +204,7 @@ export default function CompleteReferralRegistration() {
   // Enhanced file validation
   const validateFile = (documentType: keyof typeof documentFiles, file: File) => {
     // File size validation
-    const maxSize = 5 * 1024 * 1024; // 5MB for all documents (will be compressed)
+    const maxSize = 10 * 1024 * 1024; // 10MB for all documents (will be compressed)
     if (file.size > maxSize) {
       return {
         isValid: false,
@@ -1154,33 +1154,6 @@ export default function CompleteReferralRegistration() {
                     Upload clear, readable images of your documents. Documents are optional but recommended for faster verification. Documents will be processed and submitted with your registration.
                   </p>
                  
-                   {/* Skip Documents Option */}
-                   <div className="mt-4 p-3 bg-blue-900/20 border border-blue-400/30 rounded-lg">
-                     <p className="text-xs text-white/60 mb-2">
-                       Don't have documents ready? You can skip and upload them later through your profile.
-                     </p>
-                     <Button
-                       type="button"
-                       variant="outline"
-                       size="sm"
-                       onClick={() => {
-                         // Clear all document states to allow form submission
-                         setDocumentFiles({});
-                         setUploadedDocuments({});
-                         // Clear form document fields - set to empty strings
-                         form.setValue('panCardUrl', '');
-                         form.setValue('aadhaarFrontUrl', '');
-                         form.setValue('aadhaarBackUrl', '');
-                         form.setValue('bankCancelledChequeUrl', '');
-                         form.setValue('photoUrl', '');
-                         
-                         console.log('Cleared all document form fields');
-                       }}
-                       className="w-full bg-transparent border-blue-400/50 text-blue-300 hover:bg-blue-400/10 hover:text-blue-200"
-                     >
-                       Skip Documents & Proceed
-                     </Button>
-                   </div>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -1198,7 +1171,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('panCard', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 5MB, auto-compressed) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 10MB, auto-compressed) - Optional</p>
                   {documentFiles.panCard && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.panCard.isCompressing ? (
@@ -1257,7 +1230,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('aadhaarFront', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar front (Max 5MB, auto-compressed) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar front (Max 10MB, auto-compressed) - Optional</p>
                   {documentFiles.aadhaarFront && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.aadhaarFront.isUploading ? (
@@ -1311,7 +1284,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('aadhaarBack', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar back (Max 5MB, auto-compressed) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar back (Max 10MB, auto-compressed) - Optional</p>
                   {documentFiles.aadhaarBack && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.aadhaarBack.isUploading ? (
@@ -1365,7 +1338,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('bankCancelledCheque', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Bank details or cancelled cheque (Max 5MB, auto-compressed) - Optional</p>
+                                     <p className="text-xs text-white/50">Bank details or cancelled cheque (Max 10MB, auto-compressed) - Optional</p>
                   {documentFiles.bankCancelledCheque && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.bankCancelledCheque.isUploading ? (
@@ -1419,7 +1392,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('photo', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 5MB, auto-compressed) - Optional</p>
+                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 10MB, auto-compressed) - Optional</p>
                   {documentFiles.photo && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.photo.isUploading ? (
