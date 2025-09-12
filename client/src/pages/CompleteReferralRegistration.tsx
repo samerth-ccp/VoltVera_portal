@@ -37,15 +37,17 @@ export default function CompleteReferralRegistration() {
 
   const [uploadedDocuments, setUploadedDocuments] = useState<{
     panCard?: string;
-    aadhaarCard?: string;
-    bankStatement?: string;
+    aadhaarFront?: string;
+    aadhaarBack?: string;
+    bankCancelledCheque?: string;
     photo?: string;
   }>({});
 
   const [documentFiles, setDocumentFiles] = useState<{
     panCard?: UploadedDocument;
-    aadhaarCard?: UploadedDocument;
-    bankStatement?: UploadedDocument;
+    aadhaarFront?: UploadedDocument;
+    aadhaarBack?: UploadedDocument;
+    bankCancelledCheque?: UploadedDocument;
     photo?: UploadedDocument;
   }>({});
 
@@ -83,7 +85,7 @@ export default function CompleteReferralRegistration() {
     email: "",
     password: "",
     mobile: "",
-    dateOfBirth: "",
+    nominee: "",
     address: "",
     city: "",
     state: "",
@@ -93,11 +95,13 @@ export default function CompleteReferralRegistration() {
     bankAccountNumber: "",
     bankIFSC: "",
     bankName: "",
+    bankAccountHolderName: "",
     packageAmount: "5000",
     // Document fields are optional - default to empty strings
     panCardUrl: "",
-    aadhaarCardUrl: "",
-    bankStatementUrl: "",
+    aadhaarFrontUrl: "",
+    aadhaarBackUrl: "",
+    bankCancelledChequeUrl: "",
     photoUrl: "",
     referralToken: "",
   }), []);
@@ -148,7 +152,7 @@ export default function CompleteReferralRegistration() {
   // Enhanced file validation
   const validateFile = (documentType: keyof typeof documentFiles, file: File) => {
     // File size validation
-    const maxSize = documentType === 'photo' ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
+    const maxSize = 10 * 1024 * 1024; // 10MB for all documents
     if (file.size > maxSize) {
       return {
         isValid: false,
@@ -504,13 +508,14 @@ export default function CompleteReferralRegistration() {
       // Include uploaded document data URLs if they exist, otherwise send empty strings
       // Note: uploadedDocuments keys are without 'Url' suffix, form fields have 'Url' suffix
       panCardUrl: uploadedDocuments.panCard || '',
-      aadhaarCardUrl: uploadedDocuments.aadhaarCard || '',
-      bankStatementUrl: uploadedDocuments.bankStatement || '',
+      aadhaarFrontUrl: uploadedDocuments.aadhaarFront || '',
+      aadhaarBackUrl: uploadedDocuments.aadhaarBack || '',
+      bankCancelledChequeUrl: uploadedDocuments.bankCancelledCheque || '',
       photoUrl: uploadedDocuments.photo || '',
     };
 
     // Validate that documents are properly processed
-    const documentFields = ['panCardUrl', 'aadhaarCardUrl', 'bankStatementUrl', 'photoUrl'];
+    const documentFields = ['panCardUrl', 'aadhaarFrontUrl', 'aadhaarBackUrl', 'bankCancelledChequeUrl', 'photoUrl'];
     const emptyDocuments = documentFields.filter(field => {
       const value = submissionData[field as keyof typeof submissionData];
       return !value || value === '';
@@ -626,6 +631,43 @@ export default function CompleteReferralRegistration() {
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            {/* Mandatory Fields Notice */}
+            <div className="bg-yellow-900/20 border border-yellow-400/30 rounded-lg p-4 mb-6">
+              <div className="flex items-center">
+                <AlertCircle className="h-5 w-5 text-yellow-400 mr-2" />
+                <p className="text-yellow-300 text-sm">
+                  Fields marked with <span className="text-red-400 font-bold">*</span> are mandatory and must be filled out to complete registration.
+                </p>
+              </div>
+            </div>
+            {/* Sponsor Information */}
+            {tokenValidation && (
+              <Card className="bg-blue-900/20 backdrop-blur-sm border-blue-400/30">
+                <CardHeader>
+                  <CardTitle className="text-white flex items-center">
+                    <UserPlus className="mr-2 h-5 w-5 text-blue-400" />
+                    Sponsor Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-white font-medium">Sponsor UserID</Label>
+                      <div className="bg-black/50 border border-white/20 rounded-md p-3 text-white">
+                        {tokenValidation.generatedBy || 'N/A'}
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-white font-medium">Placement Side</Label>
+                      <div className="bg-black/50 border border-white/20 rounded-md p-3 text-white">
+                        {tokenValidation.placementSide || 'N/A'}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Basic Information */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">
               <CardHeader>
@@ -640,7 +682,7 @@ export default function CompleteReferralRegistration() {
                   name="firstName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">First Name</FormLabel>
+                      <FormLabel className="text-white">First Name <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -657,7 +699,7 @@ export default function CompleteReferralRegistration() {
                   name="lastName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Last Name</FormLabel>
+                      <FormLabel className="text-white">Last Name <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -674,7 +716,7 @@ export default function CompleteReferralRegistration() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Email Address</FormLabel>
+                      <FormLabel className="text-white">Email Address <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -693,7 +735,7 @@ export default function CompleteReferralRegistration() {
                   name="mobile"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Mobile Number</FormLabel>
+                      <FormLabel className="text-white">Mobile Number <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -709,17 +751,16 @@ export default function CompleteReferralRegistration() {
                 />
                 <FormField
                   control={form.control}
-                  name="dateOfBirth"
+                  name="nominee"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Date of Birth</FormLabel>
+                      <FormLabel className="text-white">Nominee <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
-                          type="date"
-                          max={new Date(new Date().getFullYear() - 18, 11, 31).toISOString().split('T')[0]}
-                          className="bg-black/50 border-white/20 text-white [color-scheme:dark]"
-                          data-testid="input-dateOfBirth"
+                          className="bg-black/50 border-white/20 text-white"
+                          data-testid="input-nominee"
+                          placeholder="Enter nominee name"
                         />
                       </FormControl>
                       <FormMessage />
@@ -731,7 +772,7 @@ export default function CompleteReferralRegistration() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Password</FormLabel>
+                      <FormLabel className="text-white">Password <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -763,7 +804,7 @@ export default function CompleteReferralRegistration() {
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-white">Complete Address</FormLabel>
+                        <FormLabel className="text-white">Complete Address <span className="text-red-400">*</span></FormLabel>
                         <FormControl>
                           <Textarea 
                             {...field} 
@@ -781,7 +822,7 @@ export default function CompleteReferralRegistration() {
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">City</FormLabel>
+                      <FormLabel className="text-white">City <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -798,7 +839,7 @@ export default function CompleteReferralRegistration() {
                   name="state"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">State</FormLabel>
+                      <FormLabel className="text-white">State <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -815,7 +856,7 @@ export default function CompleteReferralRegistration() {
                   name="pincode"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Pincode</FormLabel>
+                      <FormLabel className="text-white">Pincode <span className="text-red-400">*</span></FormLabel>
                       <FormControl>
                         <Input 
                           {...field} 
@@ -836,6 +877,9 @@ export default function CompleteReferralRegistration() {
                 <CardTitle className="text-white flex items-center">
                   <FileText className="mr-2 h-5 w-5 text-green-400" />
                   KYC Details
+                  <Badge variant="secondary" className="ml-2 bg-blue-500/20 text-blue-300 border-blue-400/30">
+                    Optional
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -884,6 +928,9 @@ export default function CompleteReferralRegistration() {
                 <CardTitle className="text-white flex items-center">
                   <CreditCard className="mr-2 h-5 w-5 text-green-400" />
                   Bank Details
+                  <Badge variant="secondary" className="ml-2 bg-blue-500/20 text-blue-300 border-blue-400/30">
+                    Optional
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -898,6 +945,10 @@ export default function CompleteReferralRegistration() {
                           {...field} 
                           className="bg-black/50 border-white/20 text-white"
                           data-testid="input-bankAccountNumber"
+                          onChange={(e) => {
+                            // Convert to uppercase as user types
+                            field.onChange(e.target.value.toUpperCase());
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -916,6 +967,10 @@ export default function CompleteReferralRegistration() {
                           className="bg-black/50 border-white/20 text-white"
                           placeholder="BANK0001234"
                           data-testid="input-bankIFSC"
+                          onChange={(e) => {
+                            // Convert to uppercase as user types
+                            field.onChange(e.target.value.toUpperCase());
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -934,6 +989,34 @@ export default function CompleteReferralRegistration() {
                             {...field} 
                             className="bg-black/50 border-white/20 text-white"
                             data-testid="input-bankName"
+                            onChange={(e) => {
+                              // Convert to uppercase as user types
+                              field.onChange(e.target.value.toUpperCase());
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <FormField
+                    control={form.control}
+                    name="bankAccountHolderName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-white">Account Holder Name</FormLabel>
+                        <FormControl>
+                          <Input 
+                            {...field} 
+                            className="bg-black/50 border-white/20 text-white"
+                            data-testid="input-bankAccountHolderName"
+                            placeholder="Enter account holder name"
+                            onChange={(e) => {
+                              // Convert to uppercase as user types
+                              field.onChange(e.target.value.toUpperCase());
+                            }}
                           />
                         </FormControl>
                         <FormMessage />
@@ -955,7 +1038,7 @@ export default function CompleteReferralRegistration() {
                   name="packageAmount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-white">Select Package</FormLabel>
+                      <FormLabel className="text-white">Select Package <span className="text-red-400">*</span></FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger className="bg-black/50 border-white/20 text-white">
@@ -987,61 +1070,33 @@ export default function CompleteReferralRegistration() {
                     Upload clear, readable images of your documents. Documents are optional but recommended for faster verification. Documents will be processed and submitted with your registration.
                   </p>
                  
-                                   {/* Document Processing Summary */}
-                  <div className="mt-4 p-3 bg-blue-900/20 border border-blue-400/30 rounded-lg">
-                    <div className="flex items-center justify-between text-sm text-white/80 mb-2">
-                      <span>Document Status</span>
-                      <span className="text-blue-300">
-                        {Object.values(uploadedDocuments).filter(Boolean).length} Document(s) Ready
-                      </span>
-                    </div>
-                   <div className="w-full bg-blue-900/50 rounded-full h-2">
-                     <div 
-                       className="bg-blue-400 h-2 rounded-full transition-all duration-300"
-                       style={{ 
-                         width: `${Math.min((Object.values(uploadedDocuments).filter(Boolean).length / 4) * 100, 100)}%` 
-                       }}
-                     ></div>
-                   </div>
-                   <div className="flex flex-wrap gap-2 mt-2">
-                     {Object.entries(uploadedDocuments).map(([key, url]) => (
-                       <Badge 
-                         key={key}
-                         variant={url ? "default" : "secondary"}
-                         className={url ? "bg-green-600 text-white" : "bg-gray-600 text-gray-300"}
-                       >
-                         {key.replace(/([A-Z])/g, ' $1').trim()}: {url ? '✓' : 'Optional'}
-                       </Badge>
-                     ))}
-                   </div>
-                   
                    {/* Skip Documents Option */}
-                   <div className="mt-3 pt-3 border-t border-blue-400/30">
-                                           <p className="text-xs text-white/60 mb-2">
-                        Don't have documents ready? You can skip and upload them later through your profile.
-                      </p>
+                   <div className="mt-4 p-3 bg-blue-900/20 border border-blue-400/30 rounded-lg">
+                     <p className="text-xs text-white/60 mb-2">
+                       Don't have documents ready? You can skip and upload them later through your profile.
+                     </p>
                      <Button
                        type="button"
                        variant="outline"
                        size="sm"
-                                                                       onClick={() => {
-                           // Clear all document states to allow form submission
-                           setDocumentFiles({});
-                           setUploadedDocuments({});
-                           // Clear form document fields - set to empty strings
-                           form.setValue('panCardUrl', '');
-                           form.setValue('aadhaarCardUrl', '');
-                           form.setValue('bankStatementUrl', '');
-                           form.setValue('photoUrl', '');
-                           
-                           console.log('Cleared all document form fields');
-                         }}
+                       onClick={() => {
+                         // Clear all document states to allow form submission
+                         setDocumentFiles({});
+                         setUploadedDocuments({});
+                         // Clear form document fields - set to empty strings
+                         form.setValue('panCardUrl', '');
+                         form.setValue('aadhaarFrontUrl', '');
+                         form.setValue('aadhaarBackUrl', '');
+                         form.setValue('bankCancelledChequeUrl', '');
+                         form.setValue('photoUrl', '');
+                         
+                         console.log('Cleared all document form fields');
+                       }}
                        className="w-full bg-transparent border-blue-400/50 text-blue-300 hover:bg-blue-400/10 hover:text-blue-200"
                      >
                        Skip Documents & Proceed
                      </Button>
                    </div>
-                 </div>
               </CardHeader>
               <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
@@ -1059,7 +1114,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('panCard', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 5MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 10MB) - Optional</p>
                   {documentFiles.panCard && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.panCard.isUploading ? (
@@ -1101,40 +1156,40 @@ export default function CompleteReferralRegistration() {
                 <div className="space-y-2">
                                        <Label className="text-white font-medium flex items-center">
                        <FileText className="mr-2 h-4 w-4 text-orange-400" />
-                       Aadhaar Card
-                       {uploadedDocuments.aadhaarCard && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                       Aadhaar Front
+                       {uploadedDocuments.aadhaarFront && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
                      </Label>
                                      <input
                      type="file"
                      accept="image/*,.pdf"
                      className="w-full bg-black/50 border border-white/20 rounded-md p-2 text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-600 file:text-white hover:file:bg-green-700"
                      onChange={(e) => {
-                       console.log('Aadhaar Card file input change:', e.target.files);
-                       handleFileChange('aadhaarCard', e.target.files?.[0] || null);
+                       console.log('Aadhaar Front file input change:', e.target.files);
+                       handleFileChange('aadhaarFront', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar card (Max 5MB) - Optional</p>
-                  {documentFiles.aadhaarCard && (
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar front (Max 10MB) - Optional</p>
+                  {documentFiles.aadhaarFront && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
-                      {documentFiles.aadhaarCard.isUploading ? (
+                      {documentFiles.aadhaarFront.isUploading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : documentFiles.aadhaarCard.error ? (
+                      ) : documentFiles.aadhaarFront.error ? (
                         <X className="mr-2 h-4 w-4 text-red-400" />
                       ) : (
                         <CheckCircle className="mr-2 h-4 w-4 text-green-400" />
                       )}
-                      {documentFiles.aadhaarCard.file.name}
-                      {documentFiles.aadhaarCard.isUploading && (
-                        <span className="ml-2 text-green-400"> ({documentFiles.aadhaarCard.uploadProgress}%)</span>
+                      {documentFiles.aadhaarFront.file.name}
+                      {documentFiles.aadhaarFront.isUploading && (
+                        <span className="ml-2 text-green-400"> ({documentFiles.aadhaarFront.uploadProgress}%)</span>
                       )}
-                      {documentFiles.aadhaarCard.error && (
-                        <span className="ml-2 text-red-400"> ({documentFiles.aadhaarCard.error})</span>
+                      {documentFiles.aadhaarFront.error && (
+                        <span className="ml-2 text-red-400"> ({documentFiles.aadhaarFront.error})</span>
                       )}
-                      {!documentFiles.aadhaarCard.isUploading && (
+                      {!documentFiles.aadhaarFront.isUploading && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => retryUpload('aadhaarCard')}
+                          onClick={() => retryUpload('aadhaarFront')}
                           className="ml-2 text-green-400 hover:text-green-300"
                         >
                           Retry
@@ -1143,7 +1198,61 @@ export default function CompleteReferralRegistration() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeFile('aadhaarCard')}
+                        onClick={() => removeFile('aadhaarFront')}
+                        className="ml-2 text-red-400 hover:text-red-300"
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                                       <Label className="text-white font-medium flex items-center">
+                       <FileText className="mr-2 h-4 w-4 text-orange-400" />
+                       Aadhaar Back
+                       {uploadedDocuments.aadhaarBack && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                     </Label>
+                                     <input
+                     type="file"
+                     accept="image/*,.pdf"
+                     className="w-full bg-black/50 border border-white/20 rounded-md p-2 text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-600 file:text-white hover:file:bg-green-700"
+                     onChange={(e) => {
+                       console.log('Aadhaar Back file input change:', e.target.files);
+                       handleFileChange('aadhaarBack', e.target.files?.[0] || null);
+                     }}
+                   />
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar back (Max 10MB) - Optional</p>
+                  {documentFiles.aadhaarBack && (
+                    <div className="flex items-center text-sm text-white/70 mt-2">
+                      {documentFiles.aadhaarBack.isUploading ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : documentFiles.aadhaarBack.error ? (
+                        <X className="mr-2 h-4 w-4 text-red-400" />
+                      ) : (
+                        <CheckCircle className="mr-2 h-4 w-4 text-green-400" />
+                      )}
+                      {documentFiles.aadhaarBack.file.name}
+                      {documentFiles.aadhaarBack.isUploading && (
+                        <span className="ml-2 text-green-400"> ({documentFiles.aadhaarBack.uploadProgress}%)</span>
+                      )}
+                      {documentFiles.aadhaarBack.error && (
+                        <span className="ml-2 text-red-400"> ({documentFiles.aadhaarBack.error})</span>
+                      )}
+                      {!documentFiles.aadhaarBack.isUploading && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => retryUpload('aadhaarBack')}
+                          className="ml-2 text-green-400 hover:text-green-300"
+                        >
+                          Retry
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile('aadhaarBack')}
                         className="ml-2 text-red-400 hover:text-red-300"
                       >
                         Remove
@@ -1155,40 +1264,40 @@ export default function CompleteReferralRegistration() {
                 <div className="space-y-2">
                                        <Label className="text-white font-medium flex items-center">
                        <CreditCard className="mr-2 h-4 w-4 text-purple-400" />
-                       Bank Statement
-                       {uploadedDocuments.bankStatement && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
+                       Bank/Cancelled Cheque
+                       {uploadedDocuments.bankCancelledCheque && <CheckCircle className="ml-2 h-4 w-4 text-green-400" />}
                      </Label>
                                      <input
                      type="file"
                      accept="image/*,.pdf"
                      className="w-full bg-black/50 border border-white/20 rounded-md p-2 text-white file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:bg-green-600 file:text-white hover:file:bg-green-700"
                      onChange={(e) => {
-                       console.log('Bank Statement file input change:', e.target.files);
-                       handleFileChange('bankStatement', e.target.files?.[0] || null);
+                       console.log('Bank/Cancelled Cheque file input change:', e.target.files);
+                       handleFileChange('bankCancelledCheque', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Recent bank statement (Max 5MB) - Optional</p>
-                  {documentFiles.bankStatement && (
+                                     <p className="text-xs text-white/50">Bank details or cancelled cheque (Max 10MB) - Optional</p>
+                  {documentFiles.bankCancelledCheque && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
-                      {documentFiles.bankStatement.isUploading ? (
+                      {documentFiles.bankCancelledCheque.isUploading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : documentFiles.bankStatement.error ? (
+                      ) : documentFiles.bankCancelledCheque.error ? (
                         <X className="mr-2 h-4 w-4 text-red-400" />
                       ) : (
                         <CheckCircle className="mr-2 h-4 w-4 text-green-400" />
                       )}
-                      {documentFiles.bankStatement.file.name}
-                      {documentFiles.bankStatement.isUploading && (
-                        <span className="ml-2 text-green-400"> ({documentFiles.bankStatement.uploadProgress}%)</span>
+                      {documentFiles.bankCancelledCheque.file.name}
+                      {documentFiles.bankCancelledCheque.isUploading && (
+                        <span className="ml-2 text-green-400"> ({documentFiles.bankCancelledCheque.uploadProgress}%)</span>
                       )}
-                      {documentFiles.bankStatement.error && (
-                        <span className="ml-2 text-red-400"> ({documentFiles.bankStatement.error})</span>
+                      {documentFiles.bankCancelledCheque.error && (
+                        <span className="ml-2 text-red-400"> ({documentFiles.bankCancelledCheque.error})</span>
                       )}
-                      {!documentFiles.bankStatement.isUploading && (
+                      {!documentFiles.bankCancelledCheque.isUploading && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => retryUpload('bankStatement')}
+                          onClick={() => retryUpload('bankCancelledCheque')}
                           className="ml-2 text-green-400 hover:text-green-300"
                         >
                           Retry
@@ -1197,7 +1306,7 @@ export default function CompleteReferralRegistration() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => removeFile('bankStatement')}
+                        onClick={() => removeFile('bankCancelledCheque')}
                         className="ml-2 text-red-400 hover:text-red-300"
                       >
                         Remove
@@ -1221,7 +1330,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('photo', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 2MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 10MB) - Optional</p>
                   {documentFiles.photo && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.photo.isUploading ? (

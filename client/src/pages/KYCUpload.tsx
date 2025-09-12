@@ -15,7 +15,7 @@ import { Upload, CheckCircle, Clock, XCircle, FileText, Camera, CreditCard, Buil
 import { useToast } from "@/hooks/use-toast";
 
 const kycSchema = z.object({
-  documentType: z.enum(['pan', 'aadhaar', 'bank_statement', 'photo'], {
+  documentType: z.enum(['pan', 'aadhaar_front', 'aadhaar_back', 'bank_cancelled_cheque', 'photo'], {
     required_error: "Please select a document type"
   }),
   documentNumber: z.string().optional(),
@@ -37,8 +37,9 @@ interface KYCDocument {
 
 const documentTypes = [
   { value: 'pan', label: 'PAN Card', icon: CreditCard, description: 'Permanent Account Number Card' },
-  { value: 'aadhaar', label: 'Aadhaar Card', icon: FileText, description: 'Aadhaar Identity Card' },
-  { value: 'bank_statement', label: 'Bank Statement', icon: Building, description: 'Recent Bank Statement' },
+  { value: 'aadhaar_front', label: 'Aadhaar Front', icon: FileText, description: 'Aadhaar Card Front Side' },
+  { value: 'aadhaar_back', label: 'Aadhaar Back', icon: FileText, description: 'Aadhaar Card Back Side' },
+  { value: 'bank_cancelled_cheque', label: 'Bank/Cancelled Cheque', icon: Building, description: 'Bank Details or Cancelled Cheque' },
   { value: 'photo', label: 'Photo ID', icon: Camera, description: 'Passport Photo or ID Photo' },
 ];
 

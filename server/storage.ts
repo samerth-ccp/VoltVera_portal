@@ -241,7 +241,7 @@ export interface IStorage {
       packageAmount?: string;
       password: string;
       // Additional comprehensive data
-      dateOfBirth?: string;
+      nominee?: string;
       address?: string;
       city?: string;
       state?: string;
@@ -251,9 +251,11 @@ export interface IStorage {
       bankAccountNumber?: string;
       bankIFSC?: string;
       bankName?: string;
+      bankAccountHolderName?: string;
       panCardUrl?: string;
-      aadhaarCardUrl?: string;
-      bankStatementUrl?: string;
+      aadhaarFrontUrl?: string;
+      aadhaarBackUrl?: string;
+      bankCancelledChequeUrl?: string;
       profileImageUrl?: string;
     },
     recruiterId: string,
@@ -877,7 +879,7 @@ export class DatabaseStorage implements IStorage {
       packageAmount?: string;
       password: string;
       // Additional comprehensive data
-      dateOfBirth?: string;
+      nominee?: string;
       address?: string;
       city?: string;
       state?: string;
@@ -887,9 +889,11 @@ export class DatabaseStorage implements IStorage {
       bankAccountNumber?: string;
       bankIFSC?: string;
       bankName?: string;
+      bankAccountHolderName?: string;
       panCardUrl?: string;
-      aadhaarCardUrl?: string;
-      bankStatementUrl?: string;
+      aadhaarFrontUrl?: string;
+      aadhaarBackUrl?: string;
+      bankCancelledChequeUrl?: string;
       profileImageUrl?: string;
     },
     recruiterId: string,
@@ -920,7 +924,7 @@ export class DatabaseStorage implements IStorage {
       uplineDecisionAt: new Date(), // Mark as already decided
       // Store all the comprehensive registration data
       password: data.password, // Store password in plaintext
-      dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      nominee: data.nominee,
       address: data.address,
       city: data.city,
       state: data.state,
@@ -930,9 +934,11 @@ export class DatabaseStorage implements IStorage {
       bankAccountNumber: data.bankAccountNumber,
       bankIFSC: data.bankIFSC,
       bankName: data.bankName,
+      bankAccountHolderName: data.bankAccountHolderName,
       panCardUrl: data.panCardUrl,
-      aadhaarCardUrl: data.aadhaarCardUrl,
-      bankStatementUrl: data.bankStatementUrl,
+      aadhaarFrontUrl: data.aadhaarFrontUrl,
+      aadhaarBackUrl: data.aadhaarBackUrl,
+      bankCancelledChequeUrl: data.bankCancelledChequeUrl,
       profileImageUrl: data.profileImageUrl,
     }).returning();
 

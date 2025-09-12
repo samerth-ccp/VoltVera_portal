@@ -450,8 +450,9 @@ export default function PendingUserDashboard() {
                   const getDocumentIcon = (type: string) => {
                     switch(type) {
                       case 'pan': return CreditCard;
-                      case 'aadhaar': return FileText;
-                      case 'bank_statement': return Building;
+                      case 'aadhaar_front': return FileText;
+                      case 'aadhaar_back': return FileText;
+                      case 'bank_cancelled_cheque': return Building;
                       case 'photo': return Camera;
                       default: return FileText;
                     }
@@ -460,8 +461,9 @@ export default function PendingUserDashboard() {
                   const getDocumentLabel = (type: string) => {
                     switch(type) {
                       case 'pan': return 'PAN Card';
-                      case 'aadhaar': return 'Aadhaar Card';
-                      case 'bank_statement': return 'Bank Statement';
+                      case 'aadhaar_front': return 'Aadhaar Front';
+                      case 'aadhaar_back': return 'Aadhaar Back';
+                      case 'bank_cancelled_cheque': return 'Bank/Cancelled Cheque';
                       case 'photo': return 'Photo ID';
                       default: return type;
                     }

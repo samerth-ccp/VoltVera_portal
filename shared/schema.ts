@@ -88,11 +88,13 @@ export const users = pgTable("users", {
   bankAccountNumber: varchar("bank_account_number"),
   bankIFSC: varchar("bank_ifsc"),
   bankName: varchar("bank_name"),
+  bankAccountHolderName: varchar("bank_account_holder_name"),
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
   pincode: varchar("pincode"),
-  dateOfBirth: timestamp("date_of_birth"),
+  dateOfBirth: timestamp("date_of_birth"), // Deprecated - kept for backward compatibility
+  nominee: varchar("nominee"), // New field to replace dateOfBirth
   
   // MLM Business Fields
   currentRank: rankEnum("current_rank").default('Executive'),
@@ -207,7 +209,8 @@ export const pendingRecruits = pgTable("pending_recruits", {
   
   // Comprehensive registration data (for full referral registrations)
   password: varchar("password"), // Encrypted password for account creation
-  dateOfBirth: timestamp("date_of_birth"),
+  dateOfBirth: timestamp("date_of_birth"), // Deprecated - kept for backward compatibility
+  nominee: varchar("nominee"), // New field to replace dateOfBirth
   address: text("address"),
   city: varchar("city"),
   state: varchar("state"),
@@ -217,9 +220,11 @@ export const pendingRecruits = pgTable("pending_recruits", {
   bankAccountNumber: varchar("bank_account_number"),
   bankIFSC: varchar("bank_ifsc"),
   bankName: varchar("bank_name"),
+  bankAccountHolderName: varchar("bank_account_holder_name"),
   panCardUrl: varchar("pan_card_url"),
-  aadhaarCardUrl: varchar("aadhaar_card_url"),
-  bankStatementUrl: varchar("bank_statement_url"),
+  aadhaarFrontUrl: varchar("aadhaar_front_url"),
+  aadhaarBackUrl: varchar("aadhaar_back_url"),
+  bankCancelledChequeUrl: varchar("bank_cancelled_cheque_url"),
   profileImageUrl: varchar("profile_image_url"),
 });
 
@@ -520,7 +525,7 @@ export const completeUserRegistrationSchema = z.object({
   email: z.string().email("Valid email is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   mobile: z.string().min(10, "Valid mobile number is required"),
-  dateOfBirth: z.string().refine((date) => !isNaN(Date.parse(date)), "Valid date of birth is required"),
+  nominee: z.string().min(1, "Nominee name is required"),
   
   // Address details
   address: z.string().min(10, "Complete address is required"),
@@ -528,22 +533,24 @@ export const completeUserRegistrationSchema = z.object({
   state: z.string().min(1, "State is required"),
   pincode: z.string().min(6, "Valid pincode is required"),
   
-  // KYC details
-  panNumber: z.string().min(10, "Valid PAN number is required"),
-  aadhaarNumber: z.string().min(12, "Valid Aadhaar number is required"),
+  // KYC details - Optional
+  panNumber: z.string().optional().or(z.literal('')),
+  aadhaarNumber: z.string().optional().or(z.literal('')),
   
-  // Bank details
-  bankAccountNumber: z.string().min(9, "Valid bank account number is required"),
-  bankIFSC: z.string().min(11, "Valid IFSC code is required"),
-  bankName: z.string().min(1, "Bank name is required"),
+  // Bank details - Optional
+  bankAccountNumber: z.string().optional().or(z.literal('')),
+  bankIFSC: z.string().optional().or(z.literal('')),
+  bankName: z.string().optional().or(z.literal('')),
+  bankAccountHolderName: z.string().optional().or(z.literal('')),
   
   // Package selection
   packageAmount: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid package amount is required"),
   
   // Document URLs (uploaded via object storage) - Optional
   panCardUrl: z.string().optional().or(z.literal('')),
-  aadhaarCardUrl: z.string().optional().or(z.literal('')),
-  bankStatementUrl: z.string().optional().or(z.literal('')),
+  aadhaarFrontUrl: z.string().optional().or(z.literal('')),
+  aadhaarBackUrl: z.string().optional().or(z.literal('')),
+  bankCancelledChequeUrl: z.string().optional().or(z.literal('')),
   photoUrl: z.string().optional().or(z.literal('')),
   
   // Referral token
@@ -671,11 +678,13 @@ export const updateUserProfileSchema = createInsertSchema(users).pick({
   bankAccountNumber: true,
   bankIFSC: true,
   bankName: true,
+  bankAccountHolderName: true,
   address: true,
   city: true,
   state: true,
   pincode: true,
   dateOfBirth: true,
+  nominee: true,
 }).extend({
   mobile: z.string().regex(/^[6-9]\d{9}$/, "Valid 10-digit mobile number is required").optional(),
   panNumber: z.string().regex(/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/, "Valid PAN number is required (e.g. ABCDE1234F)").optional(),

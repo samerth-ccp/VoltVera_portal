@@ -2123,8 +2123,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Received registration data:', req.body);
       console.log('Document fields:', {
         panCardUrl: req.body.panCardUrl,
-        aadhaarCardUrl: req.body.aadhaarCardUrl,
-        bankStatementUrl: req.body.bankStatementUrl,
+        aadhaarFrontUrl: req.body.aadhaarFrontUrl,
+        aadhaarBackUrl: req.body.aadhaarBackUrl,
+        bankCancelledChequeUrl: req.body.bankCancelledChequeUrl,
         photoUrl: req.body.photoUrl
       });
       
@@ -2167,7 +2168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fullName: `${data.firstName} ${data.lastName}`,
         email: data.email,
         mobile: data.mobile,
-        dateOfBirth: data.dateOfBirth,
+        nominee: data.nominee,
         address: data.address,
         city: data.city,
         state: data.state,
@@ -2177,10 +2178,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         bankAccountNumber: data.bankAccountNumber,
         bankIFSC: data.bankIFSC,
         bankName: data.bankName,
+        bankAccountHolderName: data.bankAccountHolderName,
         packageAmount: data.packageAmount,
         panCardUrl: data.panCardUrl,
-        aadhaarCardUrl: data.aadhaarCardUrl,
-        bankStatementUrl: data.bankStatementUrl,
+        aadhaarFrontUrl: data.aadhaarFrontUrl,
+        aadhaarBackUrl: data.aadhaarBackUrl,
+        bankCancelledChequeUrl: data.bankCancelledChequeUrl,
         profileImageUrl: data.photoUrl,
         password: data.password, // Store securely for later use
       }, referralLink.generatedBy, referralLink.placementSide);
@@ -2193,10 +2196,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('  - tempUserId:', tempUserId);
       console.log('  - panCardUrl exists:', !!data.panCardUrl);
       console.log('  - panCardUrl starts with data:', data.panCardUrl?.startsWith('data:'));
-      console.log('  - aadhaarCardUrl exists:', !!data.aadhaarCardUrl);
-      console.log('  - aadhaarCardUrl starts with data:', data.aadhaarCardUrl?.startsWith('data:'));
-      console.log('  - bankStatementUrl exists:', !!data.bankStatementUrl);
-      console.log('  - bankStatementUrl starts with data:', data.bankStatementUrl?.startsWith('data:'));
+      console.log('  - aadhaarFrontUrl exists:', !!data.aadhaarFrontUrl);
+      console.log('  - aadhaarFrontUrl starts with data:', data.aadhaarFrontUrl?.startsWith('data:'));
+      console.log('  - aadhaarBackUrl exists:', !!data.aadhaarBackUrl);
+      console.log('  - aadhaarBackUrl starts with data:', data.aadhaarBackUrl?.startsWith('data:'));
+      console.log('  - bankCancelledChequeUrl exists:', !!data.bankCancelledChequeUrl);
+      console.log('  - bankCancelledChequeUrl starts with data:', data.bankCancelledChequeUrl?.startsWith('data:'));
       console.log('  - photoUrl exists:', !!data.photoUrl);
       console.log('  - photoUrl starts with data:', data.photoUrl?.startsWith('data:'));
       
@@ -2228,50 +2233,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      if (data.aadhaarCardUrl && data.aadhaarCardUrl.startsWith('data:')) {
-        console.log('📄 Processing Aadhaar Card document...');
-        const base64Data = data.aadhaarCardUrl.split(',')[1];
-        const contentType = data.aadhaarCardUrl.split(';')[0].split(':')[1];
+      if (data.aadhaarFrontUrl && data.aadhaarFrontUrl.startsWith('data:')) {
+        console.log('📄 Processing Aadhaar Front document...');
+        const base64Data = data.aadhaarFrontUrl.split(',')[1];
+        const contentType = data.aadhaarFrontUrl.split(';')[0].split(':')[1];
         
         console.log('  - Base64 data length:', base64Data.length);
         console.log('  - Content type:', contentType);
         
         try {
-          const aadhaarDoc = await storage.createKYCDocumentBinary(tempUserId, {
-            documentType: 'aadhaarCard',
+          const aadhaarFrontDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'aadhaar_front',
             documentData: base64Data,
             documentContentType: contentType,
-            documentFilename: 'aadhaar_card.jpg',
+            documentFilename: 'aadhaar_front.jpg',
             documentSize: Math.round((base64Data.length * 3) / 4),
             documentNumber: data.aadhaarNumber,
           });
-          console.log('  ✅ Aadhaar Card document created with ID:', aadhaarDoc.id);
-          documentUploads.push({ type: 'aadhaarCard', id: aadhaarDoc.id });
+          console.log('  ✅ Aadhaar Front document created with ID:', aadhaarFrontDoc.id);
+          documentUploads.push({ type: 'aadhaar_front', id: aadhaarFrontDoc.id });
         } catch (error) {
-          console.error('  ❌ Error creating Aadhaar Card document:', error);
+          console.error('  ❌ Error creating Aadhaar Front document:', error);
         }
       }
       
-      if (data.bankStatementUrl && data.bankStatementUrl.startsWith('data:')) {
-        console.log('📄 Processing Bank Statement document...');
-        const base64Data = data.bankStatementUrl.split(',')[1];
-        const contentType = data.bankStatementUrl.split(';')[0].split(':')[1];
+      if (data.aadhaarBackUrl && data.aadhaarBackUrl.startsWith('data:')) {
+        console.log('📄 Processing Aadhaar Back document...');
+        const base64Data = data.aadhaarBackUrl.split(',')[1];
+        const contentType = data.aadhaarBackUrl.split(';')[0].split(':')[1];
+        
+        console.log('  - Base64 data length:', base64Data.length);
+        console.log('  - Content type:', contentType);
+        
+        try {
+          const aadhaarBackDoc = await storage.createKYCDocumentBinary(tempUserId, {
+            documentType: 'aadhaar_back',
+            documentData: base64Data,
+            documentContentType: contentType,
+            documentFilename: 'aadhaar_back.jpg',
+            documentSize: Math.round((base64Data.length * 3) / 4),
+            documentNumber: data.aadhaarNumber,
+          });
+          console.log('  ✅ Aadhaar Back document created with ID:', aadhaarBackDoc.id);
+          documentUploads.push({ type: 'aadhaar_back', id: aadhaarBackDoc.id });
+        } catch (error) {
+          console.error('  ❌ Error creating Aadhaar Back document:', error);
+        }
+      }
+      
+      if (data.bankCancelledChequeUrl && data.bankCancelledChequeUrl.startsWith('data:')) {
+        console.log('📄 Processing Bank/Cancelled Cheque document...');
+        const base64Data = data.bankCancelledChequeUrl.split(',')[1];
+        const contentType = data.bankCancelledChequeUrl.split(';')[0].split(':')[1];
         
         console.log('  - Base64 data length:', base64Data.length);
         console.log('  - Content type:', contentType);
         
         try {
           const bankDoc = await storage.createKYCDocumentBinary(tempUserId, {
-            documentType: 'bankStatement',
+            documentType: 'bank_cancelled_cheque',
             documentData: base64Data,
             documentContentType: contentType,
-            documentFilename: 'bank_statement.jpg',
+            documentFilename: 'bank_cancelled_cheque.jpg',
             documentSize: Math.round((base64Data.length * 3) / 4),
           });
-          console.log('  ✅ Bank Statement document created with ID:', bankDoc.id);
-          documentUploads.push({ type: 'bankStatement', id: bankDoc.id });
+          console.log('  ✅ Bank/Cancelled Cheque document created with ID:', bankDoc.id);
+          documentUploads.push({ type: 'bank_cancelled_cheque', id: bankDoc.id });
         } catch (error) {
-          console.error('  ❌ Error creating Bank Statement document:', error);
+          console.error('  ❌ Error creating Bank/Cancelled Cheque document:', error);
         }
       }
       
