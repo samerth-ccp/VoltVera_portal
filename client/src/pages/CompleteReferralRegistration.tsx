@@ -27,6 +27,7 @@ interface UploadedDocument {
   isUploading: boolean;
   error?: string;
   retryCount: number;
+  isCompressing?: boolean;
 }
 
 export default function CompleteReferralRegistration() {
@@ -149,10 +150,61 @@ export default function CompleteReferralRegistration() {
     });
   };
 
+  // Image compression function
+  const compressImage = (file: File, maxWidth: number = 1920, quality: number = 0.8): Promise<File> => {
+    return new Promise((resolve, reject) => {
+      // Only compress image files
+      if (!file.type.startsWith('image/')) {
+        resolve(file);
+        return;
+      }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+
+      img.onload = () => {
+        // Calculate new dimensions
+        let { width, height } = img;
+        
+        if (width > maxWidth) {
+          height = (height * maxWidth) / width;
+          width = maxWidth;
+        }
+
+        // Set canvas dimensions
+        canvas.width = width;
+        canvas.height = height;
+
+        // Draw and compress
+        ctx?.drawImage(img, 0, 0, width, height);
+        
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            } else {
+              reject(new Error('Failed to compress image'));
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
   // Enhanced file validation
   const validateFile = (documentType: keyof typeof documentFiles, file: File) => {
     // File size validation
-    const maxSize = 10 * 1024 * 1024; // 10MB for all documents
+    const maxSize = 5 * 1024 * 1024; // 5MB for all documents (will be compressed)
     if (file.size > maxSize) {
       return {
         isValid: false,
@@ -184,7 +236,7 @@ export default function CompleteReferralRegistration() {
   };
 
   // Handle file selection
-  const handleFileChange = (documentType: keyof typeof documentFiles, file: File | null) => {
+  const handleFileChange = async (documentType: keyof typeof documentFiles, file: File | null) => {
     console.log('handleFileChange called:', { documentType, file: file ? { name: file.name, size: file.size, type: file.type } : null });
     
     if (!file) {
@@ -200,52 +252,84 @@ export default function CompleteReferralRegistration() {
       return;
     }
 
-    // Enhanced file validation
-    const validationResult = validateFile(documentType, file);
-    if (!validationResult.isValid) {
-      toast({
-        title: "Invalid File",
-        description: validationResult.error,
-        variant: "destructive",
-      });
-      return;
-    }
+    try {
+      // Compress image files before validation
+      let processedFile = file;
+      if (file.type.startsWith('image/')) {
+        console.log('Compressing image:', file.name, 'Original size:', file.size);
+        
+        // Show compression status
+        setDocumentFiles(prev => ({
+          ...prev,
+          [documentType]: {
+            file,
+            preview: URL.createObjectURL(file),
+            uploadProgress: 0,
+            isUploading: true,
+            error: undefined,
+            retryCount: 0,
+            isCompressing: true,
+          }
+        }));
 
-    // Check for duplicate files across different document types
-    const isDuplicate = Object.values(documentFiles).some(doc => 
-      doc && doc.file.name === file.name && doc !== documentFiles[documentType]
-    );
-    
-    if (isDuplicate) {
-      toast({
-        title: "Duplicate File",
-        description: "This file is already selected for another document type. Please use a different file.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Create preview
-    const preview = URL.createObjectURL(file);
-    
-    console.log('Adding file to documentFiles:', { documentType, file: file.name });
-    
-    // Add file to state
-    setDocumentFiles(prev => ({
-      ...prev,
-      [documentType]: {
-        file,
-        preview,
-        uploadProgress: 0,
-        isUploading: false,
-        error: undefined,
-        retryCount: 0,
+        processedFile = await compressImage(file);
+        console.log('Compressed size:', processedFile.size, 'Reduction:', ((file.size - processedFile.size) / file.size * 100).toFixed(1) + '%');
       }
-    }));
 
-    // Auto-upload the file
-    console.log('Calling handleFileUpload for:', documentType);
-    handleFileUpload(documentType, file);
+      // Enhanced file validation
+      const validationResult = validateFile(documentType, processedFile);
+      if (!validationResult.isValid) {
+        toast({
+          title: "Invalid File",
+          description: validationResult.error,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Check for duplicate files across different document types
+      const isDuplicate = Object.values(documentFiles).some(doc => 
+        doc && doc.file.name === processedFile.name && doc !== documentFiles[documentType]
+      );
+      
+      if (isDuplicate) {
+        toast({
+          title: "Duplicate File",
+          description: "This file is already selected for another document type. Please use a different file.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create preview
+      const preview = URL.createObjectURL(processedFile);
+      
+      console.log('Adding file to documentFiles:', { documentType, file: processedFile.name });
+      
+      // Add file to state
+      setDocumentFiles(prev => ({
+        ...prev,
+        [documentType]: {
+          file: processedFile,
+          preview,
+          uploadProgress: 0,
+          isUploading: false,
+          error: undefined,
+          retryCount: 0,
+        }
+      }));
+
+      // Auto-upload the file
+      console.log('Calling handleFileUpload for:', documentType);
+      handleFileUpload(documentType, processedFile);
+    } catch (error) {
+      console.error('Error processing file:', error);
+      toast({
+        title: "File Processing Error",
+        description: "Failed to process the selected file. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Enhanced file processing with progress simulation
@@ -1114,10 +1198,12 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('panCard', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 10MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of PAN card (Max 5MB, auto-compressed) - Optional</p>
                   {documentFiles.panCard && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
-                      {documentFiles.panCard.isUploading ? (
+                      {documentFiles.panCard.isCompressing ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin text-blue-400" />
+                      ) : documentFiles.panCard.isUploading ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : documentFiles.panCard.error ? (
                         <X className="mr-2 h-4 w-4 text-red-400" />
@@ -1125,7 +1211,10 @@ export default function CompleteReferralRegistration() {
                         <CheckCircle className="mr-2 h-4 w-4 text-green-400" />
                       )}
                       {documentFiles.panCard.file.name}
-                      {documentFiles.panCard.isUploading && (
+                      {documentFiles.panCard.isCompressing && (
+                        <span className="ml-2 text-blue-400"> (Compressing...)</span>
+                      )}
+                      {documentFiles.panCard.isUploading && !documentFiles.panCard.isCompressing && (
                         <span className="ml-2 text-green-400"> ({documentFiles.panCard.uploadProgress}%)</span>
                       )}
                       {documentFiles.panCard.error && (
@@ -1168,7 +1257,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('aadhaarFront', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar front (Max 10MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar front (Max 5MB, auto-compressed) - Optional</p>
                   {documentFiles.aadhaarFront && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.aadhaarFront.isUploading ? (
@@ -1222,7 +1311,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('aadhaarBack', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar back (Max 10MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Upload clear image of Aadhaar back (Max 5MB, auto-compressed) - Optional</p>
                   {documentFiles.aadhaarBack && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.aadhaarBack.isUploading ? (
@@ -1276,7 +1365,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('bankCancelledCheque', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Bank details or cancelled cheque (Max 10MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Bank details or cancelled cheque (Max 5MB, auto-compressed) - Optional</p>
                   {documentFiles.bankCancelledCheque && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.bankCancelledCheque.isUploading ? (
@@ -1330,7 +1419,7 @@ export default function CompleteReferralRegistration() {
                        handleFileChange('photo', e.target.files?.[0] || null);
                      }}
                    />
-                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 10MB) - Optional</p>
+                                     <p className="text-xs text-white/50">Clear passport-style photo (Max 5MB, auto-compressed) - Optional</p>
                   {documentFiles.photo && (
                     <div className="flex items-center text-sm text-white/70 mt-2">
                       {documentFiles.photo.isUploading ? (
