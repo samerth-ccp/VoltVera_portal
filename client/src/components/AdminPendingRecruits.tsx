@@ -30,7 +30,7 @@ interface PendingRecruit {
   
   // Comprehensive registration data
   password?: string;
-  dateOfBirth?: string;
+  nominee?: string;
   address?: string;
   city?: string;
   state?: string;
@@ -40,6 +40,7 @@ interface PendingRecruit {
   bankAccountNumber?: string;
   bankIFSC?: string;
   bankName?: string;
+  bankAccountHolderName?: string;
   panCardUrl?: string;
   aadhaarCardUrl?: string;
   bankStatementUrl?: string;
@@ -446,13 +447,8 @@ export function AdminPendingRecruits() {
                         <p className="font-medium">{detailsRecruit.mobile || 'Not provided'}</p>
                       </div>
                       <div>
-                        <Label className="text-sm font-medium text-gray-500">Date of Birth</Label>
-                        <p className="font-medium">
-                          {detailsRecruit.dateOfBirth 
-                            ? new Date(detailsRecruit.dateOfBirth).toLocaleDateString() 
-                            : 'Not provided'
-                          }
-                        </p>
+                        <Label className="text-sm font-medium text-gray-500">Nominee</Label>
+                        <p className="font-medium">{detailsRecruit.nominee || 'Not provided'}</p>
                       </div>
                       <div>
                         <Label className="text-sm font-medium text-gray-500">Address</Label>
@@ -622,10 +618,14 @@ export function AdminPendingRecruits() {
                       Bank Information
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Bank Name</Label>
                       <p className="font-medium">{detailsRecruit.bankName || 'Not provided'}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium text-gray-500">Account Holder Name</Label>
+                      <p className="font-medium">{detailsRecruit.bankAccountHolderName || 'Not provided'}</p>
                     </div>
                     <div>
                       <Label className="text-sm font-medium text-gray-500">Account Number</Label>

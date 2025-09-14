@@ -979,6 +979,10 @@ export default function CompleteReferralRegistration() {
                           className="bg-black/50 border-white/20 text-white"
                           placeholder="ABCDE1234F"
                           data-testid="input-panNumber"
+                          onChange={(e) => {
+                            // Convert to uppercase as user types
+                            field.onChange(e.target.value.toUpperCase());
+                          }}
                         />
                       </FormControl>
                       <FormMessage />

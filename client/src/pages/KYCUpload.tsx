@@ -350,7 +350,17 @@ export default function KYCUpload() {
                   <FormItem>
                     <FormLabel>Document Number (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter document number if applicable" {...field} />
+                      <Input 
+                        placeholder="Enter document number if applicable" 
+                        {...field}
+                        onChange={(e) => {
+                          // Convert to uppercase if document type is PAN
+                          const value = form.getValues('documentType') === 'pan' 
+                            ? e.target.value.toUpperCase() 
+                            : e.target.value;
+                          field.onChange(value);
+                        }}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
