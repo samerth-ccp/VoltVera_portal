@@ -128,8 +128,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         });
       } else {
-        console.log('Login failed for user:', userId, '- Invalid credentials');
-        res.status(401).json({ message: "Invalid user ID or password" });
+        // Check if user exists but is inactive by trying to find user with userId
+        try {
+          const userExists = await db.select().from(users).where(eq(users.userId, userId));
+          if (userExists.length > 0 && userExists[0].status !== 'active') {
+            console.log('Login failed for user:', userId, '- Account is inactive');
+            res.status(403).json({ message: "Your account has been deactivated. Please contact support." });
+          } else {
+            console.log('Login failed for user:', userId, '- Invalid credentials');
+            res.status(401).json({ message: "Invalid user ID or password" });
+          }
+        } catch (error) {
+          console.log('Login failed for user:', userId, '- Invalid credentials');
+          res.status(401).json({ message: "Invalid user ID or password" });
+        }
       }
     } catch (error) {
       console.error("Login error:", error);
@@ -1687,6 +1699,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (!targetUser) {
         return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Prevent logging in as inactive users
+      if (targetUser.status !== 'active') {
+        return res.status(403).json({ 
+          message: `Cannot login as user with status: ${targetUser.status}. Only active users can be logged into.` 
+        });
       }
 
       // Update session to log in as the target user

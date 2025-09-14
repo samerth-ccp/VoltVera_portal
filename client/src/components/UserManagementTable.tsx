@@ -11,15 +11,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
-  Search, 
   LogIn, 
   Edit, 
   UserX, 
   Eye, 
   EyeOff, 
   Copy,
-  Download,
-  Filter
+  Download
 } from "lucide-react";
 
 interface User {
@@ -37,9 +35,9 @@ interface User {
   originalPassword?: string; // Original password for admin viewing
   status: 'active' | 'inactive' | 'pending';
   registrationDate: string;
+  activationDate?: string;
   // KYC fields
   kycStatus?: 'pending' | 'approved' | 'rejected';
-  kycApprovedAt?: string;
   // Derived fields from other tables
   walletBalance?: number;
   totalEarnings?: number;
@@ -54,8 +52,6 @@ interface UserManagementTableProps {
 }
 
 export default function UserManagementTable({ users, walletData, withdrawalData }: UserManagementTableProps) {
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showPins, setShowPins] = useState<Record<string, boolean>>({});
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -65,7 +61,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   // Login as user mutation
   const loginAsUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest(`/api/admin/login-as-user/${userId}`, 'POST');
+      return apiRequest('POST', `/api/admin/login-as-user/${userId}`);
     },
     onSuccess: () => {
       toast({
@@ -86,7 +82,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   // Block/Unblock user mutation
   const toggleUserStatusMutation = useMutation({
     mutationFn: async ({ userId, status }: { userId: string; status: 'active' | 'inactive' }) => {
-      return apiRequest(`/api/admin/users/${userId}/status`, 'PATCH', { status });
+      return apiRequest('PATCH', `/api/admin/users/${userId}/status`, { status });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users/search'] });
@@ -126,19 +122,8 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
     },
   });
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = !search || 
-      user.firstName?.toLowerCase().includes(search.toLowerCase()) ||
-      user.lastName?.toLowerCase().includes(search.toLowerCase()) ||
-      user.email?.toLowerCase().includes(search.toLowerCase()) ||
-      user.userId?.toLowerCase().includes(search.toLowerCase()) ||
-      user.id?.toLowerCase().includes(search.toLowerCase()) ||
-      user.mobile?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Users are already filtered by the server-side search in AdminDashboard
+  const filteredUsers = users;
 
   const togglePasswordVisibility = (userId: string) => {
     setShowPasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
@@ -175,12 +160,13 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
         wallet?.totalEarnings || 0,
         wallet?.totalWithdrawals || 0,
         withdrawal?.status || 'None',
-        new Date(user.registrationDate).toLocaleDateString()
+        new Date(user.registrationDate).toLocaleDateString(),
+        user.activationDate ? new Date(user.activationDate).toLocaleDateString() : ''
       ].join(',');
     });
     
-    const headers = ['User ID', 'Name', 'Phone', 'Email', 'Password', 'TXN Pin', 'Sponsor ID', 'Total Package', 'Wallet Address', 'E-wallet', 'Income', 'Total Withdraw', 'Withdraw Status', 'Joining Date'];
-    const csv = [headers.join(','), ...csvData].join('\\n');
+    const headers = ['User ID', 'Name', 'Phone', 'Email', 'Password', 'TXN Pin', 'Sponsor ID', 'Total Package', 'Wallet Address', 'E-wallet', 'Income', 'Total Withdraw', 'Withdraw Status', 'Registration Date', 'Activation Date'];
+    const csv = [headers.join(','), ...csvData].join('\n');
     
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -194,7 +180,20 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   const handleEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (editingUser) {
-      updateUserMutation.mutate(editingUser);
+      // Only send the fields that should be updated
+      const updateData = {
+        id: editingUser.id,
+        firstName: editingUser.firstName,
+        lastName: editingUser.lastName,
+        email: editingUser.email,
+        mobile: editingUser.mobile,
+        txnPin: editingUser.txnPin,
+        packageAmount: editingUser.packageAmount,
+        cryptoWalletAddress: editingUser.cryptoWalletAddress,
+        status: editingUser.status,
+        password: editingUser.password, // Will be handled by server (removed if empty)
+      };
+      updateUserMutation.mutate(updateData);
     }
   };
 
@@ -212,31 +211,6 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Search and Filter Controls */}
-        <div className="flex flex-col md:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Search by User ID, Name, Email, Phone..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-10"
-              data-testid="input-user-search"
-            />
-          </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Filter Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Blocked</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* User Management Table */}
         <div className="border rounded-lg overflow-hidden">
           <div className="overflow-x-auto">
@@ -258,7 +232,8 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                   <TableHead className="min-w-[120px]">E-wallet</TableHead>
                   <TableHead className="min-w-[120px]">Income</TableHead>
                   <TableHead className="min-w-[120px]">Total Withdraw</TableHead>
-                  <TableHead className="min-w-[130px]">Joining Date</TableHead>
+                  <TableHead className="min-w-[130px]">Registration Date</TableHead>
+                  <TableHead className="min-w-[130px]">Activation Date</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -271,17 +246,27 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                       {/* Actions */}
                       <TableCell>
                         <div className="flex space-x-1">
-                          {/* Hidden for now - Login as user functionality */}
-                          {/* <Button
+                          <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => loginAsUserMutation.mutate(user.id)}
+                            onClick={() => {
+                              if (user.status !== 'active') {
+                                toast({
+                                  title: "Cannot Login",
+                                  description: `Cannot login as user with status: ${user.status}. Only active users can be logged into.`,
+                                  variant: "destructive",
+                                });
+                                return;
+                              }
+                              loginAsUserMutation.mutate(user.id);
+                            }}
                             disabled={loginAsUserMutation.isPending}
                             data-testid={`button-login-${user.id}`}
-                            title="Login as this user"
+                            title={user.status !== 'active' ? `Cannot login as ${user.status} user` : "Login as this user"}
+                            className={user.status !== 'active' ? 'opacity-50' : ''}
                           >
                             <LogIn className="h-3 w-3" />
-                          </Button> */}
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"
@@ -433,9 +418,16 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                         <span className="font-medium text-blue-600">₹{(wallet?.totalWithdrawals || 0).toLocaleString()}</span>
                       </TableCell>
 
-                      {/* Joining Date */}
+                      {/* Registration Date */}
                       <TableCell>
                         <span className="text-sm">{new Date(user.registrationDate).toLocaleDateString()}</span>
+                      </TableCell>
+
+                      {/* Activation Date */}
+                      <TableCell>
+                        <span className="text-sm">
+                          {user.activationDate ? new Date(user.activationDate).toLocaleDateString() : '-'}
+                        </span>
                       </TableCell>
                     </TableRow>
                   );

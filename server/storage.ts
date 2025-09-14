@@ -51,7 +51,7 @@ import {
   type CreateNews,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, ilike, or, desc, and, sql } from "drizzle-orm";
+import { eq, ilike, or, desc, and, sql, gte, lte } from "drizzle-orm";
 
 import { nanoid } from "nanoid";
 
@@ -290,7 +290,12 @@ export class DatabaseStorage implements IStorage {
     if (user) {
       const passwordMatch = password === user.password; // Direct string comparison for plaintext
       if (passwordMatch) {
-        return user;
+        // Only allow login for active users
+        if (user.status === 'active') {
+          return user;
+        }
+        // For inactive users, return undefined to prevent login
+        return undefined;
       }
     }
     return undefined;
@@ -301,7 +306,12 @@ export class DatabaseStorage implements IStorage {
     if (user) {
       const passwordMatch = password === user.password; // Direct string comparison for plaintext
       if (passwordMatch) {
-        return user;
+        // Only allow login for active users
+        if (user.status === 'active') {
+          return user;
+        }
+        // For inactive users, return undefined to prevent login
+        return undefined;
       }
     }
     return undefined;
@@ -449,6 +459,9 @@ export class DatabaseStorage implements IStorage {
     status?: string;
     role?: string;
     kycStatus?: string;
+    dateFilterType?: string;
+    dateFrom?: string;
+    dateTo?: string;
   }): Promise<User[]> {
     let searchConditions: any[] = [];
     
@@ -494,6 +507,32 @@ export class DatabaseStorage implements IStorage {
     }
     if (filters.kycStatus) {
       filterConditions.push(eq(users.kycStatus, filters.kycStatus as any));
+    }
+    
+    // Add date filtering conditions
+    if (filters.dateFilterType && filters.dateFrom && filters.dateTo) {
+      const dateFrom = new Date(filters.dateFrom);
+      const dateTo = new Date(filters.dateTo);
+      dateTo.setHours(23, 59, 59, 999); // Include the entire end date
+      
+      let dateField;
+      switch (filters.dateFilterType) {
+        case 'registration':
+          dateField = users.registrationDate;
+          break;
+        case 'activation':
+          dateField = users.activationDate;
+          break;
+        default:
+          dateField = users.registrationDate;
+      }
+      
+      filterConditions.push(
+        and(
+          gte(dateField, dateFrom),
+          lte(dateField, dateTo)
+        )
+      );
     }
     
     // Combine all conditions
@@ -2667,9 +2706,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUserStatus(userId: string, status: string): Promise<User | undefined> {
+    // Validate status value
+    const validStatuses = ['invited', 'registered', 'active', 'inactive', 'pending', 'rejected', 'suspended'];
+    if (!validStatuses.includes(status)) {
+      throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(', ')}`);
+    }
+    
     const [updatedUser] = await db
       .update(users)
-      .set({ status, updatedAt: new Date() })
+      .set({ 
+        status: status as 'invited' | 'registered' | 'active' | 'inactive' | 'pending' | 'rejected' | 'suspended',
+        updatedAt: new Date() 
+      })
       .where(eq(users.id, userId))
       .returning();
     return updatedUser;

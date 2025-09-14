@@ -51,9 +51,12 @@ export default function AdminDashboard() {
   const [activeSection, setActiveSection] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'id' | 'name' | 'bv' | 'rank'>('name');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [roleFilter, setRoleFilter] = useState('');
-  const [kycFilter, setKycFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [kycFilter, setKycFilter] = useState('all');
+  const [dateFilterType, setDateFilterType] = useState('registration');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [expandedMenus, setExpandedMenus] = useState<string[]>(['main']);
 
   // Redirect if not authenticated or not admin
@@ -80,14 +83,17 @@ export default function AdminDashboard() {
 
   // Fetch users with enhanced search
   const { data: users = [], isLoading: usersLoading } = useQuery<User[]>({
-    queryKey: ["/api/admin/users/search", searchQuery, searchType, statusFilter, roleFilter, kycFilter],
+    queryKey: ["/api/admin/users/search", searchQuery, searchType, statusFilter, roleFilter, kycFilter, dateFilterType, dateFrom, dateTo],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (searchQuery) params.append('query', searchQuery);
       if (searchType) params.append('searchType', searchType);
-      if (statusFilter) params.append('status', statusFilter);
-      if (roleFilter) params.append('role', roleFilter);
-      if (kycFilter) params.append('kycStatus', kycFilter);
+      if (statusFilter && statusFilter !== 'all') params.append('status', statusFilter);
+      if (roleFilter && roleFilter !== 'all') params.append('role', roleFilter);
+      if (kycFilter && kycFilter !== 'all') params.append('kycStatus', kycFilter);
+      if (dateFilterType) params.append('dateFilterType', dateFilterType);
+      if (dateFrom) params.append('dateFrom', dateFrom);
+      if (dateTo) params.append('dateTo', dateTo);
       
       const response = await fetch(`/api/admin/users/search?${params.toString()}`, {
         credentials: 'include',
@@ -797,7 +803,7 @@ export default function AdminDashboard() {
                 {/* Enhanced User Search */}
               <div className="bg-gray-50 rounded-lg p-6 mb-6 border border-gray-200">
                 <h4 className="text-md font-medium text-gray-800 mb-4">Advanced User Search</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4">
                   <div>
                     <Label htmlFor="searchQuery">Search Query</Label>
                     <div className="relative">
@@ -843,6 +849,23 @@ export default function AdminDashboard() {
                   </div>
                   
                   <div>
+                    <Label htmlFor="roleFilter">Role Filter</Label>
+                    <Select value={roleFilter} onValueChange={setRoleFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All Roles" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Roles</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="founder">Founder</SelectItem>
+                        <SelectItem value="mini_franchise">Mini Franchise</SelectItem>
+                        <SelectItem value="basic_franchise">Basic Franchise</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
                     <Label htmlFor="kycFilter">KYC Status</Label>
                     <Select value={kycFilter} onValueChange={setKycFilter}>
                       <SelectTrigger>
@@ -855,6 +878,56 @@ export default function AdminDashboard() {
                         <SelectItem value="rejected">Rejected</SelectItem>
                       </SelectContent>
                     </Select>
+                  </div>
+                </div>
+                
+                {/* Date Range Filters */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <Label htmlFor="dateFilterType">Date Filter Type</Label>
+                    <Select value={dateFilterType} onValueChange={setDateFilterType}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="registration">Registration Date</SelectItem>
+                        <SelectItem value="activation">Activation Date</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dateFrom">From Date</Label>
+                    <Input
+                      id="dateFrom"
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="dateTo">To Date</Label>
+                    <Input
+                      id="dateTo"
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDateFrom('');
+                        setDateTo('');
+                        setDateFilterType('registration');
+                      }}
+                    >
+                      Clear Dates
+                    </Button>
                   </div>
                 </div>
                 
@@ -872,6 +945,9 @@ export default function AdminDashboard() {
                       setStatusFilter('all');
                       setRoleFilter('all');
                       setKycFilter('all');
+                      setDateFilterType('registration');
+                      setDateFrom('');
+                      setDateTo('');
                     }}
                   >
                     <Filter className="mr-2 h-4 w-4" />
