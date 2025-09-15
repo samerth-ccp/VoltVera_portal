@@ -65,13 +65,13 @@ export interface IStorage {
   updateUserStatus(userId: string, status: string): Promise<User | undefined>;
   
   // User management operations
-  getAllUsers(search?: string): Promise<User[]>;
+  getAllUsers(search?: string): Promise<(User & { sponsorUserId: string | null })[]>;
   searchUsers(query: string, filters: {
     searchType?: 'id' | 'name' | 'bv' | 'rank';
     status?: string;
     role?: string;
     kycStatus?: string;
-  }): Promise<User[]>;
+  }): Promise<(User & { sponsorUserId: string | null })[]>;
   createUser(user: CreateUser): Promise<User & { originalPassword?: string }>;
   updateUser(id: string, updates: UpdateUser): Promise<User | undefined>;
   updateUserProfile(id: string, updates: UpdateUserProfile): Promise<User | undefined>;
@@ -321,7 +321,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Additional user management operations
-  async getAllUsers(search?: string): Promise<User[]> {
+  async getAllUsers(search?: string): Promise<(User & { sponsorUserId: string | null })[]> {
     let query = db.select({
       id: users.id,
       userId: users.userId,
@@ -371,7 +371,7 @@ export class DatabaseStorage implements IStorage {
       };
     }));
     
-    return usersWithSponsorIds as User[];
+    return usersWithSponsorIds as (User & { sponsorUserId: string | null })[];
   }
 
   // Generate next sequential user ID like VV0001, VV0002, etc.
@@ -484,7 +484,7 @@ export class DatabaseStorage implements IStorage {
     dateFilterType?: string;
     dateFrom?: string;
     dateTo?: string;
-  }): Promise<User[]> {
+  }): Promise<(User & { sponsorUserId: string | null })[]> {
     let searchConditions: any[] = [];
     
     // Only add search conditions if query is provided and not empty
@@ -566,7 +566,26 @@ export class DatabaseStorage implements IStorage {
       searchQuery = searchQuery.where(and(...allConditions)) as typeof searchQuery;
     }
     
-    return await searchQuery;
+    const result = await searchQuery;
+    
+    // Add sponsor user IDs by fetching sponsor information
+    const usersWithSponsorIds = await Promise.all(result.map(async (user) => {
+      let sponsorUserId = null;
+      if (user.sponsorId) {
+        const sponsor = await db.select({ userId: users.userId })
+          .from(users)
+          .where(eq(users.id, user.sponsorId))
+          .limit(1);
+        sponsorUserId = sponsor[0]?.userId || null;
+      }
+      
+      return {
+        ...user,
+        sponsorUserId
+      };
+    }));
+    
+    return usersWithSponsorIds as (User & { sponsorUserId: string | null })[];
   }
 
   async getAdminStats() {
