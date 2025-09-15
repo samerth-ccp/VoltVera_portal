@@ -158,6 +158,9 @@ export interface IStorage {
   updateKYCDocument(id: string, data: CreateKYC): Promise<KYCDocument>;
   updateKYCStatus(id: string, status: any, rejectionReason?: string): Promise<boolean>;
   getAllPendingKYC(): Promise<KYCDocument[]>;
+  fixExistingKYCStatuses(): Promise<void>;
+  cleanupDuplicateKYCDocuments(): Promise<void>;
+  consolidateDocumentTypes(): Promise<void>;
   
   // Rank operations
   getUserRankHistory(userId: string): Promise<RankAchievement[]>;
@@ -1916,6 +1919,23 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateKYCDocument(id: string, data: any): Promise<KYCDocument> {
+    // First, get the current document and user to check their status
+    const [currentDoc] = await db.select()
+      .from(kycDocuments)
+      .where(eq(kycDocuments.id, id));
+
+    if (!currentDoc) {
+      throw new Error('KYC document not found');
+    }
+
+    // Get current user's KYC status to check if this is a re-verification request
+    const [currentUser] = await db.select()
+      .from(users)
+      .where(eq(users.id, currentDoc.userId));
+
+    const wasRejected = currentUser?.kycStatus === 'rejected';
+    console.log(`🔄 Updating KYC document ${id} for user ${currentDoc.userId}. Was rejected: ${wasRejected}`);
+
     const updateData: any = {
       status: 'pending' as const, // Reset status to pending when updated
       rejectionReason: null,
@@ -1957,10 +1977,230 @@ export class DatabaseStorage implements IStorage {
       .set(updateData)
       .where(eq(kycDocuments.id, id));
 
+    // Get the updated document to extract userId
     const [updatedDoc] = await db.select().from(kycDocuments).where(eq(kycDocuments.id, id));
+    
+    if (updatedDoc) {
+      // Recalculate overall KYC status for the user
+      const allUserKYC = await db.select({ status: kycDocuments.status })
+        .from(kycDocuments)
+        .where(eq(kycDocuments.userId, updatedDoc.userId));
+      
+      // Determine overall KYC status
+      let overallKYCStatus = 'pending';
+      
+      // If this is a re-verification request (user was previously rejected), 
+      // always set to pending to bring it back for admin review
+      if (wasRejected) {
+        overallKYCStatus = 'pending';
+        console.log(`🔄 Re-verification request detected for user ${updatedDoc.userId} - setting status to pending`);
+      } else {
+        // Normal logic for non-rejected users
+        if (allUserKYC.some(doc => doc.status === 'rejected')) {
+          overallKYCStatus = 'rejected';
+        } else if (allUserKYC.length > 0 && allUserKYC.every(doc => doc.status === 'approved')) {
+          overallKYCStatus = 'approved';
+        }
+      }
+      
+      // Update user's overall KYC status
+      await db.update(users)
+        .set({
+          kycStatus: overallKYCStatus as 'pending' | 'approved' | 'rejected',
+          kycApprovedAt: overallKYCStatus === 'approved' ? new Date() : null,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, updatedDoc.userId));
+      
+      // Create notification for re-verification request
+      if (overallKYCStatus === 'pending' && wasRejected) {
+        const { notifications } = await import('@shared/schema');
+        await db.insert(notifications).values({
+          userId: updatedDoc.userId,
+          type: 'kyc_status_change',
+          title: 'KYC Re-verification Request Submitted',
+          message: 'Your KYC documents have been submitted for re-verification after rejection. The request is now back in pending status for admin review.',
+          data: { 
+            kycStatus: 'pending', 
+            isReverification: true,
+            previousStatus: 'rejected'
+          }
+        });
+        console.log(`📧 Created re-verification notification for user ${updatedDoc.userId}`);
+      } else if (overallKYCStatus === 'pending') {
+        const { notifications } = await import('@shared/schema');
+        await db.insert(notifications).values({
+          userId: updatedDoc.userId,
+          type: 'kyc_status_change',
+          title: 'KYC Document Updated',
+          message: 'Your KYC document has been updated and is pending admin review.',
+          data: { kycStatus: 'pending' }
+        });
+      }
+      
+      console.log(`✅ Updated KYC document ${id} and recalculated overall status for user ${updatedDoc.userId}: ${overallKYCStatus}`);
+    }
+    
     return updatedDoc!;
   }
 
+
+  // Fix existing KYC data where users have mixed document statuses
+  async fixExistingKYCStatuses(): Promise<void> {
+    console.log('🔧 Starting KYC status fix for existing data...');
+    
+    try {
+      // Get all users with rejected KYC status
+      const rejectedUsers = await db.select()
+        .from(users)
+        .where(eq(users.kycStatus, 'rejected'));
+      
+      console.log(`📊 Found ${rejectedUsers.length} users with rejected KYC status`);
+      
+      for (const user of rejectedUsers) {
+        // Get all KYC documents for this user
+        const userDocs = await db.select({ status: kycDocuments.status })
+          .from(kycDocuments)
+          .where(eq(kycDocuments.userId, user.id));
+        
+        // Check if user has any pending documents
+        const hasPendingDocs = userDocs.some(doc => doc.status === 'pending');
+        
+        if (hasPendingDocs) {
+          // If user has pending documents but overall status is rejected,
+          // this means they have re-uploaded documents - fix their status
+          await db.update(users)
+            .set({
+              kycStatus: 'pending' as const,
+              kycApprovedAt: null,
+              updatedAt: new Date()
+            })
+            .where(eq(users.id, user.id));
+          
+          console.log(`✅ Fixed KYC status for user ${user.id} (${user.email}) - changed from rejected to pending`);
+          
+          // Create notification for the fixed status
+          const { notifications } = await import('@shared/schema');
+          await db.insert(notifications).values({
+            userId: user.id,
+            type: 'kyc_status_change',
+            title: 'KYC Status Updated',
+            message: 'Your KYC status has been updated to pending due to re-uploaded documents. Your request is now back in the pending queue for admin review.',
+            data: { 
+              kycStatus: 'pending', 
+              isReverification: true,
+              previousStatus: 'rejected',
+              wasAutoFixed: true
+            }
+          });
+        }
+      }
+      
+      console.log('✅ KYC status fix completed');
+    } catch (error) {
+      console.error('❌ Error fixing KYC statuses:', error);
+      throw error;
+    }
+  }
+
+  // Clean up duplicate KYC documents - keep only the most recent document of each type per user
+  async cleanupDuplicateKYCDocuments(): Promise<void> {
+    console.log('🧹 Starting KYC document cleanup...');
+    
+    try {
+      // Get all KYC documents grouped by user and document type
+      const allDocuments = await db.select()
+        .from(kycDocuments)
+        .orderBy(kycDocuments.userId, kycDocuments.documentType, desc(kycDocuments.createdAt));
+      
+      const documentsByUserAndType: { [key: string]: KYCDocument[] } = {};
+      
+      // Group documents by user and type
+      allDocuments.forEach(doc => {
+        const key = `${doc.userId}-${doc.documentType}`;
+        if (!documentsByUserAndType[key]) {
+          documentsByUserAndType[key] = [];
+        }
+        documentsByUserAndType[key].push(doc);
+      });
+      
+      let totalDeleted = 0;
+      
+      // For each user-document type combination, keep only the most recent document
+      for (const [key, docs] of Object.entries(documentsByUserAndType)) {
+        if (docs.length > 1) {
+          // Sort by creation date (most recent first)
+          docs.sort((a, b) => {
+            const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return dateB - dateA;
+          });
+          
+          // Keep the first (most recent) document, delete the rest
+          const [keepDoc, ...deleteDocs] = docs;
+          
+          console.log(`🧹 Cleaning up ${deleteDocs.length} duplicate documents for user ${keepDoc.userId}, type ${keepDoc.documentType}`);
+          
+          for (const docToDelete of deleteDocs) {
+            await db.delete(kycDocuments).where(eq(kycDocuments.id, docToDelete.id));
+            totalDeleted++;
+          }
+        }
+      }
+      
+      console.log(`✅ KYC document cleanup completed. Deleted ${totalDeleted} duplicate documents.`);
+    } catch (error) {
+      console.error('❌ Error cleaning up KYC documents:', error);
+      throw error;
+    }
+  }
+
+  // Consolidate mismatched document types to standard types
+  async consolidateDocumentTypes(): Promise<void> {
+    console.log('🔄 Starting document type consolidation...');
+    
+    try {
+      // Get all documents with non-standard types
+      const { or } = await import('drizzle-orm');
+      const mismatchedDocs = await db.select()
+        .from(kycDocuments)
+        .where(
+          or(
+            eq(kycDocuments.documentType, 'aadhaar_front'),
+            eq(kycDocuments.documentType, 'aadhaar_back'),
+            eq(kycDocuments.documentType, 'bank_cancelled_cheque'),
+            eq(kycDocuments.documentType, 'kyc_profile')
+          )
+        );
+      
+      console.log(`📊 Found ${mismatchedDocs.length} documents with mismatched types`);
+      
+      for (const doc of mismatchedDocs) {
+        let newType = doc.documentType;
+        
+        // Map to standard types
+        if (doc.documentType === 'aadhaar_front' || doc.documentType === 'aadhaar_back') {
+          newType = 'aadhaar';
+        } else if (doc.documentType === 'bank_cancelled_cheque') {
+          newType = 'bank_statement';
+        } else if (doc.documentType === 'kyc_profile') {
+          newType = 'photo';
+        }
+        
+        // Update the document type
+        await db.update(kycDocuments)
+          .set({ documentType: newType })
+          .where(eq(kycDocuments.id, doc.id));
+        
+        console.log(`✅ Updated document ${doc.id} from ${doc.documentType} to ${newType}`);
+      }
+      
+      console.log('✅ Document type consolidation completed');
+    } catch (error) {
+      console.error('❌ Error consolidating document types:', error);
+      throw error;
+    }
+  }
 
   async getAllPendingKYC(): Promise<any[]> {
     try {
@@ -1989,6 +2229,7 @@ export class DatabaseStorage implements IStorage {
           lastName: users.lastName,
           email: users.email,
           userStatus: users.status,
+          userKycStatus: users.kycStatus, // Add user's overall KYC status
           // User document URLs for display (from users table)
           profileImageUrl: users.profileImageUrl,
           panNumber: users.panNumber,
@@ -2021,7 +2262,7 @@ export class DatabaseStorage implements IStorage {
             lastName: doc.lastName,
             email: doc.email,
             userStatus: doc.userStatus,
-            kycStatus: doc.status,
+            kycStatus: doc.userKycStatus, // Use user's overall KYC status, not individual document status
             rejectionReason: doc.rejectionReason,
             reviewedBy: doc.reviewedBy,
             reviewedAt: doc.reviewedAt,
@@ -2060,49 +2301,8 @@ export class DatabaseStorage implements IStorage {
             };
           }
           
-          // Update overall KYC status based on the most recent document status
-          // Priority: rejected > pending > approved
-          // If any document is rejected, overall status is rejected
-          // If any document is pending (and none rejected), overall status is pending
-          // If all documents are approved, overall status is approved
-          if (doc.status === 'rejected') {
-            userKYCData[userId].kycStatus = 'rejected';
-            userKYCData[userId].rejectionReason = doc.rejectionReason;
-            userKYCData[userId].reviewedBy = doc.reviewedBy;
-            userKYCData[userId].reviewedAt = doc.reviewedAt;
-          } else if (doc.status === 'pending' && userKYCData[userId].kycStatus !== 'rejected') {
-            userKYCData[userId].kycStatus = 'pending';
-            userKYCData[userId].rejectionReason = doc.rejectionReason;
-            userKYCData[userId].reviewedBy = doc.reviewedBy;
-            userKYCData[userId].reviewedAt = doc.reviewedAt;
-          }
-          // Note: 'approved' status is only set if all documents are approved (handled after the loop)
-        }
-      });
-      
-      // Final pass: Set overall status to 'approved' only if all documents are approved
-      Object.keys(userKYCData).forEach(userId => {
-        const user = userKYCData[userId];
-        const documents = user.documents;
-        
-        // Check if all document types have approved status
-        const allApproved = [
-          documents.panCard?.status,
-          documents.aadhaarCard?.status,
-          documents.bankStatement?.status,
-          documents.photo?.status
-        ].every(status => status === 'approved' || status === undefined);
-        
-        // Only set to approved if we have at least one document and all are approved
-        const hasDocuments = [
-          documents.panCard?.status,
-          documents.aadhaarCard?.status,
-          documents.bankStatement?.status,
-          documents.photo?.status
-        ].some(status => status !== undefined);
-        
-        if (hasDocuments && allApproved && user.kycStatus !== 'rejected') {
-          user.kycStatus = 'approved';
+          // Don't override the user's overall KYC status - it should come from the users table
+          // The individual document statuses are already captured in the documents object above
         }
       });
       

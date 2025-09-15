@@ -334,6 +334,42 @@ router.patch('/admin/kyc/:id', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Fix existing KYC statuses (Admin only)
+router.post('/admin/kyc/fix-existing-statuses', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔧 Admin requested KYC status fix');
+    await storage.fixExistingKYCStatuses();
+    res.json({ message: 'KYC statuses fixed successfully' });
+  } catch (error) {
+    console.error('Error fixing KYC statuses:', error);
+    res.status(500).json({ message: 'Failed to fix KYC statuses', error: error.message });
+  }
+});
+
+// Clean up duplicate KYC documents (Admin only)
+router.post('/admin/kyc/cleanup-duplicates', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    console.log('🧹 Admin requested KYC document cleanup');
+    await storage.cleanupDuplicateKYCDocuments();
+    res.json({ message: 'Duplicate KYC documents cleaned up successfully' });
+  } catch (error) {
+    console.error('Error cleaning up KYC documents:', error);
+    res.status(500).json({ message: 'Failed to cleanup duplicate KYC documents', error: error.message });
+  }
+});
+
+// Consolidate document types (Admin only)
+router.post('/admin/kyc/consolidate-types', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    console.log('🔄 Admin requested document type consolidation');
+    await storage.consolidateDocumentTypes();
+    res.json({ message: 'Document types consolidated successfully' });
+  } catch (error) {
+    console.error('Error consolidating document types:', error);
+    res.status(500).json({ message: 'Failed to consolidate document types', error: error.message });
+  }
+});
+
 // Create KYC records for existing users (Admin only)
 router.post('/admin/kyc/create-for-existing', requireAuth, requireAdmin, async (req, res) => {
   try {

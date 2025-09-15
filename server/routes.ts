@@ -617,16 +617,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Check if user already has a pending or approved document of this type
+      // Check if user already has a document of this type
       const existingDocs = await storage.getUserKYCDocuments(req.session.userId!);
-      const existingDoc = existingDocs.find(doc => 
-        doc.documentType === documentType && (doc.status === 'pending' || doc.status === 'approved')
-      );
+      const existingDoc = existingDocs.find(doc => doc.documentType === documentType);
       
       if (existingDoc) {
-        return res.status(400).json({ 
-          message: "You already have a document of this type submitted or approved. Please wait for admin review or contact support if you need to replace it." 
+        // If document exists, update it instead of creating a new one
+        console.log(`🔄 Updating existing document ${existingDoc.id} for user ${req.session.userId}`);
+        const updatedDocument = await storage.updateKYCDocument(existingDoc.id, {
+          documentType,
+          documentData,
+          documentContentType,
+          documentFilename,
+          documentSize: Math.round((documentData.length * 3) / 4),
+          documentNumber: documentNumber || undefined,
         });
+        return res.status(200).json(updatedDocument);
       }
 
       // Validate Base64 data

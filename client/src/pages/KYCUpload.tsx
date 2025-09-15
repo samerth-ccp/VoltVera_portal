@@ -37,9 +37,8 @@ interface KYCDocument {
 
 const documentTypes = [
   { value: 'pan', label: 'PAN Card', icon: CreditCard, description: 'Permanent Account Number Card' },
-  { value: 'aadhaar_front', label: 'Aadhaar Front', icon: FileText, description: 'Aadhaar Card Front Side' },
-  { value: 'aadhaar_back', label: 'Aadhaar Back', icon: FileText, description: 'Aadhaar Card Back Side' },
-  { value: 'bank_cancelled_cheque', label: 'Bank/Cancelled Cheque', icon: Building, description: 'Bank Details or Cancelled Cheque' },
+  { value: 'aadhaar', label: 'Aadhaar Card', icon: FileText, description: 'Aadhaar Card (Front & Back)' },
+  { value: 'bank_statement', label: 'Bank Statement', icon: Building, description: 'Bank Statement or Cancelled Cheque' },
   { value: 'photo', label: 'Photo ID', icon: Camera, description: 'Passport Photo or ID Photo' },
 ];
 
@@ -160,13 +159,17 @@ export default function KYCUpload() {
       const documentData = await convertFileToBase64(selectedFile);
       
       // Check if there's an existing document of the same type
-      const existingDoc = kycDocuments.find(doc => 
-        doc.documentType === data.documentType && doc.status === 'rejected'
-      );
+      // Find the most recent document of this type (regardless of status)
+      const existingDocs = kycDocuments.filter(doc => doc.documentType === data.documentType);
+      const existingDoc = existingDocs.length > 0 
+        ? existingDocs.reduce((latest, current) => 
+            new Date(current.createdAt) > new Date(latest.createdAt) ? current : latest
+          )
+        : null;
       
       if (existingDoc) {
-        // Update existing rejected document
-        console.log('🔄 Updating existing rejected document:', existingDoc.id);
+        // Update existing document
+        console.log('🔄 Updating existing document:', existingDoc.id, 'Status:', existingDoc.status);
         await updateKycMutation.mutateAsync({
           documentId: existingDoc.id,
           documentType: data.documentType,
