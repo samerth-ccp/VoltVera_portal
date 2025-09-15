@@ -1115,37 +1115,20 @@ export default function CompleteReferralRegistration() {
               </CardContent>
             </Card>
 
-            {/* Package Selection */}
-            <Card className="bg-black/20 backdrop-blur-sm border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white">Package Selection</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <FormField
-                  control={form.control}
-                  name="packageAmount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-white">Select Package <span className="text-red-400">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-black/50 border-white/20 text-white">
-                            <SelectValue placeholder="Select package amount" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="5000">₹5,000 - Basic Package</SelectItem>
-                          <SelectItem value="10000">₹10,000 - Premium Package</SelectItem>
-                          <SelectItem value="25000">₹25,000 - VIP Package</SelectItem>
-                          <SelectItem value="50000">₹50,000 - Executive Package</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
+            {/* Package Selection - Hidden but still functional */}
+            {/* The packageAmount field is hidden from UI but still maintains default value of "5000" */}
+            {/* This ensures form submission works without user interaction */}
+            <FormField
+              control={form.control}
+              name="packageAmount"
+              render={({ field }) => (
+                <FormItem style={{ display: 'none' }}>
+                  <FormControl>
+                    <Input {...field} value="5000" />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
 
             {/* Document Upload */}
             <Card className="bg-black/20 backdrop-blur-sm border-white/10">

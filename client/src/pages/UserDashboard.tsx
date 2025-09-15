@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings, ShoppingCart, Package, Shield, Eye, CheckCircle, XCircle, Clock, Upload } from "lucide-react";
+import { Zap, Leaf, BarChart3, Smartphone, Target, Bell, Lock, Users, Home, Settings, ShoppingCart, Package, Shield, Eye, CheckCircle, XCircle, Clock, Upload, Menu, X } from "lucide-react";
 import { Link } from "wouter";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
 import MyTeam from "./MyTeam";
@@ -286,7 +287,9 @@ function UserKYCSection() {
 export default function UserDashboard() {
   const { user, isAuthenticated, isLoading } = useAuth();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -325,10 +328,109 @@ export default function UserDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Mobile menu overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Mobile Sidebar */}
+      <div className={`fixed inset-y-0 left-0 w-72 volt-gradient text-white z-30 transform transition-transform lg:hidden ${
+        isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      }`}>
+        <div className="flex items-center justify-between h-16 border-b border-white/20 px-4">
+          <div className="flex items-center">
+            <VoltverashopLogo size="small" />
+            <div className="ml-3">
+              <div className="text-lg font-bold">Voltverashop</div>
+              <div className="text-xs text-white/70">User Portal</div>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white/80 hover:text-white hover:bg-white/10"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </div>
+        
+        {/* Mobile Navigation */}
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          <Button
+            variant={activeTab === 'dashboard' ? 'secondary' : 'ghost'}
+            className="w-full justify-start text-white hover:text-gray-900"
+            onClick={() => {
+              setActiveTab('dashboard');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <Home className="mr-3 h-4 w-4" />
+            Dashboard
+          </Button>
+          <Button
+            variant={activeTab === 'team' ? 'secondary' : 'ghost'}
+            className="w-full justify-start text-white hover:text-gray-900"
+            onClick={() => {
+              setActiveTab('team');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <Users className="mr-3 h-4 w-4" />
+            My Team
+          </Button>
+          <Button
+            variant={activeTab === 'products' ? 'secondary' : 'ghost'}
+            className="w-full justify-start text-white hover:text-gray-900"
+            onClick={() => {
+              setActiveTab('products');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <ShoppingCart className="mr-3 h-4 w-4" />
+            Products
+          </Button>
+          <Button
+            variant={activeTab === 'purchases' ? 'secondary' : 'ghost'}
+            className="w-full justify-start text-white hover:text-gray-900"
+            onClick={() => {
+              setActiveTab('purchases');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <Package className="mr-3 h-4 w-4" />
+            My Purchases
+          </Button>
+          <Button
+            variant={activeTab === 'settings' ? 'secondary' : 'ghost'}
+            className="w-full justify-start text-white hover:text-gray-900"
+            onClick={() => {
+              setActiveTab('settings');
+              setIsSidebarOpen(false);
+            }}
+          >
+            <Settings className="mr-3 h-4 w-4" />
+            Settings
+          </Button>
+        </nav>
+      </div>
+
       {/* Header */}
       <header className="volt-gradient text-white">
         <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
           <div className="flex items-center space-x-4">
+            {/* Mobile menu button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-white/80 hover:text-white hover:bg-white/10 lg:hidden"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
             <VoltverashopLogo size="small" />
             <div>
               <h1 className="text-xl sm:text-2xl font-bold">Voltverashop Portal</h1>
@@ -339,12 +441,6 @@ export default function UserDashboard() {
           </div>
           <div className="flex items-center space-x-2 sm:space-x-4">
             <NotificationCenter />
-            {/* Hidden for now - Change password functionality */}
-            {/* <Link href="/change-password">
-              <Button variant="ghost" size="sm" className="text-white/80 hover:text-white hover:bg-white/10">
-                <Lock className="h-4 w-4" />
-              </Button>
-            </Link> */}
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white font-medium text-sm">
                 {getInitials(user?.firstName, user?.lastName)}
@@ -367,8 +463,8 @@ export default function UserDashboard() {
           </div>
         </div>
         
-        {/* Navigation Tabs */}
-        <div className="border-t border-white/10">
+        {/* Desktop Navigation Tabs */}
+        <div className="border-t border-white/10 hidden lg:block">
           <div className="px-4 sm:px-6 lg:px-8">
             <nav className="flex space-x-8">
               <button
