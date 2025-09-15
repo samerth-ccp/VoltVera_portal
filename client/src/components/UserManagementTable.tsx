@@ -69,7 +69,8 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
         title: "Success",
         description: "Logged in as user successfully",
       });
-      window.location.href = '/dashboard';
+      // Open user dashboard in new window/tab
+      window.open('/dashboard', '_blank');
     },
     onError: (error: any) => {
       toast({
