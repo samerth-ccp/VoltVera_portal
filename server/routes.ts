@@ -511,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sponsor: {
           name: `${sponsor.firstName} ${sponsor.lastName}`,
           email: sponsor.email,
-          id: sponsor.id
+          id: sponsor.userId || sponsor.id // Return user ID (VV0001) instead of internal ID
         }
       });
     } catch (error) {
@@ -1359,10 +1359,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Referral link has expired' });
       }
       
+      // Get the sponsor's user ID (like VV0001)
+      const sponsor = await storage.getUser(referralLink.generatedBy);
+      const sponsorUserId = sponsor?.userId || referralLink.generatedBy;
+      
       res.json({
         valid: true,
         placementSide: referralLink.placementSide,
-        generatedBy: referralLink.generatedBy,
+        generatedBy: sponsorUserId, // Now returns user ID like VV0001
         generatedByRole: referralLink.generatedByRole
       });
     } catch (error) {

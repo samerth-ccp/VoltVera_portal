@@ -371,7 +371,7 @@ export class DatabaseStorage implements IStorage {
       };
     }));
     
-    return usersWithSponsorIds;
+    return usersWithSponsorIds as User[];
   }
 
   // Generate next sequential user ID like VV0001, VV0002, etc.
