@@ -1889,10 +1889,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Referral link has expired', valid: false });
       }
       
+      // Get the sponsor's user ID (like VV0001)
+      const sponsor = await storage.getUser(referralLink.generatedBy);
+      const sponsorUserId = sponsor?.userId || referralLink.generatedBy;
+      
       res.json({
         valid: true,
         placementSide: referralLink.placementSide,
-        generatedBy: referralLink.generatedBy
+        generatedBy: sponsorUserId // Now returns user ID like VV0001
       });
     } catch (error) {
       console.error('Error validating referral token:', error);
@@ -1918,10 +1922,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'Referral link has expired' });
       }
       
+      // Get the sponsor's user ID (like VV0001)
+      const sponsor = await storage.getUser(referralLink.generatedBy);
+      const sponsorUserId = sponsor?.userId || referralLink.generatedBy;
+      
       res.json({
         valid: true,
         placementSide: referralLink.placementSide,
-        generatedBy: referralLink.generatedBy
+        generatedBy: sponsorUserId // Now returns user ID like VV0001
       });
     } catch (error) {
       console.error('Error validating referral token:', error);
