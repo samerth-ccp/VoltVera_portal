@@ -28,6 +28,7 @@ interface User {
   email: string;
   mobile?: string;
   sponsorId?: string;
+  sponsorUserId?: string; // Sponsor's user ID (e.g., VV0001)
   packageAmount: string;
   cryptoWalletAddress?: string;
   txnPin?: string;
@@ -153,7 +154,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
         user.email,
         '***', // Password placeholder
         user.txnPin || '',
-        user.sponsorId || '',
+        user.sponsorUserId || '',
         user.packageAmount,
         user.cryptoWalletAddress || '',
         wallet?.balance || 0,
@@ -165,7 +166,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
       ].join(',');
     });
     
-    const headers = ['User ID', 'Name', 'Phone', 'Email', 'Password', 'TXN Pin', 'Sponsor ID', 'Total Package', 'Wallet Address', 'E-wallet', 'Income', 'Total Withdraw', 'Withdraw Status', 'Registration Date', 'Activation Date'];
+    const headers = ['User ID', 'Name', 'Phone', 'Email', 'Password', 'TXN Pin', 'Sponsor User ID', 'Total Package', 'Wallet Address', 'E-wallet', 'Income', 'Total Withdraw', 'Withdraw Status', 'Registration Date', 'Activation Date'];
     const csv = [headers.join(','), ...csvData].join('\n');
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -226,7 +227,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                   <TableHead className="min-w-[200px]">Email</TableHead>
                   <TableHead className="min-w-[120px]">Password</TableHead>
                   <TableHead className="min-w-[120px]">TXN Pin</TableHead>
-                  <TableHead className="min-w-[150px]">Sponsor ID</TableHead>
+                  <TableHead className="min-w-[150px]">Sponsor User ID</TableHead>
                   <TableHead className="min-w-[130px]">Total Package</TableHead>
                   <TableHead className="min-w-[200px]">Wallet Address</TableHead>
                   <TableHead className="min-w-[120px]">E-wallet</TableHead>
@@ -386,9 +387,9 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
                         </div>
                       </TableCell>
 
-                      {/* Sponsor ID */}
+                      {/* Sponsor User ID */}
                       <TableCell>
-                        <span className="font-mono text-sm">{user.sponsorId || '-'}</span>
+                        <span className="font-mono text-sm">{user.sponsorUserId || '-'}</span>
                       </TableCell>
 
                       {/* Total Package */}

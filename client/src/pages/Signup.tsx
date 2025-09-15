@@ -36,7 +36,7 @@ export default function Signup() {
   const [, setLocation] = useLocation();
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
-  const [sponsorInfo, setSponsorInfo] = useState<{ name: string; email: string } | null>(null);
+  const [sponsorInfo, setSponsorInfo] = useState<{ name: string; email: string; id: string } | null>(null);
 
   // Extract sponsor code from URL
   const [location] = useLocation();
@@ -130,6 +130,9 @@ export default function Signup() {
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-400">
                   {sponsorInfo.email}
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 font-mono">
+                  Sponsor ID: {sponsorInfo.id}
                 </p>
               </div>
             )}

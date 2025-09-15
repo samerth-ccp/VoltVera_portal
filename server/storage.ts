@@ -352,7 +352,26 @@ export class DatabaseStorage implements IStorage {
       ) as typeof query;
     }
     
-    return await query;
+    const result = await query;
+    
+    // Add sponsor user IDs by fetching sponsor information
+    const usersWithSponsorIds = await Promise.all(result.map(async (user) => {
+      let sponsorUserId = null;
+      if (user.sponsorId) {
+        const sponsor = await db.select({ userId: users.userId })
+          .from(users)
+          .where(eq(users.id, user.sponsorId))
+          .limit(1);
+        sponsorUserId = sponsor[0]?.userId || null;
+      }
+      
+      return {
+        ...user,
+        sponsorUserId
+      };
+    }));
+    
+    return usersWithSponsorIds;
   }
 
   // Generate next sequential user ID like VV0001, VV0002, etc.

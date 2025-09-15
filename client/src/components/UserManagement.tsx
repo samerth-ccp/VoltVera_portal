@@ -213,7 +213,7 @@ export default function UserManagement() {
                         </div>
                         <div>
                           <span className="font-medium">Sponsor:</span>
-                          <p>{user.sponsorId}</p>
+                          <p>{user.sponsorUserId || user.sponsorId || '-'}</p>
                         </div>
                         <div>
                           <span className="font-medium">Registration:</span>
