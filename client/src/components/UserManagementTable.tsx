@@ -62,20 +62,25 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   // Login as user mutation
   const loginAsUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest('POST', `/api/admin/login-as-user/${userId}`);
+      console.log('Attempting to get impersonation code for user:', userId);
+      const res = await apiRequest('POST', `/api/admin/login-as-user/${userId}`);
+      return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
+      console.log('Impersonation code received');
       toast({
         title: "Success",
-        description: "Logged in as user successfully",
+        description: "Impersonation code issued",
       });
-      // Open user dashboard in new window to sustain session
-      window.open('/dashboard', '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes');
+      // Open user dashboard in new window with one-time code
+      const url = `/dashboard?impersonationCode=${encodeURIComponent(data.code)}`;
+      window.open(url, '_blank', 'width=1200,height=800,scrollbars=yes,resizable=yes,noopener,noreferrer');
     },
     onError: (error: any) => {
+      console.error('Failed to issue impersonation token:', error);
       toast({
         title: "Error",
-        description: error.message || "Failed to login as user",
+        description: error.message || "Failed to issue impersonation token",
         variant: "destructive",
       });
     },

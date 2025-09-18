@@ -12,9 +12,15 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  const impersonationToken = typeof window !== 'undefined' ? sessionStorage.getItem('impersonationToken') : null;
+  if (impersonationToken) {
+    headers['Authorization'] = `Bearer ${impersonationToken}`;
+  }
+
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -39,8 +45,15 @@ export const getQueryFn: <T>(options: {
       }
     }
     
+    const headers: Record<string, string> = {};
+    const impersonationToken = typeof window !== 'undefined' ? sessionStorage.getItem('impersonationToken') : null;
+    if (impersonationToken) {
+      headers['Authorization'] = `Bearer ${impersonationToken}`;
+    }
+
     const res = await fetch(url, {
       credentials: "include",
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
