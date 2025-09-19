@@ -285,7 +285,7 @@ function UserKYCSection() {
 }
 
 export default function UserDashboard() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading, logout } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -454,8 +454,7 @@ export default function UserDashboard() {
               size="sm" 
               className="text-white/80 hover:text-white hover:bg-white/10"
               onClick={() => {
-                fetch('/api/logout', { method: 'POST', credentials: 'include' })
-                  .then(() => window.location.href = '/');
+                logout();
               }}
             >
               🚪
@@ -667,8 +666,7 @@ export default function UserDashboard() {
                         size="sm" 
                         className="w-full justify-start"
                         onClick={() => {
-                          fetch('/api/logout', { method: 'POST', credentials: 'include' })
-                            .then(() => window.location.href = '/');
+                          logout();
                         }}
                       >
                         🚪 Sign Out

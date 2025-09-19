@@ -156,6 +156,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleLogout = (req: any, res: any) => {
     console.log('Logout request for session:', req.sessionID, 'User:', (req.session as any)?.userId);
     
+    // Revoke impersonation bearer token if present
+    try {
+      const authHeader = req.headers['authorization'] as string | undefined;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice('Bearer '.length).trim();
+        if (impersonationTokens.has(token)) {
+          impersonationTokens.delete(token);
+          console.log('Revoked impersonation token on logout');
+        }
+      }
+    } catch {}
+
+    // If an admin logs out, revoke ALL impersonation codes/tokens issued by them
+    try {
+      const adminId = (req.session as any)?.user?.id || (req.session as any)?.userId;
+      const adminRole = (req.session as any)?.user?.role;
+      if (adminId && adminRole === 'admin') {
+        // Revoke tokens
+        for (const [tok, meta] of impersonationTokens.entries()) {
+          if (meta.issuedByAdminId === adminId) {
+            impersonationTokens.delete(tok);
+          }
+        }
+        // Revoke outstanding one-time codes
+        for (const [codeKey, meta] of impersonationCodes.entries()) {
+          if (meta.issuedByAdminId === adminId) {
+            impersonationCodes.delete(codeKey);
+          }
+        }
+        console.log('Revoked all impersonation credentials for admin', adminId);
+      }
+    } catch (e) {
+      console.warn('Failed to bulk revoke impersonation on admin logout:', e);
+    }
+
     if (req.session) {
       req.session.destroy((err: any) => {
         if (err) {
@@ -174,24 +209,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/logout', handleLogout);
   app.get('/api/logout', handleLogout);
 
+  // Explicit revoke endpoint for impersonation tokens
+  app.post('/api/impersonation/revoke', async (req: any, res) => {
+    try {
+      let token: string | undefined;
+      const authHeader = req.headers['authorization'] as string | undefined;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice('Bearer '.length).trim();
+      } else if (req.body?.token) {
+        token = req.body.token;
+      }
+      if (!token) {
+        return res.status(400).json({ message: 'Token not provided' });
+      }
+      if (impersonationTokens.has(token)) {
+        impersonationTokens.delete(token);
+      }
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Error revoking impersonation token:', error);
+      return res.status(500).json({ message: 'Failed to revoke token' });
+    }
+  });
+
   // Simple auth middleware with debugging
+  const impersonationTokens: Map<string, { userId: string; expiresAt: number; jti: string; issuedByAdminId?: string }> = new Map();
+  const impersonationCodes: Map<string, { userId: string; expiresAt: number; used: boolean; jti: string; issuedByAdminId: string }> = new Map();
+
   const isAuthenticated = async (req: any, res: any, next: any) => {
-    const userId = (req.session as any)?.userId;
-    console.log('Auth check - Session ID:', req.sessionID);
-    console.log('Auth check - User ID in session:', userId);
-    console.log('Auth check - Full session:', req.session);
-    
-    if (!userId) {
-      return res.status(401).json({ message: "Unauthorized" });
+    try {
+      // 1) Bearer token-based impersonation (does not rely on cookie session)
+      const authHeader = req.headers['authorization'] as string | undefined;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice('Bearer '.length).trim();
+        const entry = impersonationTokens.get(token);
+        if (entry && Date.now() < entry.expiresAt) {
+          const user = await storage.getUser(entry.userId);
+          if (!user) {
+            return res.status(401).json({ message: 'User not found' });
+          }
+          req.user = user;
+          // Do not bind to cookie session to avoid clobbering admin session in other tabs
+          return next();
+        } else {
+          // Invalid or expired token → fall through to cookie session
+          if (entry && Date.now() >= entry.expiresAt) impersonationTokens.delete(token);
+        }
+      }
+
+      // 2) Cookie session-based authentication
+      const userId = (req.session as any)?.userId;
+      console.log('Auth check - Session ID:', req.sessionID);
+      console.log('Auth check - User ID in session:', userId);
+      console.log('Auth check - Full session:', req.session);
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      req.user = user;
+      next();
+    } catch (e) {
+      console.error('Auth middleware error:', e);
+      return res.status(401).json({ message: 'Unauthorized' });
     }
-    
-    const user = await storage.getUser(userId);
-    if (!user) {
-      return res.status(401).json({ message: "User not found" });
-    }
-    
-    req.user = user;
-    next();
   };
 
   // Admin middleware
@@ -1718,14 +1804,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Update session to log in as the target user
-      req.session.userId = userId;
-      (req.session as any).user = targetUser;
+      // Legacy behavior would swap the cookie session. Keep for backward compatibility behind flag.
+      if (req.query?.mode === 'legacy') {
+        req.session.userId = userId;
+        (req.session as any).user = targetUser;
+        return res.json({ message: 'Successfully logged in as user (legacy session swap)', user: targetUser });
+      }
 
-      res.json({ message: 'Successfully logged in as user', user: targetUser });
+      // Generate a one-time short-lived code (TTL 120s) to be exchanged in the new window
+      const code = `code_${nanoid(32)}`;
+      const codeTtlMs = 120 * 1000;
+      impersonationCodes.set(code, { userId, expiresAt: Date.now() + codeTtlMs, used: false, jti: nanoid(12), issuedByAdminId: (req.user as any)?.id || 'unknown' });
+
+      res.json({ 
+        message: 'Impersonation code issued',
+        code,
+        expiresInMs: codeTtlMs
+      });
     } catch (error) {
       console.error('Error logging in as user:', error);
       res.status(500).json({ message: 'Failed to login as user' });
+    }
+  });
+
+  // New explicit endpoint to mint impersonation token without touching session
+  app.post('/api/admin/impersonation-token/:userId', isAuthenticated, isAdmin, async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const targetUser = await storage.getUserById(userId);
+      if (!targetUser) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+      if (targetUser.status !== 'active') {
+        return res.status(403).json({ 
+          message: `Cannot impersonate user with status: ${targetUser.status}. Only active users can be impersonated.` 
+        });
+      }
+      // Prefer issuing a code for exchange rather than a bearer token
+      const code = `code_${nanoid(32)}`;
+      const codeTtlMs = 120 * 1000;
+      impersonationCodes.set(code, { userId, expiresAt: Date.now() + codeTtlMs, used: false, jti: nanoid(12), issuedByAdminId: (req.user as any)?.id || 'unknown' });
+      res.json({ message: 'Impersonation code issued', code, expiresInMs: codeTtlMs });
+    } catch (error) {
+      console.error('Error issuing impersonation token:', error);
+      res.status(500).json({ message: 'Failed to issue impersonation token' });
+    }
+  });
+
+  // Exchange endpoint: one-time code -> short-lived access token
+  app.post('/api/impersonation/exchange', async (req: any, res) => {
+    try {
+      const { code } = req.body || {};
+      if (!code) {
+        return res.status(400).json({ message: 'Code is required' });
+      }
+      const record = impersonationCodes.get(code);
+      if (!record) {
+        return res.status(400).json({ message: 'Invalid code' });
+      }
+      if (record.used) {
+        return res.status(400).json({ message: 'Code already used' });
+      }
+      if (Date.now() >= record.expiresAt) {
+        impersonationCodes.delete(code);
+        return res.status(400).json({ message: 'Code expired' });
+      }
+      // Mark code as used
+      record.used = true;
+      impersonationCodes.set(code, record);
+
+      // Mint short-lived bearer token (10 minutes)
+      const token = nanoid(48);
+      const ttlMs = 10 * 60 * 1000;
+      impersonationTokens.set(token, { userId: record.userId, expiresAt: Date.now() + ttlMs, jti: nanoid(12), issuedByAdminId: record.issuedByAdminId });
+
+      return res.json({ accessToken: token, exp: Date.now() + ttlMs });
+    } catch (error) {
+      console.error('Error exchanging impersonation code:', error);
+      return res.status(500).json({ message: 'Failed to exchange code' });
     }
   });
 
