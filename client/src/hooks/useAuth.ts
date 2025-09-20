@@ -25,14 +25,35 @@ export function useAuth() {
       // Clear user data from cache immediately to trigger UI update
       queryClient.setQueryData(["/api/auth/user"], null);
       
+      // If impersonation token exists, revoke it server-side; DO NOT clear admin cookie session
+      const token = sessionStorage.getItem('impersonationToken');
+      if (token) {
+        try {
+          await fetch('/api/impersonation/revoke', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` },
+            credentials: 'include',
+          });
+        } catch {}
+
+        // Local cleanup and redirect for impersonated tab only
+        localStorage.removeItem('voltverashop_userId');
+        localStorage.removeItem('voltverashop_remember_me');
+        sessionStorage.removeItem('impersonationToken');
+        setLocation('/');
+        return; // Do not call cookie-based logout (keeps admin tab logged in)
+      }
+
       // Remove any stored credentials
       localStorage.removeItem('voltverashop_userId');
       localStorage.removeItem('voltverashop_remember_me');
+      // Clear impersonation token if present
+      sessionStorage.removeItem('impersonationToken');
       
       // Navigate to landing page immediately (user state is already cleared)
       setLocation('/');
       
-      // Call logout API in background
+      // Also call logout via cookie session to clear admin session if any
       await apiRequest('POST', '/api/logout');
       
       // Clear all cached data after logout
