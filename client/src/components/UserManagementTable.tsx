@@ -62,7 +62,7 @@ export default function UserManagementTable({ users, walletData, withdrawalData 
   // Login as user mutation
   const loginAsUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      console.log('Attempting to get impersonation code for user:', userId);
+      //console.log('Attempting to get impersonation code for user:', userId);
       const res = await apiRequest('POST', `/api/admin/login-as-user/${userId}`);
       return res.json();
     },
