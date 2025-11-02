@@ -2358,7 +2358,26 @@ export class DatabaseStorage implements IStorage {
         wallet = await this.createWalletBalance(normalizedUserId);
       }
 
-      const currentBalance = parseFloat(wallet.balance || '0');
+      // Safely parse balance with proper null/undefined handling
+      const balanceStr = wallet?.balance ?? '0';
+      const currentBalance = parseFloat(balanceStr);
+      
+      // Log for debugging
+      console.log(`💰 Purchase validation for ${normalizedUserId}:`, {
+        walletExists: !!wallet,
+        balanceStr,
+        currentBalance,
+        totalAmount,
+        productPrice: product.price,
+        quantity: data.quantity
+      });
+      
+      // Check if balance is valid number
+      if (isNaN(currentBalance)) {
+        throw new Error(
+          `Invalid wallet balance data. Please contact support. (Balance value: ${balanceStr})`
+        );
+      }
       
       // Check if user has sufficient balance
       if (currentBalance < totalAmount) {
