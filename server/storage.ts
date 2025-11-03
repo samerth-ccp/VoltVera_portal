@@ -3406,6 +3406,68 @@ export class DatabaseStorage implements IStorage {
       
       console.log('  ✅ User KYC submission timestamp updated');
       
+      // CRITICAL FIX: If user was previously rejected, uploading a NEW document should move them to pending
+      // Check user's current KYC status
+      const [currentUser] = await db.select({ kycStatus: users.kycStatus })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      
+      if (currentUser && currentUser.kycStatus === 'rejected') {
+        // User was rejected - uploading a NEW document means they want to re-verify
+        // Move them to pending status so admin can review the new document
+        console.log(`🔄 User ${userId} was rejected - NEW document uploaded, moving to PENDING status`);
+        
+        // Update users.kyc_status to pending
+        await db.update(users)
+          .set({
+            kycStatus: 'pending' as const,
+            kycApprovedAt: null,
+            updatedAt: new Date()
+          })
+          .where(eq(users.id, userId));
+        
+        console.log(`  ✅ Updated users.kyc_status to 'pending' for user ${userId}`);
+        
+        // Also update kyc_profile document to match
+        const kycProfileDocs = await db.select()
+          .from(kycDocuments)
+          .where(and(
+            eq(kycDocuments.userId, userId),
+            eq(kycDocuments.documentType, 'kyc_profile')
+          ))
+          .limit(1);
+        
+        if (kycProfileDocs.length > 0) {
+          await db.update(kycDocuments)
+            .set({
+              status: 'pending' as const,
+              rejectionReason: null,  // Clear rejection reason on new upload
+              updatedAt: new Date()
+            })
+            .where(eq(kycDocuments.id, kycProfileDocs[0].id));
+          
+          console.log(`  ✅ Updated kyc_profile.status to 'pending' for user ${userId}`);
+        } else {
+          console.log(`  ⚠️ WARNING: kyc_profile document not found for user ${userId}`);
+        }
+        
+        // Create notification for re-verification request
+        const { notifications } = await import('@shared/schema');
+        await db.insert(notifications).values({
+          userId: userId,
+          type: 'kyc_status_change',
+          title: 'KYC Re-verification Request Submitted',
+          message: 'Your new KYC document has been uploaded and submitted for re-verification. The request is now in pending status for admin review.',
+          data: { 
+            kycStatus: 'pending', 
+            isReverification: true,
+            previousStatus: 'rejected'
+          }
+        });
+        console.log(`  📧 Created re-verification notification for user ${userId}`);
+      }
+      
       return kyc;
     } catch (error) {
       console.error('  ❌ Error creating KYC document:', error);
