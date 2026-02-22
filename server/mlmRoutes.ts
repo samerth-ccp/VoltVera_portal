@@ -11,6 +11,8 @@ import {
   createFranchiseRequestSchema,
   createSupportTicketSchema,
   createNewsSchema,
+  createCouponSchema,
+  createCategorySchema,
   updateUserProfileSchema,
   kycDocuments,
   type CreateProduct,
@@ -1043,6 +1045,185 @@ router.get('/rank-configurations', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching rank configurations:', error);
     res.status(500).json({ message: 'Failed to fetch rank configurations' });
+  }
+});
+
+// ===== COUPON ROUTES =====
+
+// Get all coupons (admin)
+router.get('/admin/coupons', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const allCoupons = await storage.getAllCoupons();
+    res.json(allCoupons);
+  } catch (error) {
+    console.error('Error fetching coupons:', error);
+    res.status(500).json({ message: 'Failed to fetch coupons' });
+  }
+});
+
+// Create coupon (admin)
+router.post('/admin/coupons', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const result = createCouponSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: 'Invalid coupon data', errors: result.error.errors });
+    }
+    const userId = getActualUserId(req);
+    const coupon = await storage.createCoupon(result.data, userId || 'admin');
+    res.status(201).json(coupon);
+  } catch (error: any) {
+    console.error('Error creating coupon:', error);
+    res.status(500).json({ message: error.message || 'Failed to create coupon' });
+  }
+});
+
+// Update coupon (admin)
+router.patch('/admin/coupons/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const coupon = await storage.updateCoupon(id, req.body);
+    if (!coupon) {
+      return res.status(404).json({ message: 'Coupon not found' });
+    }
+    res.json(coupon);
+  } catch (error) {
+    console.error('Error updating coupon:', error);
+    res.status(500).json({ message: 'Failed to update coupon' });
+  }
+});
+
+// Delete coupon (admin)
+router.delete('/admin/coupons/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await storage.deleteCoupon(id);
+    res.json({ message: 'Coupon deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting coupon:', error);
+    res.status(500).json({ message: 'Failed to delete coupon' });
+  }
+});
+
+// Validate coupon (customer)
+router.post('/coupons/validate', requireAuth, async (req, res) => {
+  try {
+    const { code, orderAmount } = req.body;
+    if (!code || !orderAmount) {
+      return res.status(400).json({ message: 'Coupon code and order amount are required' });
+    }
+    const result = await storage.validateCoupon(code, parseFloat(orderAmount));
+    res.json(result);
+  } catch (error) {
+    console.error('Error validating coupon:', error);
+    res.status(500).json({ message: 'Failed to validate coupon' });
+  }
+});
+
+// ===== PRODUCT CATEGORY ROUTES =====
+
+// Get all categories (public)
+router.get('/categories', async (req, res) => {
+  try {
+    const allCategories = await storage.getAllCategories();
+    res.json(allCategories);
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    res.status(500).json({ message: 'Failed to fetch categories' });
+  }
+});
+
+// Create category (admin)
+router.post('/admin/categories', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const result = createCategorySchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({ message: 'Invalid category data', errors: result.error.errors });
+    }
+    const category = await storage.createCategory(result.data);
+    res.status(201).json(category);
+  } catch (error: any) {
+    console.error('Error creating category:', error);
+    res.status(500).json({ message: error.message || 'Failed to create category' });
+  }
+});
+
+// Update category (admin)
+router.patch('/admin/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const category = await storage.updateCategory(id, req.body);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+    res.json(category);
+  } catch (error) {
+    console.error('Error updating category:', error);
+    res.status(500).json({ message: 'Failed to update category' });
+  }
+});
+
+// Delete category (admin)
+router.delete('/admin/categories/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await storage.deleteCategory(id);
+    res.json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ message: 'Failed to delete category' });
+  }
+});
+
+// ===== DAILY ORDER REPORT ROUTES =====
+
+// Get daily order report (admin)
+router.get('/admin/daily-report', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { date } = req.query;
+    const report = await storage.getDailyOrderReport(date as string);
+    res.json(report);
+  } catch (error) {
+    console.error('Error fetching daily report:', error);
+    res.status(500).json({ message: 'Failed to fetch daily report' });
+  }
+});
+
+// Get orders by date range (admin)
+router.get('/admin/orders-report', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    if (!startDate || !endDate) {
+      return res.status(400).json({ message: 'Start and end dates are required' });
+    }
+    const orders = await storage.getOrdersByDateRange(startDate as string, endDate as string);
+    res.json(orders);
+  } catch (error) {
+    console.error('Error fetching orders report:', error);
+    res.status(500).json({ message: 'Failed to fetch orders report' });
+  }
+});
+
+// ===== PHONE NUMBER UPDATE ROUTE =====
+
+// Update phone number (mandatory after first login)
+router.post('/user/update-phone', requireAuth, async (req, res) => {
+  try {
+    const userId = getActualUserId(req);
+    if (!userId) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const { mobile } = req.body;
+    if (!mobile || !/^[6-9]\d{9}$/.test(mobile)) {
+      return res.status(400).json({ message: 'Valid 10-digit Indian mobile number is required' });
+    }
+    const user = await storage.updateUserProfile(userId, { mobile });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    res.json({ message: 'Phone number updated successfully', user });
+  } catch (error) {
+    console.error('Error updating phone:', error);
+    res.status(500).json({ message: 'Failed to update phone number' });
   }
 });
 

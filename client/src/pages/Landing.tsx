@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import VoltverashopLogo from "@/components/VoltverashopLogo";
@@ -18,6 +19,7 @@ export default function Landing() {
   const [rememberMe, setRememberMe] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  usePageTitle("Home", "Shop premium water purification machines and join our MLM network at VoltveraShop");
 
   // Load saved userId and remember me preference on component mount
   useEffect(() => {

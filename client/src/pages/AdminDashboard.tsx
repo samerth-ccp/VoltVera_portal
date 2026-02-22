@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,6 +37,8 @@ import { MonthlyBVReport } from "@/components/MonthlyBVReport";
 import { UserPerformanceReport } from "@/components/UserPerformanceReport";
 import AdminProductManagement from "@/components/AdminProductManagement";
 import AdminPurchasesTable from "@/components/AdminPurchasesTable";
+import AdminCouponManagement from "@/components/AdminCouponManagement";
+import AdminDailyReport from "@/components/AdminDailyReport";
 import BroadcastNotification from "@/components/BroadcastNotification";
 import { ReportsGuide } from "@/components/ReportsGuide";
 
@@ -62,6 +65,7 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  usePageTitle("Admin Dashboard", "VoltveraShop admin control panel");
 
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -902,6 +906,18 @@ export default function AdminDashboard() {
             <span className="font-medium">Product Management</span>
           </button>
 
+          {/* Coupon Management */}
+          <button 
+            onClick={() => setActiveSection('coupon-management')}
+            className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${
+              activeSection === 'coupon-management' ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/90'
+            }`}
+            data-testid="menu-coupon-management"
+          >
+            <Award className="mr-3 h-5 w-5" />
+            <span className="font-medium">Coupon Management</span>
+          </button>
+
           {/* Purchases Tracking */}
           <button 
             onClick={() => setActiveSection('purchases')}
@@ -912,6 +928,18 @@ export default function AdminDashboard() {
           >
             <TrendingUp className="mr-3 h-5 w-5" />
             <span className="font-medium">All Purchases</span>
+          </button>
+
+          {/* Daily Order Report */}
+          <button 
+            onClick={() => setActiveSection('daily-report')}
+            className={`flex items-center w-full px-4 py-3 text-left rounded-lg transition-colors ${
+              activeSection === 'daily-report' ? 'bg-white/20 text-white' : 'hover:bg-white/10 text-white/90'
+            }`}
+            data-testid="menu-daily-report"
+          >
+            <BarChart3 className="mr-3 h-5 w-5" />
+            <span className="font-medium">Daily Order Report</span>
           </button>
 
           {/* Withdraw Management Menu */}
@@ -1855,6 +1883,16 @@ export default function AdminDashboard() {
           {/* Purchases Section */}
           {activeSection === 'purchases' && (
             <AdminPurchasesTable />
+          )}
+
+          {/* Coupon Management Section */}
+          {activeSection === 'coupon-management' && (
+            <AdminCouponManagement />
+          )}
+
+          {/* Daily Order Report Section */}
+          {activeSection === 'daily-report' && (
+            <AdminDailyReport />
           )}
 
           {/* Today's Joinings Section */}

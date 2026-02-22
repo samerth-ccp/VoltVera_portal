@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, Calendar, Truck, IndianRupee, Star } from "lucide-react";
 import { format } from "date-fns";
+import { usePageTitle } from "@/hooks/usePageTitle";
 
 interface Purchase {
   id: string;
@@ -48,6 +49,8 @@ export default function MyPurchases() {
     queryKey: ['/api/purchases'],
     enabled: true,
   });
+
+  usePageTitle("My Purchases", "View your order history and purchase details");
 
   if (isLoading) {
     return (

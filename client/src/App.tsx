@@ -24,12 +24,13 @@ import MyPurchases from "@/pages/MyPurchases";
 import PendingUserDashboard from "@/pages/PendingUserDashboard";
 import BVTestSimulation from "@/pages/BVTestSimulation";
 import BVCalculations from "@/pages/BVCalculations";
+import PhoneNumberCapture from "@/components/PhoneNumberCapture";
 
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
 
+  const needsPhone = isAuthenticated && user && !user.mobile;
 
-  // Early return pattern for cleaner routing logic
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   }
@@ -37,7 +38,6 @@ function Router() {
   if (!isAuthenticated) {
     return (
       <Switch>
-        {/* Public routes */}
         <Route path="/forgot-password" component={ForgotPassword} />
         <Route path="/signup" component={Signup} />
         <Route path="/verify-email" component={VerifyEmail} />
@@ -51,7 +51,10 @@ function Router() {
     );
   }
 
-  // Authenticated user routes - clear route precedence
+  if (needsPhone) {
+    return <PhoneNumberCapture open={true} userId={user.userId} />;
+  }
+
   return (
     <Switch>
       {/* Public routes available to authenticated users too */}

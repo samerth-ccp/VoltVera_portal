@@ -275,6 +275,10 @@ export const purchases = pgTable("purchases", {
   deliveryAddress: text("delivery_address"),
   deliveryStatus: varchar("delivery_status").default('pending'),
   trackingId: varchar("tracking_id"),
+  couponCode: varchar("coupon_code"),
+  discountAmount: decimal("discount_amount", { precision: 10, scale: 2 }).default('0.00'),
+  razorpayOrderId: varchar("razorpay_order_id"),
+  razorpayPaymentId: varchar("razorpay_payment_id"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -591,6 +595,37 @@ export const createNotificationSchema = createInsertSchema(notifications).pick({
   data: true,
 });
 
+// Coupons table for discount codes
+export const coupons = pgTable("coupons", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: varchar("code").notNull().unique(),
+  description: text("description"),
+  discountType: varchar("discount_type").notNull(), // 'percentage' or 'fixed'
+  discountValue: decimal("discount_value", { precision: 10, scale: 2 }).notNull(),
+  minOrderAmount: decimal("min_order_amount", { precision: 10, scale: 2 }).default('0.00'),
+  maxDiscount: decimal("max_discount", { precision: 10, scale: 2 }),
+  usageLimit: integer("usage_limit"),
+  usedCount: integer("used_count").default(0),
+  isActive: boolean("is_active").default(true),
+  expiresAt: timestamp("expires_at"),
+  createdBy: varchar("created_by").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Product categories table
+export const productCategories = pgTable("product_categories", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: varchar("name").notNull().unique(),
+  slug: varchar("slug").notNull().unique(),
+  description: text("description"),
+  imageUrl: varchar("image_url"),
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Schema for products
 export const createProductSchema = createInsertSchema(products).pick({
   name: true,
@@ -608,7 +643,7 @@ export const createProductSchema = createInsertSchema(products).pick({
   gst: z.string().refine((val) => !isNaN(Number(val)) && Number(val) >= 0, "Valid GST is required"),
 });
 
-// Schema for purchases
+// Schema for purchases - extended with coupon and COD support
 export const createPurchaseSchema = createInsertSchema(purchases).pick({
   productId: true,
   quantity: true,
@@ -617,7 +652,44 @@ export const createPurchaseSchema = createInsertSchema(purchases).pick({
 }).extend({
   productId: z.string().min(1, "Product is required"),
   quantity: z.number().min(1, "Quantity must be at least 1"),
+  paymentMethod: z.enum(['wallet', 'razorpay', 'cod']).default('wallet'),
   deliveryAddress: z.string().min(10, "Complete delivery address is required"),
+  couponCode: z.string().optional(),
+  razorpayPaymentId: z.string().optional(),
+  razorpayOrderId: z.string().optional(),
+  razorpaySignature: z.string().optional(),
+});
+
+// Schema for coupons
+export const createCouponSchema = createInsertSchema(coupons).pick({
+  code: true,
+  description: true,
+  discountType: true,
+  discountValue: true,
+  minOrderAmount: true,
+  maxDiscount: true,
+  usageLimit: true,
+  expiresAt: true,
+}).extend({
+  code: z.string().min(3, "Code must be at least 3 characters").max(20, "Code max 20 characters"),
+  discountType: z.enum(['percentage', 'fixed']),
+  discountValue: z.string().refine((val) => !isNaN(Number(val)) && Number(val) > 0, "Valid discount value is required"),
+  minOrderAmount: z.string().optional(),
+  maxDiscount: z.string().optional(),
+  usageLimit: z.number().optional(),
+  expiresAt: z.string().optional(),
+});
+
+// Schema for product categories
+export const createCategorySchema = createInsertSchema(productCategories).pick({
+  name: true,
+  slug: true,
+  description: true,
+  imageUrl: true,
+  displayOrder: true,
+}).extend({
+  name: z.string().min(1, "Category name is required"),
+  slug: z.string().min(1, "Category slug is required"),
 });
 
 // Schema for withdrawal requests
@@ -749,6 +821,8 @@ export type CreateKYC = z.infer<typeof createKYCSchema>;
 export type CreateFranchiseRequest = z.infer<typeof createFranchiseRequestSchema>;
 export type CreateSupportTicket = z.infer<typeof createSupportTicketSchema>;
 export type CreateNews = z.infer<typeof createNewsSchema>;
+export type CreateCoupon = z.infer<typeof createCouponSchema>;
+export type CreateCategory = z.infer<typeof createCategorySchema>;
 
 // BV Test Tables for simulation and testing BV calculations
 export const usersBvTest = pgTable("users_bv_test", {
@@ -843,6 +917,8 @@ export type SupportTicket = typeof supportTickets.$inferSelect;
 export type Achiever = typeof achievers.$inferSelect;
 export type Cheque = typeof cheques.$inferSelect;
 export type News = typeof news.$inferSelect;
+export type Coupon = typeof coupons.$inferSelect;
+export type ProductCategory = typeof productCategories.$inferSelect;
 export type PendingRecruit = typeof pendingRecruits.$inferSelect;
 export type EmailToken = typeof emailTokens.$inferSelect;
 export type Notification = typeof notifications.$inferSelect;

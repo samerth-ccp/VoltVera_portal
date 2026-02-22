@@ -50,6 +50,13 @@ import {
   type Cheque,
   type News,
   type CreateNews,
+  coupons,
+  productCategories,
+  type Coupon,
+  type CreateCoupon,
+  type ProductCategory,
+  type CreateCategory,
+  fundRequests,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, ilike, or, desc, and, sql, gte, lte, asc, ne, inArray } from "drizzle-orm";
@@ -291,6 +298,27 @@ export interface IStorage {
     recruiterId: string,
     placementSide: string
   ): Promise<PendingRecruit>;
+  
+  // Coupon operations
+  getAllCoupons(): Promise<Coupon[]>;
+  getCouponByCode(code: string): Promise<Coupon | undefined>;
+  getCouponById(id: string): Promise<Coupon | undefined>;
+  createCoupon(data: CreateCoupon, createdBy: string): Promise<Coupon>;
+  updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | undefined>;
+  deleteCoupon(id: string): Promise<boolean>;
+  validateCoupon(code: string, orderAmount: number): Promise<{ valid: boolean; discount: number; message?: string }>;
+  incrementCouponUsage(code: string): Promise<void>;
+  
+  // Product category operations
+  getAllCategories(): Promise<ProductCategory[]>;
+  getCategoryById(id: string): Promise<ProductCategory | undefined>;
+  createCategory(data: CreateCategory): Promise<ProductCategory>;
+  updateCategory(id: string, updates: Partial<ProductCategory>): Promise<ProductCategory | undefined>;
+  deleteCategory(id: string): Promise<boolean>;
+  
+  // Order report operations
+  getDailyOrderReport(date?: string): Promise<any>;
+  getOrdersByDateRange(startDate: string, endDate: string): Promise<any[]>;
   
   // Financial operations for admin
   getAllUsersForPlacement(): Promise<User[]>;
@@ -2346,8 +2374,19 @@ export class DatabaseStorage implements IStorage {
     const baseAmount = parseFloat(product.price) * data.quantity;
     const gstPercentage = parseFloat(product.gst);
     const gstAmount = (baseAmount * gstPercentage) / 100;
-    const totalAmount = baseAmount + gstAmount; // Total amount INCLUDING GST
+    let totalAmount = baseAmount + gstAmount; // Total amount INCLUDING GST
     const totalBV = parseFloat(product.bv) * data.quantity;
+    
+    // Apply coupon discount if provided
+    let discountAmount = 0;
+    if ((data as any).couponCode) {
+      const couponResult = await this.validateCoupon((data as any).couponCode, totalAmount);
+      if (couponResult.valid) {
+        discountAmount = couponResult.discount;
+        totalAmount = totalAmount - discountAmount;
+        await this.incrementCouponUsage((data as any).couponCode);
+      }
+    }
 
     // CRITICAL: Validate wallet balance for wallet payments
     if (data.paymentMethod === 'wallet') {
@@ -2407,19 +2446,33 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    // Determine payment status based on method
+    let paymentStatus = 'completed';
+    if (data.paymentMethod === 'cod') {
+      paymentStatus = 'cod_pending';
+    } else if (data.paymentMethod === 'razorpay') {
+      paymentStatus = (data as any).razorpayPaymentId ? 'completed' : 'pending';
+    }
+    
     const [purchase] = await db.insert(purchases).values({
-      userId: normalizedUserId,  // Use normalized Display ID
+      userId: normalizedUserId,
       productId: data.productId,
       quantity: data.quantity,
       totalAmount: totalAmount.toString(),
       totalBV: totalBV.toString(),
       paymentMethod: data.paymentMethod,
-      paymentStatus: 'completed', // Set to completed since purchase is created when user completes form
+      paymentStatus,
       deliveryAddress: data.deliveryAddress,
+      couponCode: (data as any).couponCode || null,
+      discountAmount: discountAmount.toString(),
+      razorpayOrderId: (data as any).razorpayOrderId || null,
+      razorpayPaymentId: (data as any).razorpayPaymentId || null,
     }).returning();
 
-    // Process income distribution and BV updates since payment is completed
-    await this.processIncomeDistribution(purchase.id);
+    // Process income distribution and BV updates for completed payments
+    if (paymentStatus === 'completed') {
+      await this.processIncomeDistribution(purchase.id);
+    }
     
     return purchase;
   }
@@ -4994,6 +5047,182 @@ export class DatabaseStorage implements IStorage {
       console.error('Error creating user with strategic placement:', error);
       throw new Error(`Failed to create user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
+  }
+
+  // ==================== COUPON OPERATIONS ====================
+  
+  async getAllCoupons(): Promise<Coupon[]> {
+    return await db.select().from(coupons).orderBy(desc(coupons.createdAt));
+  }
+
+  async getCouponByCode(code: string): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.code, code.toUpperCase()));
+    return coupon;
+  }
+
+  async getCouponById(id: string): Promise<Coupon | undefined> {
+    const [coupon] = await db.select().from(coupons).where(eq(coupons.id, id));
+    return coupon;
+  }
+
+  async createCoupon(data: CreateCoupon, createdBy: string): Promise<Coupon> {
+    const [coupon] = await db.insert(coupons).values({
+      code: data.code.toUpperCase(),
+      description: data.description || null,
+      discountType: data.discountType,
+      discountValue: data.discountValue,
+      minOrderAmount: data.minOrderAmount || '0.00',
+      maxDiscount: data.maxDiscount || null,
+      usageLimit: data.usageLimit || null,
+      expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+      createdBy,
+    }).returning();
+    return coupon;
+  }
+
+  async updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | undefined> {
+    const [coupon] = await db.update(coupons)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(coupons.id, id))
+      .returning();
+    return coupon;
+  }
+
+  async deleteCoupon(id: string): Promise<boolean> {
+    const result = await db.delete(coupons).where(eq(coupons.id, id));
+    return true;
+  }
+
+  async validateCoupon(code: string, orderAmount: number): Promise<{ valid: boolean; discount: number; message?: string }> {
+    const coupon = await this.getCouponByCode(code);
+    
+    if (!coupon) {
+      return { valid: false, discount: 0, message: 'Invalid coupon code' };
+    }
+    
+    if (!coupon.isActive) {
+      return { valid: false, discount: 0, message: 'This coupon is no longer active' };
+    }
+    
+    if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
+      return { valid: false, discount: 0, message: 'This coupon has expired' };
+    }
+    
+    if (coupon.usageLimit && (coupon.usedCount || 0) >= coupon.usageLimit) {
+      return { valid: false, discount: 0, message: 'This coupon has reached its usage limit' };
+    }
+    
+    const minOrder = parseFloat(coupon.minOrderAmount || '0');
+    if (orderAmount < minOrder) {
+      return { valid: false, discount: 0, message: `Minimum order amount is ₹${minOrder.toFixed(2)}` };
+    }
+    
+    let discount = 0;
+    if (coupon.discountType === 'percentage') {
+      discount = (orderAmount * parseFloat(coupon.discountValue)) / 100;
+      const maxDiscount = coupon.maxDiscount ? parseFloat(coupon.maxDiscount) : Infinity;
+      discount = Math.min(discount, maxDiscount);
+    } else {
+      discount = parseFloat(coupon.discountValue);
+    }
+    
+    discount = Math.min(discount, orderAmount);
+    
+    return { valid: true, discount };
+  }
+
+  async incrementCouponUsage(code: string): Promise<void> {
+    await db.update(coupons)
+      .set({ usedCount: sql`${coupons.usedCount} + 1`, updatedAt: new Date() })
+      .where(eq(coupons.code, code.toUpperCase()));
+  }
+
+  // ==================== PRODUCT CATEGORY OPERATIONS ====================
+  
+  async getAllCategories(): Promise<ProductCategory[]> {
+    return await db.select().from(productCategories).orderBy(asc(productCategories.displayOrder));
+  }
+
+  async getCategoryById(id: string): Promise<ProductCategory | undefined> {
+    const [category] = await db.select().from(productCategories).where(eq(productCategories.id, id));
+    return category;
+  }
+
+  async createCategory(data: CreateCategory): Promise<ProductCategory> {
+    const [category] = await db.insert(productCategories).values({
+      name: data.name,
+      slug: data.slug,
+      description: data.description || null,
+      imageUrl: data.imageUrl || null,
+      displayOrder: data.displayOrder || 0,
+    }).returning();
+    return category;
+  }
+
+  async updateCategory(id: string, updates: Partial<ProductCategory>): Promise<ProductCategory | undefined> {
+    const [category] = await db.update(productCategories)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(productCategories.id, id))
+      .returning();
+    return category;
+  }
+
+  async deleteCategory(id: string): Promise<boolean> {
+    await db.delete(productCategories).where(eq(productCategories.id, id));
+    return true;
+  }
+
+  // ==================== ORDER REPORT OPERATIONS ====================
+  
+  async getDailyOrderReport(date?: string): Promise<any> {
+    const targetDate = date ? new Date(date) : new Date();
+    const startOfDay = new Date(targetDate);
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date(targetDate);
+    endOfDay.setHours(23, 59, 59, 999);
+    
+    const dayPurchases = await db.select()
+      .from(purchases)
+      .where(and(
+        gte(purchases.createdAt, startOfDay),
+        lte(purchases.createdAt, endOfDay)
+      ))
+      .orderBy(desc(purchases.createdAt));
+    
+    const totalOrders = dayPurchases.length;
+    const totalRevenue = dayPurchases.reduce((sum, p) => sum + parseFloat(p.totalAmount), 0);
+    const codOrders = dayPurchases.filter(p => p.paymentMethod === 'cod').length;
+    const walletOrders = dayPurchases.filter(p => p.paymentMethod === 'wallet').length;
+    const razorpayOrders = dayPurchases.filter(p => p.paymentMethod === 'razorpay').length;
+    const pendingPayments = dayPurchases.filter(p => p.paymentStatus === 'pending').length;
+    const completedPayments = dayPurchases.filter(p => p.paymentStatus === 'completed').length;
+    
+    return {
+      date: targetDate.toISOString().split('T')[0],
+      totalOrders,
+      totalRevenue: totalRevenue.toFixed(2),
+      codOrders,
+      walletOrders,
+      razorpayOrders,
+      pendingPayments,
+      completedPayments,
+      orders: dayPurchases,
+    };
+  }
+
+  async getOrdersByDateRange(startDate: string, endDate: string): Promise<any[]> {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    
+    return await db.select()
+      .from(purchases)
+      .where(and(
+        gte(purchases.createdAt, start),
+        lte(purchases.createdAt, end)
+      ))
+      .orderBy(desc(purchases.createdAt));
   }
 }
 

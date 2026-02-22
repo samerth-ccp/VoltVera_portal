@@ -3,6 +3,7 @@ import { Link, useLocation } from "wouter";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { usePageTitle } from "@/hooks/usePageTitle";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -37,6 +38,7 @@ export default function Signup() {
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
   const [sponsorInfo, setSponsorInfo] = useState<{ name: string; email: string; id: string } | null>(null);
+  usePageTitle("Sign Up", "Create your VoltveraShop account");
 
   // Extract sponsor code from URL
   const [location] = useLocation();

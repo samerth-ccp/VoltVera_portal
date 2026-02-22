@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Package, Plus, Edit, Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Package, Plus, Edit, Trash2, Upload, Image as ImageIcon, FolderPlus } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -28,6 +28,14 @@ interface Product {
   updatedAt: string;
 }
 
+interface ProductCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  isActive: boolean;
+}
+
 export default function AdminProductManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -35,6 +43,47 @@ export default function AdminProductManagement() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [uploadingImageFor, setUploadingImageFor] = useState<string | null>(null);
+  const [showCategoriesPanel, setShowCategoriesPanel] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery<ProductCategory[]>({
+    queryKey: ['/api/product-categories'],
+  });
+
+  const createCategoryMutation = useMutation({
+    mutationFn: async (data: { name: string; slug: string; description: string }) => {
+      const response = await apiRequest('POST', '/api/admin/product-categories', data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Category Created", description: "The category has been added." });
+      setNewCategoryName('');
+      queryClient.invalidateQueries({ queryKey: ['/api/product-categories'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to create category", variant: "destructive" });
+    },
+  });
+
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest('DELETE', `/api/admin/product-categories/${id}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Category Deleted", description: "The category has been removed." });
+      queryClient.invalidateQueries({ queryKey: ['/api/product-categories'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to delete category", variant: "destructive" });
+    },
+  });
+
+  const handleAddCategory = () => {
+    if (!newCategoryName.trim()) return;
+    const slug = newCategoryName.trim().toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    createCategoryMutation.mutate({ name: newCategoryName.trim(), slug, description: '' });
+  };
 
   // Helper function to get the image URL (proxy for Google Cloud Storage URLs)
   const getImageUrl = (imageUrl: string | undefined) => {
@@ -210,10 +259,15 @@ export default function AdminProductManagement() {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="water_purifier">Water Purifier</SelectItem>
-                      <SelectItem value="led_tv">LED TV</SelectItem>
-                      <SelectItem value="ceiling_fan">Ceiling Fan</SelectItem>
-                      <SelectItem value="franchise">Franchise</SelectItem>
+                      {categoriesLoading ? (
+                        <SelectItem value="_loading" disabled>Loading categories...</SelectItem>
+                      ) : categories.length === 0 ? (
+                        <SelectItem value="_empty" disabled>No categories available</SelectItem>
+                      ) : (
+                        categories.filter(c => c.isActive).map((cat) => (
+                          <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -309,6 +363,67 @@ export default function AdminProductManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+      </div>
+
+      <div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCategoriesPanel(!showCategoriesPanel)}
+        >
+          <FolderPlus className="h-4 w-4 mr-2" />
+          Manage Categories
+        </Button>
+        {showCategoriesPanel && (
+          <Card className="mt-3">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-base">Product Categories</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-3">
+              {categoriesLoading ? (
+                <p className="text-sm text-gray-500">Loading categories...</p>
+              ) : (
+                <div className="space-y-2">
+                  {categories.map((cat) => (
+                    <div key={cat.id} className="flex items-center justify-between bg-gray-50 rounded px-3 py-2">
+                      <span className="text-sm">{cat.name}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700"
+                        onClick={() => deleteCategoryMutation.mutate(cat.id)}
+                        disabled={deleteCategoryMutation.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {categories.length === 0 && (
+                    <p className="text-sm text-gray-500">No categories yet.</p>
+                  )}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Input
+                  placeholder="New category name"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
+                  className="h-8 text-sm"
+                />
+                <Button
+                  size="sm"
+                  className="h-8"
+                  onClick={handleAddCategory}
+                  disabled={createCategoryMutation.isPending || !newCategoryName.trim()}
+                >
+                  <FolderPlus className="h-4 w-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -478,10 +593,15 @@ export default function AdminProductManagement() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="water_purifier">Water Purifier</SelectItem>
-                      <SelectItem value="led_tv">LED TV</SelectItem>
-                      <SelectItem value="ceiling_fan">Ceiling Fan</SelectItem>
-                      <SelectItem value="franchise">Franchise</SelectItem>
+                      {categoriesLoading ? (
+                        <SelectItem value="_loading" disabled>Loading categories...</SelectItem>
+                      ) : categories.length === 0 ? (
+                        <SelectItem value="_empty" disabled>No categories available</SelectItem>
+                      ) : (
+                        categories.filter(c => c.isActive).map((cat) => (
+                          <SelectItem key={cat.id} value={cat.slug}>{cat.name}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>

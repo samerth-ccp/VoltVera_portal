@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 // import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"; // DISABLED: Removed purchase type tabs
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, Package, Zap, Tv, Fan, Droplets, IndianRupee, Star, TrendingUp, Target, DollarSign, CreditCard } from "lucide-react";
+import { usePageTitle } from "@/hooks/usePageTitle";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ShoppingCart, Package, Zap, Tv, Fan, Droplets, IndianRupee, Star, TrendingUp, Target, DollarSign, CreditCard, Tag, Truck, Wallet } from "lucide-react";
 import { Link } from "wouter";
 
 interface Product {
@@ -33,6 +35,7 @@ interface PurchaseData {
   quantity: number;
   paymentMethod: string;
   deliveryAddress: string;
+  couponCode?: string;
 }
 
 const getCategoryIcon = (category: string) => {
@@ -82,9 +85,14 @@ export default function ProductCatalog() {
   const [purchaseForm, setPurchaseForm] = useState<PurchaseData>({
     productId: '',
     quantity: 1,
-    paymentMethod: 'wallet', // Always use E-wallet for purchases
+    paymentMethod: 'wallet',
     deliveryAddress: ''
   });
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState<number>(0);
+  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
 
   // Fetch BV calculations data
   const { data: bvData, isLoading: bvLoading } = useQuery({
@@ -100,6 +108,8 @@ export default function ProductCatalog() {
     queryKey: ['/api/products'],
     enabled: true,
   });
+
+  usePageTitle("Products", "Browse our premium water purification machines and filters");
 
   // Create purchase mutation
   const createPurchaseMutation = useMutation({
@@ -124,9 +134,13 @@ export default function ProductCatalog() {
       setPurchaseForm({
         productId: '',
         quantity: 1,
-        paymentMethod: 'wallet', // Always use E-wallet
+        paymentMethod: 'wallet',
         deliveryAddress: ''
       });
+      setCouponCode('');
+      setCouponDiscount(0);
+      setCouponApplied(false);
+      setCouponError('');
       queryClient.invalidateQueries({ queryKey: ['/api/purchases'] });
       queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
     },
@@ -153,9 +167,63 @@ export default function ProductCatalog() {
     setSelectedProduct(product);
     setPurchaseForm(prev => ({
       ...prev,
-      productId: product.id
+      productId: product.id,
+      paymentMethod: 'wallet',
+      couponCode: undefined
     }));
+    setCouponCode('');
+    setCouponDiscount(0);
+    setCouponApplied(false);
+    setCouponError('');
     setIsPurchaseModalOpen(true);
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+    if (!selectedProduct) return;
+
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const orderAmount = parseFloat(selectedProduct.price) * purchaseForm.quantity;
+      const response = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode.trim(), orderAmount }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setCouponError(data.message || 'Invalid coupon code');
+        setCouponApplied(false);
+        setCouponDiscount(0);
+      } else {
+        setCouponDiscount(data.discount || 0);
+        setCouponApplied(true);
+        setCouponError('');
+        setPurchaseForm(prev => ({ ...prev, couponCode: couponCode.trim() }));
+        toast({
+          title: "Coupon Applied!",
+          description: `You saved ${formatPrice(String(data.discount || 0))}`,
+        });
+      }
+    } catch {
+      setCouponError('Failed to validate coupon');
+      setCouponApplied(false);
+      setCouponDiscount(0);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode('');
+    setCouponDiscount(0);
+    setCouponApplied(false);
+    setCouponError('');
+    setPurchaseForm(prev => ({ ...prev, couponCode: undefined }));
   };
 
   const handleSubmitPurchase = () => {
@@ -168,7 +236,15 @@ export default function ProductCatalog() {
       return;
     }
 
-    // Payment method is always 'wallet' (E-wallet)
+    if (purchaseForm.paymentMethod === 'razorpay') {
+      toast({
+        title: "Not Available",
+        description: "Online Payment is coming soon. Please choose another payment method.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createPurchaseMutation.mutate(purchaseForm);
   };
 
@@ -487,13 +563,81 @@ export default function ProductCatalog() {
                     />
                   </div>
 
-                  {/* Payment Method: Always E-wallet (hidden from user) */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="h-4 w-4 text-blue-600" />
-                      <span className="text-sm font-medium text-blue-900">Payment Method: E-Wallet</span>
-                    </div>
-                    <p className="text-xs text-blue-700 mt-1">Amount will be deducted from your E-wallet balance</p>
+                  {/* Coupon Code */}
+                  <div>
+                    <Label className="flex items-center gap-1 mb-2">
+                      <Tag className="h-4 w-4" />
+                      Coupon Code
+                    </Label>
+                    {couponApplied ? (
+                      <div className="flex items-center justify-between bg-green-50 border border-green-200 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <Tag className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">{couponCode}</span>
+                          <Badge className="bg-green-100 text-green-800">Applied</Badge>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={handleRemoveCoupon} className="text-red-500 hover:text-red-700 h-auto p-1">
+                          Remove
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Enter coupon code"
+                            value={couponCode}
+                            onChange={(e) => { setCouponCode(e.target.value); setCouponError(''); }}
+                          />
+                          <Button
+                            variant="outline"
+                            onClick={handleApplyCoupon}
+                            disabled={couponLoading}
+                          >
+                            {couponLoading ? 'Checking...' : 'Apply'}
+                          </Button>
+                        </div>
+                        {couponError && (
+                          <p className="text-xs text-red-500">{couponError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Payment Method Selection */}
+                  <div>
+                    <Label className="mb-2 block">Payment Method</Label>
+                    <RadioGroup
+                      value={purchaseForm.paymentMethod}
+                      onValueChange={(value) => setPurchaseForm(prev => ({ ...prev, paymentMethod: value }))}
+                      className="space-y-2"
+                    >
+                      <label className={`flex items-center gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${purchaseForm.paymentMethod === 'wallet' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <RadioGroupItem value="wallet" id="pm-wallet" />
+                        <Wallet className="h-4 w-4 text-blue-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium">E-Wallet</span>
+                          <p className="text-xs text-gray-500">Deducts from your wallet balance</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 border rounded-lg p-3 cursor-pointer transition-colors ${purchaseForm.paymentMethod === 'cod' ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                        <RadioGroupItem value="cod" id="pm-cod" />
+                        <Truck className="h-4 w-4 text-orange-600" />
+                        <div className="flex-1">
+                          <span className="text-sm font-medium">Cash on Delivery</span>
+                          <p className="text-xs text-gray-500">Pay when your order is delivered</p>
+                        </div>
+                      </label>
+
+                      <label className={`flex items-center gap-3 border rounded-lg p-3 cursor-not-allowed opacity-60 border-gray-200`}>
+                        <RadioGroupItem value="razorpay" id="pm-razorpay" disabled />
+                        <CreditCard className="h-4 w-4 text-purple-600" />
+                        <div className="flex-1 flex items-center gap-2">
+                          <span className="text-sm font-medium">Online Payment</span>
+                          <Badge variant="secondary" className="text-xs">Coming Soon</Badge>
+                        </div>
+                      </label>
+                    </RadioGroup>
                   </div>
 
                   <div>
@@ -523,10 +667,19 @@ export default function ProductCatalog() {
                         <span>GST ({selectedProduct.gst}%):</span>
                         <span>{formatPrice(((parseFloat(selectedProduct.price) * purchaseForm.quantity * parseFloat(selectedProduct.gst)) / 100).toString())}</span>
                       </div>
+                      {couponApplied && couponDiscount > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span className="flex items-center gap-1">
+                            <Tag className="h-3 w-3" />
+                            Coupon Discount:
+                          </span>
+                          <span>-{formatPrice(String(couponDiscount))}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between font-medium text-lg">
                         <span>Total:</span>
                         <span className="text-green-600">
-                          {formatPrice(((parseFloat(selectedProduct.price) * purchaseForm.quantity) * (1 + parseFloat(selectedProduct.gst) / 100)).toString())}
+                          {formatPrice(String(Math.max(0, (parseFloat(selectedProduct.price) * purchaseForm.quantity) * (1 + parseFloat(selectedProduct.gst) / 100) - couponDiscount)))}
                         </span>
                       </div>
                       <div className="flex justify-between text-blue-600 font-medium">
