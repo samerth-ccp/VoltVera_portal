@@ -1,0 +1,88 @@
+
+Pratyaksh Sethi 2 <pratyaksh@codsphere.ca>
+1:50 PM (3 hours ago)
+to me
+
+Dear Samerth,
+
+I hope you are doing well.
+As discussed, I am assigning you the development of our new e-commerce platform, VoltveraShop.com. This project is strategically important for us, and I am sharing the SOP with you.
+
+Please find the core requirements below:
+
+1. Objective
+Develop a seamless, fast, secure, scalable, and fully admin-controlled e-commerce website for VoltveraShop.com with strong branding and professional UI/UX.
+2. Branding & UI
+You will be responsible for:
+• Professional logo creation
+• Premium brand identity
+• Modern, clean, conversion-focused UI
+• Fully mobile-responsive design
+• SEO-friendly structure
+Product category: Water Purification Machines
+Note:
+• Product images will be provided
+• Admin must have editable option to change images, price, and description anytime
+3. Master Admin Control Panel (Priority Requirement)
+Create a Master Dashboard with full control for:
+• Add / Edit / Delete Products
+• Edit Product Images
+• Edit Prices
+• Edit Descriptions
+• View All Orders
+• View Customer Details
+Customer data must include:
+• Name
+• Phone Number
+• Email
+• Order Details
+4. Coupon Code System
+Admin must be able to:
+• Create coupon codes
+• Edit coupon codes
+• Delete coupon codes
+• Change discount values
+Customer must be able to apply coupon at checkout.
+This will be used frequently, so keep it fast and easy to manage.
+5. Payment Integration
+Mandatory options:
+• Razorpay Integration (UPI, Debit Card, Credit Card)
+• Cash on Delivery
+Payment status must reflect in admin dashboard.
+6. Customer Login System
+Before placing order:
+Customer must login using:
+• Google Login (Gmail Login)
+System must capture:
+• Phone Number (Mandatory)
+• Email Address
+• Name
+7. Order Monitoring
+Admin must have access to:
+• All orders
+• Payment status
+• COD orders
+• Daily order report view
+Simple reporting format is sufficient for now.
+8. Performance & Technical Expectations
+Website must be:
+• Fast loading
+• Lightweight
+• Secure
+• Scalable
+• SEO-optimized
+• Clean coded
+Architecture should be future-ready for scaling.
+9. Delivery Expectations
+Final handover must include:
+• Full source code
+• Admin access
+• Database access
+• Deployment support
+10. Timeline
+Please share:
+• Development plan
+• Technology stack
+• Milestone timeline
+
+This project represents Voltvera’s digital foundation, so ensure we build it at enterprise standards aligned with Codsphere’s reputation
