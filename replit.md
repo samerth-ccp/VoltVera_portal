@@ -49,6 +49,12 @@ Preferred communication style: Simple, everyday language.
 - **ID Normalization**: Supports both UUID and Display ID formats.
 - **KYC System**: User identity verification with document upload and admin review.
 - **Paid Members Logic**: Defined by users with active status, approved KYC, complete bank details, and at least one transaction.
+- **Coupon System**: Admin can create/edit/delete discount coupons (percentage or fixed) with min order amounts, max discount caps, usage limits, and expiry dates. Users can apply coupons at checkout.
+- **Payment Methods**: Supports 3 payment options: E-Wallet (deduct from balance), Cash on Delivery (cod_pending status), and Online Payment (Razorpay - coming soon placeholder).
+- **Product Categories**: Dynamic category management by admin, used for product filtering in catalog.
+- **Daily Order Reports**: Admin can view orders by date with summary cards, filter by payment method/status, and export CSV.
+- **Phone Number Capture**: Mandatory mobile number input after first login, blocks navigation until provided.
+- **SEO**: Per-page titles using usePageTitle hook, meta description, Open Graph and Twitter card tags.
 
 # External Dependencies
 
