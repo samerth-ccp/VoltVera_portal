@@ -544,7 +544,7 @@ router.get('/admin/kyc', requireAuth, requireAdmin, async (req, res) => {
     res.json(documents);
   } catch (error) {
     console.error('❌ Error fetching pending KYC:', error);
-    res.status(500).json({ message: 'Failed to fetch pending KYC', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch pending KYC', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -572,7 +572,7 @@ router.post('/admin/kyc/fix-existing-statuses', requireAuth, requireAdmin, async
     res.json({ message: 'KYC statuses fixed successfully' });
   } catch (error) {
     console.error('Error fixing KYC statuses:', error);
-    res.status(500).json({ message: 'Failed to fix KYC statuses', error: error.message });
+    res.status(500).json({ message: 'Failed to fix KYC statuses', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -584,7 +584,7 @@ router.post('/admin/kyc/cleanup-duplicates', requireAuth, requireAdmin, async (r
     res.json({ message: 'Duplicate KYC documents cleaned up successfully' });
   } catch (error) {
     console.error('Error cleaning up KYC documents:', error);
-    res.status(500).json({ message: 'Failed to cleanup duplicate KYC documents', error: error.message });
+    res.status(500).json({ message: 'Failed to cleanup duplicate KYC documents', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -596,7 +596,7 @@ router.post('/admin/kyc/consolidate-types', requireAuth, requireAdmin, async (re
     res.json({ message: 'Document types consolidated successfully' });
   } catch (error) {
     console.error('Error consolidating document types:', error);
-    res.status(500).json({ message: 'Failed to consolidate document types', error: error.message });
+    res.status(500).json({ message: 'Failed to consolidate document types', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -712,7 +712,7 @@ router.get('/admin/kyc/:userId/documents', requireAuth, requireAdmin, async (req
     res.json(transformedDocuments);
   } catch (error) {
     console.error('❌ Error fetching KYC documents:', error);
-    res.status(500).json({ message: 'Failed to fetch KYC documents', error: error.message });
+    res.status(500).json({ message: 'Failed to fetch KYC documents', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -747,7 +747,7 @@ router.get('/admin/kyc/debug', requireAuth, requireAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error in KYC debug endpoint:', error);
-    res.status(500).json({ message: 'Failed to debug KYC records', error: error.message });
+    res.status(500).json({ message: 'Failed to debug KYC records', error: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -1081,7 +1081,13 @@ router.post('/admin/coupons', requireAuth, requireAdmin, async (req, res) => {
 router.patch('/admin/coupons/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const coupon = await storage.updateCoupon(id, req.body);
+    const updates: any = { ...req.body };
+    if (updates.code) updates.code = updates.code.toUpperCase();
+    if (updates.discountValue !== undefined) updates.discountValue = String(updates.discountValue);
+    if (updates.minOrderAmount !== undefined) updates.minOrderAmount = String(updates.minOrderAmount);
+    if (updates.maxDiscount !== undefined) updates.maxDiscount = String(updates.maxDiscount);
+    if (updates.expiresAt) updates.expiresAt = new Date(updates.expiresAt);
+    const coupon = await storage.updateCoupon(id, updates);
     if (!coupon) {
       return res.status(404).json({ message: 'Coupon not found' });
     }

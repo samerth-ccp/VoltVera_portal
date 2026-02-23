@@ -95,9 +95,9 @@ export default function ProductCatalog() {
   const [couponError, setCouponError] = useState('');
 
   // Fetch BV calculations data
-  const { data: bvData, isLoading: bvLoading } = useQuery({
+  const { data: bvData, isLoading: bvLoading } = useQuery<{ lifetime?: { leftBv?: string; rightBv?: string; matchingBv?: string; diffIncome?: string; selfBv?: string } }>({
     queryKey: ['/api/test/bv-calculations'],
-    enabled: true, // Always fetch BV data
+    enabled: true,
   });
 
   const { toast } = useToast();
@@ -195,7 +195,7 @@ export default function ProductCatalog() {
         body: JSON.stringify({ code: couponCode.trim(), orderAmount }),
       });
       const data = await response.json();
-      if (!response.ok) {
+      if (!response.ok || !data.valid) {
         setCouponError(data.message || 'Invalid coupon code');
         setCouponApplied(false);
         setCouponDiscount(0);

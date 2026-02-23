@@ -17,11 +17,11 @@ interface Coupon {
   code: string;
   description?: string;
   discountType: "percentage" | "fixed";
-  discountValue: number;
-  minOrderAmount?: number;
-  maxDiscount?: number;
+  discountValue: string;
+  minOrderAmount?: string;
+  maxDiscount?: string;
   usageLimit?: number;
-  usageCount: number;
+  usedCount: number;
   expiresAt?: string;
   isActive: boolean;
   createdAt: string;
@@ -42,7 +42,7 @@ function getCouponStatus(coupon: Coupon): "active" | "expired" | "exhausted" {
   if (coupon.expiresAt && new Date(coupon.expiresAt) < new Date()) {
     return "expired";
   }
-  if (coupon.usageLimit && coupon.usageCount >= coupon.usageLimit) {
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
     return "exhausted";
   }
   return "active";
@@ -142,9 +142,9 @@ export default function AdminCouponManagement() {
       code: coupon.code,
       description: coupon.description || "",
       discountType: coupon.discountType,
-      discountValue: String(coupon.discountValue),
-      minOrderAmount: coupon.minOrderAmount ? String(coupon.minOrderAmount) : "",
-      maxDiscount: coupon.maxDiscount ? String(coupon.maxDiscount) : "",
+      discountValue: coupon.discountValue || "",
+      minOrderAmount: coupon.minOrderAmount || "",
+      maxDiscount: coupon.maxDiscount || "",
       usageLimit: coupon.usageLimit ? String(coupon.usageLimit) : "",
       expiresAt: coupon.expiresAt ? coupon.expiresAt.split("T")[0] : "",
     });
@@ -157,9 +157,11 @@ export default function AdminCouponManagement() {
     }
   };
 
-  const formatCurrency = (value?: number) => {
+  const formatCurrency = (value?: string | number) => {
     if (value === undefined || value === null) return "—";
-    return `₹${value.toLocaleString("en-IN")}`;
+    const num = typeof value === 'string' ? parseFloat(value) : value;
+    if (isNaN(num)) return "—";
+    return `₹${num.toLocaleString("en-IN")}`;
   };
 
   if (isLoading) {
@@ -354,13 +356,13 @@ export default function AdminCouponManagement() {
                         </td>
                         <td className="p-3 font-semibold">
                           {coupon.discountType === "percentage"
-                            ? `${coupon.discountValue}%`
+                            ? `${parseFloat(coupon.discountValue)}%`
                             : formatCurrency(coupon.discountValue)}
                         </td>
                         <td className="p-3">{formatCurrency(coupon.minOrderAmount)}</td>
                         <td className="p-3">{coupon.discountType === "percentage" ? formatCurrency(coupon.maxDiscount) : "—"}</td>
                         <td className="p-3">
-                          {coupon.usageCount}/{coupon.usageLimit ?? "∞"}
+                          {coupon.usedCount}/{coupon.usageLimit ?? "∞"}
                         </td>
                         <td className="p-3">
                           <StatusBadge status={status} />
